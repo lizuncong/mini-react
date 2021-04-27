@@ -1,5 +1,6 @@
 ## 从零实现自己的react
-本文翻译自[build your own react](https://pomb.us/build-your-own-react/)，同时结合了我个人的理解。这篇文章我看了至少5遍，每看一遍收获都很大。我一直觉得，
+本文翻译自[build your own react](https://pomb.us/build-your-own-react/)，同时结合了我个人的理解。这篇文章主要是介绍了React Fiber核心架构思想，
+不是一比一还原React代码。可以说是用比较简单的方式，把复杂的东西讲的很明白。这篇文章我看了至少5遍，每看一遍收获都很大。我一直觉得，
 写代码是一门技术，但能以简单的方式让别人理解则是一门艺术。这篇文章没有涉及太多的概念，由简单到复杂，从为什么到怎么做，思路清晰。这种精炼的好文章确实值得多读读(当然不是指读我的，能看英文的就看英文的)。
 
 本文从零开始去实现一个简单的 `React`。遵循真实的 `React` 代码架构，只关注React核心架构，不考虑优化以及其他非必要的功能。
@@ -26,3 +27,4 @@
 - 什么是Fiber Tree，什么是 Element Tree，两者有什么区别？两者又是通过什么关联的？
 - 为什么需要Commit阶段
 - 为什么需要Reconciliation阶段？
+- Reconciliation过程是对比的Element Tree和Fiber Tree？
