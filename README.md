@@ -23,8 +23,9 @@
 
 
 在阅读的过程中，最好带着问题，比如：
-- render阶段，内存中到底有几棵树？
 - 什么是Fiber Tree，什么是 Element Tree，两者有什么区别？两者又是通过什么关联的？
 - 为什么需要Commit阶段
 - 为什么需要Reconciliation阶段？
 - Reconciliation过程是对比的Element Tree和Fiber Tree？
+- render阶段，内存中到底有几棵树？
+- Reconciliation阶段，内存中又到底有几棵树？
