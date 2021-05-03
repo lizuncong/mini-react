@@ -1,30 +1,27 @@
-// import React from 'react';
-// import ReactDOM from 'react-dom';
-import React from '../lib/index';
-import ReactDOM from '../lib/react-dom';
+import React, { useState } from 'react';
+import ReactDOM from 'react-dom';
 
-//
-// const element = (
-//     <div id="foo">
-//         this is a text
-//         <div>
-//             <a>this is a link</a>
-//             bar
-//         </div>
-//         <br />
-//     </div>
-// )
 
-const element = React.createElement(
-    'div',
-    { id: 'foo' },
-    "this is a text",
-    React.createElement('div', null, React.createElement('a', null, 'this is a link'), 'bar'),
-    React.createElement('br')
-)
-console.log(element)
-
+const App = () => {
+  const [count, setCount] = useState(0);
+  console.log('count..', count);
+  return (
+      <div>
+        计数器: { count }
+        <div>
+          <button
+            onClick={() =>{
+                console.log('11');
+                setCount(count + 1)
+            }}
+          >
+            add count
+          </button>
+        </div>
+      </div>
+  )
+}
 const container = document.getElementById('root');
 
 
-ReactDOM.render(element, container);
+ReactDOM.render(<App />, container);
