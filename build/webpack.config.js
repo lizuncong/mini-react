@@ -60,5 +60,11 @@ module.exports = {
     overlay: {
       errors: true,
     },
+    // proxy: {
+    //   '/api': {
+    //     target: 'http://localhost:3000',
+    //     pathRewrite: { '^/api': '' },
+    //   },
+    // },
   }
 }
