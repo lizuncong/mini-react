@@ -21,22 +21,14 @@ function App() {
   //   }
   // }, [listening, facts]);
   useEffect(() => {
-    ajax('GET', 'http://localhost:3000/get').then(res => {
-      console.log('res...', res)
-    }, err => {
-      console.log('err...', err)
-    })
+    ajax()
   }, [])
 
   return (
     <>
       <div
         onClick={() => {
-          ajax('GET', 'http://localhost:3000/get').then(res => {
-            console.log('res...', res)
-          }, err => {
-            console.log('err...', err)
-          })
+          ajax()
         }}
       >
         get请求

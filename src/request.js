@@ -1,20 +1,17 @@
-export default function ajax(type ,url , data ){
+export default function ajax(){
     let xhr = new XMLHttpRequest();
-    let promise = new Promise(function(resolve , reject){
-        xhr.onload = ()=>{
-            if(xhr.status === 200){
-                return resolve(xhr.response||xhr.responseText);
-            }
-            return reject('请求失败');
+    const url = 'http://localhost:3000/get'
+    xhr.onload = ()=>{
+        if(xhr.status === 200){
+            const myHeader = xhr.getResponseHeader('X-My-Custom-Header');
+            console.log('myHeader...', myHeader)
+            return console.log(xhr.response||xhr.responseText);
         }
-        xhr.onerror = ()=>{
-            return reject('出错了');
-        }
-        xhr.open(type,url);
-        xhr.setRequestHeader('Content-Type', 'application/json');
-        // xhr.setRequestHeader('Cookies', 'fdsaf');
-        // xhr.withCredentials = true;
-        xhr.send(data ? data:null);
-    });
-    return promise;
+        return console.error('请求失败');
+    }
+    xhr.onerror = ()=>{
+        return console.error('出错了');
+    }
+    xhr.open('GET',url);
+    xhr.send('hello');
 }
