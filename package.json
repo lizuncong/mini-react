@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "core-js": "^3.6.4",
-    "html-webpack-plugin": "^4.5.1"
+    "html-webpack-plugin": "^4.5.1",
+    "react-router-dom": "^5.2.0"
   }
 }

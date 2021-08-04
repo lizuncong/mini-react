@@ -20,24 +20,25 @@ function App() {
   //     setListening(true);
   //   }
   // }, [listening, facts]);
-  useEffect(() => {
-    ajax()
-  }, [])
+  // useEffect(() => {
+  //   ajax()
+  // }, [])
 
   return (
     <>
-      <div
+      <button onClick={() => { ajax('/login')}}>登录</button>
+      <button
         onClick={() => {
-          ajax()
+          ajax('/get')
         }}
       >
         get请求
-      </div>
+      </button>
       <table className="stats-table">
         <thead>
           <tr>
-            <th>Fact</th>
-            <th>Source</th>
+            <th>tesw</th>
+            <th>test</th>
           </tr>
         </thead>
         <tbody>

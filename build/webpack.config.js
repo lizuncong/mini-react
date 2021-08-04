@@ -54,6 +54,7 @@ module.exports = {
   devServer: {
     host: '0.0.0.0',
     port: '9001',
+    historyApiFallback: true,
     contentBase: path.resolve(__dirname, '../dist'),
     // hot: true,
     headers: { 'Access-Control-Allow-Origin': '*' },
