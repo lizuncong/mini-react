@@ -29,7 +29,7 @@ export default function ajax(path, { id }){
             xhr.withCredentials = true; 
             xhr.send('hello');
         }
-        if(currentCount < max){
+        if(currentCount < max + 1){
             task();
         } else { // 超过最大并发数则排队
             queue.push(task)
