@@ -1,28 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import ajax from './request'
+import ajax from './concurrent_request'
 
 function App() {
   const [ facts, setFacts ] = useState([]);
   const [ listening, setListening ] = useState(false);
 
-  // useEffect( () => {
-  //   if (!listening) {
-  //     const events = new EventSource('/api/events', { withCredentials: true });
-  //     events.onmessage = (event) => {
-  //       const parsedData = JSON.parse(event.data);
-
-  //       setFacts((facts) => facts.concat(parsedData));
-  //     };
-  //     events.onerror = function(err) {
-  //       console.error("EventSource failed:", err);
-  //     };
-
-  //     setListening(true);
-  //   }
-  // }, [listening, facts]);
-  // useEffect(() => {
-  //   ajax()
-  // }, [])
 
   return (
     <>

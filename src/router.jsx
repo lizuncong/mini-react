@@ -5,13 +5,17 @@ import {
     Route,
     Link
 } from "react-router-dom";
-import ajax from './request'
+import SSE from './sse'
+import ajax from './concurrent_request'
 
 function Index() {
 
   return (
     <Router>
         <Switch>
+            <Route path="/sse">
+                <SSE/>
+            </Route>
             <Route path="/about">
                 <button onClick={() => { ajax('/login')}}>登录</button>
                 <button
