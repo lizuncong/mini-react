@@ -7,12 +7,19 @@ import {
 } from "react-router-dom";
 import SSE from './sse'
 import ajax from './concurrent_request'
-
+import corsAjax from './cors_ajax'
 function Index() {
 
   return (
     <Router>
         <Switch>
+            <Route path="/cors">
+                <div
+                    onClick={() => {
+                        corsAjax()
+                    }}
+                >跨域</div>
+            </Route>
             <Route path="/sse">
                 <SSE/>
             </Route>
