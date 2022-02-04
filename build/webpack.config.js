@@ -21,7 +21,8 @@ module.exports = {
         test: /\.jsx?$/,
         include: [
             path.resolve(__dirname, '../src'),
-            path.resolve(__dirname, '../lib'),
+            path.resolve(__dirname, '../redux'),
+            path.resolve(__dirname, '../react-redux'),
         ],
         use: [
           {
@@ -35,10 +36,16 @@ module.exports = {
                   {
                     useBuiltIns: 'usage',
                     corejs:  3 ,
+                    targets: {
+                      chrome: '95'
+                    }
                   },
                 ],
                 '@babel/preset-react',
               ],
+              plugins: [
+                  '@babel/plugin-proposal-class-properties'
+              ]
             },
           },
         ],
@@ -48,17 +55,7 @@ module.exports = {
   plugins: [
     new HtmlWebpackPlugin({
       index: 'index.html',
-      template: path.resolve(__dirname, './template.html'),
+      template: path.resolve(__dirname, '../template.html'),
     }),
-  ],
-  devServer: {
-    host: '0.0.0.0',
-    port: '8088',
-    contentBase: path.resolve(__dirname, '../dist'),
-    // hot: true,
-    headers: { 'Access-Control-Allow-Origin': '*' },
-    overlay: {
-      errors: true,
-    },
-  }
+  ]
 }
