@@ -4,37 +4,40 @@ class App extends React.Component {
   constructor(props){
     super(props);
     this.state = {
-      show: false
+      number: 0
     }
   }
-  componentDidMount(){
-    document.addEventListener('click', () => {
-      console.log('handleDocumentClick')
-      this.setState({
-        show: false
-      })
-    })
-  }
 
-  handleButtonClick = e => {
-    console.log('handleButtonClick', e.stopPropagation)
-    e.nativeEvent.stopImmediatePropagation();
-    this.setState({
-      show: true
-    })
+  handleClick = event => {
+    setTimeout(() => {
+      this.setState((prevState) => {
+        console.log('setState1...', prevState)
+        return { number: prevState.number + 1 }
+      }, () => {
+        console.log('setState1 callback', this.state)
+      })
+  
+      console.log('after setState1', this.state) 
+  
+      this.setState((prevState) => {
+        console.log('setState2...', prevState)
+        return { number: prevState.number + 1 }
+      }, () => {
+        console.log('setState2 callback', this.state)
+      })
+       
+      console.log('after setState2', this.state) 
+    }, 4);
   }
 
   render(){
+    console.log('render...', this.state)
     return (
       <div>
-        <button onClick={this.handleButtonClick}>显示</button>
-        {
-          this.state.show && (
-            <div>
-              模态框
-            </div>
-          )
-        }
+        计数器：{this.state.number}
+        <div>
+          <button onClick={this.handleClick}>add</button>
+        </div>
       </div>
     )
   }

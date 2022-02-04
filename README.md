@@ -3,6 +3,18 @@
 - react。手写react源码目录，对应的官方react版本为17.0.1
 - react-dom。手写react-dom源码目录，对应的官方react-dom版本为17.0.1
 
+### react源码调试
+- git clone下载react源码
+- cd react进入react源码目录
+- yarn build react, shared, scheduler, react-reconciler, react-dom --type=NODE
+- cd build/node_modules/react
+- yarn link
+- cd build/node_modules/react-dom
+- yarn link
+
+- 然后创建一个新项目，比如mini-react
+- 在mini-react中执行yarn link react react-dom即可
+
 ## 从零实现自己的react
 本文翻译自[build your own react](https://pomb.us/build-your-own-react/)，同时结合了我个人的理解。这篇文章主要是介绍了React Fiber核心架构思想，
 不是一比一还原React代码。可以说是用比较简单的方式，把复杂的东西讲的很明白。这篇文章我看了至少5遍，每看一遍收获都很大。我一直觉得，
