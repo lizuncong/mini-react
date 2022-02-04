@@ -24,9 +24,9 @@ React17版本开始，对事件系统的两个重要变更：
 
 #### 事件差异
                 原生事件        合成事件
-命名方式          全小写          小驼峰命名
-事件处理函数      字符串         函数对象
-阻止默认行为      返回false     调用event.preventDefault()
+- 命名方式          全小写          小驼峰命名
+- 事件处理函数      字符串         函数对象
+- 阻止默认行为      返回false     调用event.preventDefault()
 ```jsx
 const handleClick = event => event.preventDefault();
 
