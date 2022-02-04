@@ -5,3 +5,4 @@ import App from './App'
 
 const container = document.getElementById('root');
 ReactDOM.render(<App />, container);
+// ReactDOM.unstable_createRoot(container).render(<App />)

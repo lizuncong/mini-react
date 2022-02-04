@@ -16,8 +16,18 @@
 ### setState同步更新还是异步更新？
 - React17稳定版本或者React17以前的版本中，即legacy模式下，在react能够接管的地方，比如生命周期或者合成事件中，setState是异步更新的。
 但是在setTimeout或者通过window.addEventListener添加的原生事件中，setState则是同步的。
+```jsx
+// Legacy同步模式
+const container = document.getElementById('root');
+ReactDOM.render(<App />, container);
+```
 - 在React开发版本中，即concurrent模式下，setState的更新统一是异步的
-
+```jsx
+// Concurrent异步模式，在这个模式下，任何情况下setState都是异步更新的。目前createRoot方法还在实验中
+const container = document.getElementById('root');
+// ReactDOM.render(<App />, container);
+ReactDOM.createRoot(container).render(<App />)
+```
 #### setState更新demo
 以下面的代码为例，以下示例均在react@17.0.1，react-dom@17.0.1版本的legacy模式下实现
 ```jsx
@@ -174,3 +184,43 @@ after setState2 {number: 2}
 结论
 - 状态是同步更新的
 - ***一定要仔细品味setState、render、 setState callback、after setState打印顺序之间的关系!!!!***
+
+
+###### demo5 ReactDOM.unstable_batchedUpdates强制异步更新状态
+```jsx
+handleClick = event => {
+    setTimeout(() => {
+        ReactDOM.unstable_batchedUpdates(() => {
+            this.setState((prevState) => {
+                console.log('setState1...', prevState)
+                return { number: prevState.number + 1 }
+            }, () => {
+                console.log('setState1 callback', this.state)
+            })
+
+            console.log('after setState1', this.state) 
+
+            this.setState((prevState) => {
+                console.log('setState2...', prevState)
+                return { number: prevState.number + 1 }
+            }, () => {
+                console.log('setState2 callback', this.state)
+            })
+
+            console.log('after setState2', this.state) 
+        })
+    }, 4);
+}
+```
+打印顺序：          
+after setState1 {number: 0}          
+after setState2 {number: 0}          
+setState1... {number: 0}          
+setState2... {number: 1}          
+render... {number: 2}          
+setState1 callback {number: 2}          
+setState2 callback {number: 2}          
+
+
+结论：
+- 在同步模式(legacy)下，如果需要在setTimeout等中启用异步更新，可以使用React17新增的`ReactDOM.unstable_batchedUpdates`API
