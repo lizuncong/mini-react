@@ -1,5 +1,4 @@
 import React from 'react';
-import ReactDOM from 'react-dom';
 
 class App extends React.Component {
   constructor(props){
@@ -10,6 +9,7 @@ class App extends React.Component {
   }
 
   handleClick = event => {
+    debugger;
     this.setState((prevState) => {
       console.log('setState1...', prevState)
       return { number: prevState.number + 1 }
@@ -18,15 +18,6 @@ class App extends React.Component {
     })
 
     console.log('after setState1', this.state) 
-
-    this.setState((prevState) => {
-      console.log('setState2...', prevState)
-      return { number: prevState.number + 1 }
-    }, () => {
-      console.log('setState2 callback', this.state)
-    })
-
-    console.log('after setState2', this.state) 
   }
 
   render(){

@@ -224,3 +224,10 @@ setState2 callback {number: 2}
 
 结论：
 - 在同步模式(legacy)下，如果需要在setTimeout等中启用异步更新，可以使用React17新增的`ReactDOM.unstable_batchedUpdates`API
+
+
+
+
+### setState执行过程
+- this.setState
+- React.Component
