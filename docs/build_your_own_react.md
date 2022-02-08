@@ -136,3 +136,77 @@ const element = React.createElement(
 const container = document.getElementById("root")
 ReactDOM.render(element, container)
 ```
+`React.createElement`接收的children有可能是原子值，比如字符串或者数字等，`React.createElement('h1', {title: 'foo'}, 'Hello')`。为了简化我们的代码，创建一个特殊的`TEXT_ELEMENT` 类型将其转换成对象
+```js
+// const element = (
+//   <div id="foo">
+//     <a>bar</a>
+//     <b />
+//   </div>
+// )
+React.createElement = (type, props, ...children) => {
+  return {
+    type,
+    props: {
+      ...props,
+      children: children.map(child => {
+        if(typeof child === 'object'){
+          return child
+        }
+        return {
+          type: 'TEXT_ELEMENT',
+          props: {
+            nodeValue: child,
+            children: [],
+          }
+        }
+      })
+    }
+  }
+}
+// 将jsx转换成js语法
+const element = React.createElement(
+  "div",
+  { id: "foo" },
+  React.createElement("a", null, "bar"),
+  React.createElement("b")
+)
+const container = document.getElementById("root")
+ReactDOM.render(element, container)
+```
+
+好了，现在我们已经实现了一个简单的`createElement`函数，我们可以通过一段**特殊的注释**来告诉babel在将jsx转换成js时使用我们自己的`createElement`函数：
+```jsx
+const MiniReact = {
+  createElement:  (type, props, ...children) => {
+    return {
+      type,
+      props: {
+        ...props,
+        children: children.map(child => {
+          if(typeof child === 'object'){
+            return child
+          }
+          return {
+            type: 'TEXT_ELEMENT',
+            props: {
+              nodeValue: child,
+              children: [],
+            }
+          }
+        })
+      }
+    }
+  }
+}
+/** @jsx MiniReact.createElement */
+const element = (
+  <div id="foo">
+    <a>bar</a>
+    <b />
+  </div>
+)
+console.log('element======', element)
+const container = document.getElementById("root")
+ReactDOM.render(element, container)
+```
