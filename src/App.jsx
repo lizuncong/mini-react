@@ -9,19 +9,22 @@ class App extends React.Component {
   }
 
   handleClick = event => {
-    debugger;
-    this.setState((prevState) => {
-      console.log('setState1...', prevState)
-      return { number: prevState.number + 1 }
-    }, () => {
-      console.log('setState1 callback', this.state)
-    })
-
-    console.log('after setState1', this.state) 
+    // debugger;
+    setTimeout(() => {
+      this.setState((prevState) => {
+        console.log('setState1...', prevState)
+        return { number: prevState.number + 1 }
+      }, () => {
+        console.log('setState1 callback', this.state)
+      })
+  
+      console.log('after setState1', this.state)
+    }, 4);
   }
 
   render(){
-    console.log('render...', this.state)
+    const test = <h1 title="foo">Hello</h1>
+    console.log('render...', test)
     return (
       <div>
         计数器：{this.state.number}
