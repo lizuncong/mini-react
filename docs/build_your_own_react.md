@@ -210,3 +210,63 @@ console.log('element======', element)
 const container = document.getElementById("root")
 ReactDOM.render(element, container)
 ```
+
+
+### render函数
+```js
+import React from 'react';
+
+function render(element, container) {
+  const dom = element.type === 'TEXT_ELEMENT' ? document.createTextNode("") : document.createElement(element.type)
+
+  const isProperty = key => key !== 'children'
+  Object.keys(element.props)
+    .filter(isProperty)
+    .forEach(name => {
+      dom[name] = element.props[name]
+    })
+
+  element.props.children.forEach(child => {
+    render(child, dom)
+  });
+
+  container.appendChild(dom)
+}
+const MiniReact = {
+  createElement:  (type, props, ...children) => {
+    return {
+      type,
+      props: {
+        ...props,
+        children: children.map(child => {
+          if(typeof child === 'object'){
+            return child
+          }
+          return {
+            type: 'TEXT_ELEMENT',
+            props: {
+              nodeValue: child,
+              children: [],
+            }
+          }
+        })
+      }
+    }
+  },
+  render
+}
+/** @jsx MiniReact.createElement */
+const element = (
+  <div id="foo">
+    <a>bar</a>
+    <b />
+  </div>
+)
+console.log('element======', element)
+const container = document.getElementById("root")
+MiniReact.render(element, container)
+```
+`render`函数递归创建真实的dom元素，然后将各个元素append到其父元素中，最后整个dom树append到root container中，渲染完成。
+
+
+**注意，只有当整个dom树append到root container中时，页面才会显示**
