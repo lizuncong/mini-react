@@ -480,3 +480,8 @@ console.log('element======', element)
 const container = document.getElementById("root")
 MiniReact.render(element, container)
 ```
+
+### 第六章 Render and Commit Phases
+第五章的`performUnitOfWork`有些问题，在第二步中我们直接将新创建的真实dom节点挂载到了容器上，这样会带来两个问题：
+- 每次执行`performUnitOfWork`都会造成浏览器回流重绘，因此真实的dom已经被添加到浏览器上了，性能极差
+- 浏览器是可以打断渲染过程的，因此可能会造成用户看到不完整的UI界面
