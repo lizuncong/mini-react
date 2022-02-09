@@ -611,6 +611,8 @@ MiniReact.render(element, container)
 - 如果`type`不相同并且有`new element`，则创建一个新的真实dom节点
 - 如果`type`不同并且有`old fiber`节点，则删除该节点对应的真实dom节点
 
+**注意，协调过程，还是以最新的React Element Tree为主去创建一个新的fiber tree，只不过是新的fiber节点复用旧的fiber节点的真实dom元素，毕竟频繁创建真实dom是很消耗内存的。新的fiber节点还是会保存着对旧的fiber节点的引用，方便在commit阶段进行新属性和旧属性的比较。这里会有个问题，如果新fiber节点保留旧fiber节点的引用，那么随着更新次数越来越多，旧的fiber tree是不是也会越来越多，如何销毁？**
+
 ```js
 import React from 'react';
 function createDom(fiber) {
