@@ -14,6 +14,7 @@ function createDom(fiber) {
 
 let nextUnitOfWork = null
 function render(element, container){
+  console.log('element...tree', element)
   const root = {
     dom: container,
     props: {

@@ -1,5 +1,5 @@
 ### 前言
-本文翻译自[build-your-own-react](https://pomb.us/build-your-own-react/)，建议先读下原文，是入门fiber的绝佳选择。这篇文章主要是简单介绍实现以下几个概念：
+本文翻译自[build-your-own-react](https://pomb.us/build-your-own-react/)，建议先读下原文，是入门fiber的绝佳选择。这篇文章循序渐进地介绍实现以下几个概念，遵循本篇文章基本就能搞懂为啥需要fiber，为啥需要commit和phases、reconciliation阶段等原理。本篇文章又不完全和原文一致，这里会加入我自己的一些思考，比如经过`performUnitOfWork`处理后fiber tree和element tree的联系等。
 - createElement函数
 - render函数
 - Concurrent Mode
@@ -21,52 +21,16 @@
 
 ### 第一章 基本概念
 以下面代码为例
-```jsx
-const element = <h1 title="foo">Hello</h1>
-const container = document.getElementById("root")
-ReactDOM.render(element, container)
-```
-jsx不是合法的javascript语法，可以借助Babel等工具将其转换成合法的js。转换过程也非常简单，将html标签替换成createElement方法：
 ```js
+// 1.jsx语法不是合法的js语法
 // const element = <h1 title="foo">Hello</h1>
-const element = React.createElement(
-  "h1",
-  { title: "foo" },
-  "Hello"
-)
-const container = document.getElementById("root")
-ReactDOM.render(element, container)
-```
-`React.createElement`根据传递的参数创建一个对象，这个对象至少包含一个type和一个props属性：
-```js
-// const element = <h1 title="foo">Hello</h1>
-// 经babel等编译工具将jsx转换成js
+// 2.经babel等编译工具将jsx转换成js，将jsx转换成createElement函数调用的方式
 // const element = React.createElement(
 //   "h1",
 //   { title: "foo" },
 //   "Hello"
 // )
-// React.createElement返回的最终对象大致如下：
-const element = {
-  type: "h1",
-  props: {
-    title: "foo",
-    children: "Hello",
-  },
-}
-const container = document.getElementById("root")
-ReactDOM.render(element, container)
-```
-`ReactDOM.render`将虚拟dom转换成真实的dom并渲染：
-```js
-// const element = <h1 title="foo">Hello</h1>
-// 经babel等编译工具将jsx转换成js
-// const element = React.createElement(
-//   "h1",
-//   { title: "foo" },
-//   "Hello"
-// )
-// React.createElement返回的最终对象大致如下：
+// 3.React.createElement返回的最终对象大致如下：
 const element = {
   type: "h1",
   props: {
@@ -76,7 +40,7 @@ const element = {
 }
 const container = document.getElementById("root")
 // ReactDOM.render(element, container)
-// ReactDOM.render大致处理逻辑：
+// 4.替换ReactDOM.render函数的逻辑，ReactDOM.render大致处理逻辑：
 const node = document.createElement(element.type)
 node['title'] = element.props.title
 const text = document.createTextNode("")
@@ -95,70 +59,10 @@ container.appendChild(node)
 
 
 ### 第二章 createElement 函数
-以下面的代码为例，从本章开始实现一个简单的react代码。
-```jsx
-const element = (
-  <div id="foo">
-    <a>bar</a>
-    <b />
-  </div>
-)
-const container = document.getElementById("root")
-ReactDOM.render(element, container)
-```
-将jsx转换成`React.createElement`调用的js语法
-```js
-// const element = (
-//   <div id="foo">
-//     <a>bar</a>
-//     <b />
-//   </div>
-// )
-// 将jsx转换成js语法
-const element = React.createElement(
-  "div",
-  { id: "foo" },
-  React.createElement("a", null, "bar"),
-  React.createElement("b")
-)
-const container = document.getElementById("root")
-ReactDOM.render(element, container)
-```
-`React.createElement`实现如下：
-```js
-// const element = (
-//   <div id="foo">
-//     <a>bar</a>
-//     <b />
-//   </div>
-// )
-React.createElement = (type, props, ...children) => {
-  return {
-    type,
-    props: {
-      ...props,
-      children
-    }
-  }
-}
-// 将jsx转换成js语法
-const element = React.createElement(
-  "div",
-  { id: "foo" },
-  React.createElement("a", null, "bar"),
-  React.createElement("b")
-)
-const container = document.getElementById("root")
-ReactDOM.render(element, container)
-```
+以下面的代码为例
+
 `React.createElement`接收的children有可能是原子值，比如字符串或者数字等，`React.createElement('h1', {title: 'foo'}, 'Hello')`。为了简化我们的代码，创建一个特殊的`TEXT_ELEMENT` 类型将其转换成对象
 ```js
-// const element = (
-//   <div id="foo">
-//     <a>bar</a>
-//     <b />
-//   </div>
-// )
 React.createElement = (type, props, ...children) => {
   return {
     type,
@@ -179,6 +83,12 @@ React.createElement = (type, props, ...children) => {
     }
   }
 }
+// const element = (
+//   <div id="foo">
+//     <a>bar</a>
+//     <b />
+//   </div>
+// )
 // 将jsx转换成js语法
 const element = React.createElement(
   "div",
@@ -342,22 +252,6 @@ MiniReact.render(
 
 ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/fiberTree.jpg)
 
-
-`render`函数主要逻辑：
-- 根据root container容器创建root fiber
-- 将nextUnitOfWork指针指向root fiber
-
-`performUnitOfWork`函数主要逻辑：
-- 将element元素添加到DOM
-- 给element的子元素创建对应的fiber节点
-- 返回下一个工作单元，即下一个fiber节点，查找过程：
-  + 如果有子元素，则返回子元素的fiber节点
-  + 如果没有子元素，则返回兄弟元素的fiber节点
-  + 如果既没有子元素又没有兄弟元素，则往上查找其父节点的兄弟元素的fiber节点
-  + 如果往上查找到root fiber节点，说明render过程已经结束
-
-
-`render`及`performUnitOfWork`实现：
 ```js
 import React from 'react';
 // 根据fiber节点创建真实的dom节点
@@ -375,6 +269,10 @@ function createDom(fiber) {
 }
 
 let nextUnitOfWork = null
+// render函数主要逻辑：
+//   根据root container容器创建root fiber
+//   将nextUnitOfWork指针指向root fiber
+//   element是react element tree
 function render(element, container){
   nextUnitOfWork = {
     dom: container,
@@ -395,6 +293,14 @@ function workLoop(deadline) {
 
 requestIdleCallback(workLoop)
 
+// performUnitOfWork函数主要逻辑：
+//   将element元素添加到DOM
+//   给element的子元素创建对应的fiber节点
+//   返回下一个工作单元，即下一个fiber节点，查找过程：
+//      1.如果有子元素，则返回子元素的fiber节点
+//      2.如果没有子元素，则返回兄弟元素的fiber节点
+//      3.如果既没有子元素又没有兄弟元素，则往上查找其父节点的兄弟元素的fiber节点
+//      4.如果往上查找到root fiber节点，说明render过程已经结束
 function performUnitOfWork(fiber) {
   // 第一步 根据fiber节点创建真实的dom节点，并保存在fiber.dom属性中
   if(!fiber.dom){
@@ -480,6 +386,12 @@ console.log('element======', element)
 const container = document.getElementById("root")
 MiniReact.render(element, container)
 ```
+
+这里有一点值得细品，`React.createElement`返回的`element tree`和`performUnitOfWork`创建的`fiber tree`有什么联系。如下图所示：
+
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/elementTree-FiberTree.jpg)
+
+
 
 ### 第六章 Render and Commit Phases
 第五章的`performUnitOfWork`有些问题，在第二步中我们直接将新创建的真实dom节点挂载到了容器上，这样会带来两个问题：
