@@ -13,26 +13,38 @@ function createDom(fiber) {
 }
 
 let nextUnitOfWork = null
+let wipRoot = null
 function render(element, container){
-  console.log('element...tree', element)
-  const root = {
+  wipRoot = {
     dom: container,
     props: {
       children: [element], // 此时的element还只是React.createElement函数创建的virtual dom树
     },
   }
-  nextUnitOfWork = root
-  setTimeout(() => {
-    console.log('root...', root)
-  }, 4000)
+  nextUnitOfWork = wipRoot
 }
-
+function commitRoot(){
+  commitWork(wipRoot.child)
+  wipRoot = null
+}
+function commitWork(fiber){
+  if(!fiber){
+    return
+  }
+  const domParent = fiber.parent.dom;
+  domParent.appendChild(fiber.dom)
+  commitWork(fiber.child)
+  commitWork(fiber.sibling)
+}
 
 function workLoop(deadline) {
   let shouldYield = false
   while (nextUnitOfWork && !shouldYield) {
     nextUnitOfWork = performUnitOfWork(nextUnitOfWork)
     shouldYield = deadline.timeRemaining() < 1
+  }
+  if(!nextUnitOfWork && wipRoot){
+    commitRoot()
   }
   requestIdleCallback(workLoop)
 }
@@ -46,9 +58,9 @@ function performUnitOfWork(fiber) {
   }
 
   // 第二步 将当前fiber节点的真实dom添加到父节点中，注意，这一步是会触发浏览器回流重绘的！！！
-  if(fiber.parent){
-    fiber.parent.dom.appendChild(fiber.dom)
-  }
+  // if(fiber.parent){
+  //   fiber.parent.dom.appendChild(fiber.dom)
+  // }
   // 第三步 给子元素创建对应的fiber节点
   const children = fiber.props.children
   let prevSibling
