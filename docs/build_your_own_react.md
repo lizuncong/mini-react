@@ -389,6 +389,9 @@ MiniReact.render(element, container)
 
 这里有一点值得细品，`React.createElement`返回的`element tree`和`performUnitOfWork`创建的`fiber tree`有什么联系。如下图所示：
 
+- `React Element Tree`是由`React.createElement`方法创建的树形结构对象
+- `Fiber Tree`是根据`React Element Tree`创建来的树。每个Fiber节点保存着真实的DOM节点，并且保存着对`React Element Tree`中对应的`Element`节点的应用。注意，`Element`节点并不会保存对`Fiber`节点的应用
+
 ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/elementTree-FiberTree.jpg)
 
 
