@@ -542,3 +542,10 @@ console.log('element======', element)
 const container = document.getElementById("root")
 MiniReact.render(element, container)
 ```
+
+### 第七章 Reconciliation
+目前为止，我们只考虑添加dom节点到容器上这一单一场景，更新删除还没实现。
+
+我们需要对比最新的`React Element Tree`和最近一次的`Fiber Tree`的差异
+
+我们需要给每个fiber节点添加一个alternate属性来保存旧的fiber节点

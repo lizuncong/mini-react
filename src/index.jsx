@@ -14,17 +14,20 @@ function createDom(fiber) {
 
 let nextUnitOfWork = null
 let wipRoot = null
+let currentRoot = null
 function render(element, container){
   wipRoot = {
     dom: container,
     props: {
       children: [element], // 此时的element还只是React.createElement函数创建的virtual dom树
     },
+    alternate: currentRoot,
   }
   nextUnitOfWork = wipRoot
 }
 function commitRoot(){
   commitWork(wipRoot.child)
+  currentRoot = wipRoot
   wipRoot = null
 }
 function commitWork(fiber){
@@ -50,7 +53,57 @@ function workLoop(deadline) {
 }
 
 requestIdleCallback(workLoop)
+function reconcileChildren(wipFiber, elements) {
+  let index = 0
+  let oldFiber =
+      wipFiber.alternate && wipFiber.alternate.child
+  let prevSibling = null
 
+  while (index < elements.length || oldFiber != null) {
+    const element = elements[index]
+    let newFiber = null
+
+    const sameType = oldFiber && element && element.type == oldFiber.type
+
+    if (sameType) {
+      newFiber = {
+        type: oldFiber.type,
+        props: element.props,
+        dom: oldFiber.dom,
+        parent: wipFiber,
+        alternate: oldFiber,
+        effectTag: "UPDATE",
+      }
+    }
+    if (element && !sameType) {
+      newFiber = {
+        type: element.type,
+        props: element.props,
+        dom: null,
+        parent: wipFiber,
+        alternate: null,
+        effectTag: "PLACEMENT",
+      }
+    }
+    if (oldFiber && !sameType) {
+      oldFiber.effectTag = "DELETION"
+      deletions.push(oldFiber)
+    }
+
+    if (oldFiber) {
+      oldFiber = oldFiber.sibling
+    }
+
+    if (index === 0) {
+      wipFiber.child = newFiber
+    } else if (element) {
+      prevSibling.sibling = newFiber
+    }
+
+    prevSibling = newFiber
+    index++
+  }
+}
 function performUnitOfWork(fiber) {
   // 第一步 根据fiber节点创建真实的dom节点，并保存在fiber.dom属性中
   if(!fiber.dom){
@@ -63,21 +116,22 @@ function performUnitOfWork(fiber) {
   // }
   // 第三步 给子元素创建对应的fiber节点
   const children = fiber.props.children
-  let prevSibling
-  children.forEach((child, index) => {
-    const newFiber = {
-      type: child.type,
-      props: child.props,
-      parent: fiber,
-      dom: null
-    }
-    if(index === 0){
-      fiber.child = newFiber
-    } else {
-      prevSibling.sibling = newFiber
-    }
-    prevSibling = newFiber
-  })
+  // let prevSibling
+  // children.forEach((child, index) => {
+  //   const newFiber = {
+  //     type: child.type,
+  //     props: child.props,
+  //     parent: fiber,
+  //     dom: null
+  //   }
+  //   if(index === 0){
+  //     fiber.child = newFiber
+  //   } else {
+  //     prevSibling.sibling = newFiber
+  //   }
+  //   prevSibling = newFiber
+  // })
+  reconcileChildren(fiber, children)
 
   // 第四步，查找下一个工作单元
   if(fiber.child){
