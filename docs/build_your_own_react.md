@@ -9,14 +9,7 @@
 - Function Components
 - Hooks
 
-
-在阅读的过程中，最好带着问题，比如：
-- 什么是Fiber Tree，什么是 Element Tree，两者有什么区别？两者又是通过什么关联的？
-- 为什么需要Commit阶段
-- 为什么需要Reconciliation阶段？
-- Reconciliation过程是对比的Element Tree和Fiber Tree？
-- render阶段，内存中到底有几棵树？
-- Reconciliation阶段，内存中又到底有几棵树？
+如果对React相关概念已经很熟悉了，可以跳到最后一章直接看源码
 
 
 ### 第一章 基本概念
