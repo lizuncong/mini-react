@@ -1136,3 +1136,5 @@ function App(props){
 const element = <App name="foo" />
 MiniReact.render(element, container)
 ```
+
+### 第九章 Hooks
