@@ -543,6 +543,11 @@ MiniReact.render(element, container)
 
 我们需要给每个fiber节点添加一个alternate属性来保存旧的fiber节点
 
+alternate保存的旧的fiber节点主要有以下几个用途:
+- 复用旧fiber节点上的真实dom节点
+- 旧fiber节点上的props和新的element节点的props对比
+- 旧fiber节点上保存有更新的队列，在创建新的fiber节点时执行这些队列以获取最新的页面
+
 ```js
   const children = fiber.props.children
   reconcileChildren(fiber, children)
