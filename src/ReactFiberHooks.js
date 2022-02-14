@@ -16,6 +16,7 @@ export function renderWithHooks(current, workInProgress, Component){
     ReactCurrentDispatcher.current = HookDispatcherOnMount;
     const children = Component();
     currentlyRenderingFiber = null
+    workInProgressHook = null
     return children
 }
 
