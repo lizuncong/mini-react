@@ -224,6 +224,11 @@ function performUnitOfWork(nextUnitOfWork) {
 ### 第五章 Fibers
 Fibers就是一种数据结构，支持将渲染过程拆分成工作单元，本质上就是一个双向链表。这种数据结构的好处就是方便找到下一个工作单元
 
+Fiber包含三层含义：
+- 作为架构来说，之前`React 15`的`Reconciler`采用递归的方式执行，数据保存在递归调用栈中，所以被称为`stack Reconciler`。`React 16`的`Reconciler`基于`Fiber节点`实现，被称为`Fiber Reconciler`
+- 作为静态的数据结构来说，每个`Fiber节点`对应一个`React Element`，保存了该组件的类型(函数组件/类组件/html标签)、对应的DOM节点信息等
+- 作为动态的工作单元来说，每个`Fiber节点`保存了本次更新中该组件改变的状态、要执行的工作等
+
 Fiber的几点冷知识：
 - 一个Fiber节点对应一个React Element节点，同时也是一个工作单元
 - 每个fiber节点都有指向第一个子元素，下一个兄弟元素，父元素的指针**
