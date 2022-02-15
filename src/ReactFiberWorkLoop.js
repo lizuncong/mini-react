@@ -1,3 +1,4 @@
+import { beginWork } from './ReactFiberBeginWork'
 let workInProgress = null
 
 
