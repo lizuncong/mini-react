@@ -1,14 +1,12 @@
-### React合成事件
+#### React合成事件
 React17版本开始，对事件系统的两个重要变更：
-- React17以前把事件委托到document对象上，React17开始将事件委托到挂载的容器root上
-- 移除事件池。React17及以后版本中移除了事件对象池，这是因为React在旧浏览器中重用了不同事件的事件对象，以提高性能，并将所有事件字段在它们之前设置为null。在React 16及更早版本中，使用者必须调用event.persist()才能正确的使用该事件，或者正确读取需要的属性
+- React17以前将事件(包括捕获及冒泡)委托到document的冒泡阶段触发。React17开始将冒泡事件委托到容器root的冒泡阶段触发，将捕获事件委托到容器root的捕获阶段触发
+- [移除事件池](https://zh-hans.reactjs.org/blog/2020/08/10/react-v17-rc.html#no-event-pooling)
 
 #### 合成事件的基础
-- 真实dom元素事件的执行时机。
-    + React17以前，**由于事件委托在document的冒泡事件上**，先执行document原生捕获事件，然后是原生的捕获事件，原生的冒泡事件，react捕获事件，react冒泡事件，document原生冒泡事件
-    + React17及以后，事件捕获以及事件冒泡分别委托在root容器的捕获事件以及冒泡事件上，先执行document原生捕获事件，然后是react捕获事件，原生捕获事件，原生冒泡事件，react冒泡事件，document原生冒泡事件
-    + 无论是委托到document或者容器root上，合成事件都在document的冒泡事件处理。如果是在容器root上，则在容器root的捕获阶段处理合成事件的捕获事件，在容器root的冒泡阶段处理合成事件的冒泡事件
-- React事件绑定的时刻是在reconciliation阶段，会在原生事件的绑定前执行
+- 合成事件的执行时机。
+    + React17以前，**由于合成事件委托在document的冒泡事件上**，因此合成事件在document的冒泡阶段执行。 先执行document原生捕获事件，然后是原生的捕获事件，原生的冒泡事件，react捕获事件，react冒泡事件，document原生冒泡事件
+    + React17及以后，合成事件捕获以及合成事件冒泡分别委托在root容器的捕获事件以及冒泡事件上。
 - 目的和优势
     + 进行浏览器兼容，React采用的是顶层事件代理机制，能够保证冒泡一致性
     + 事件对象可能会被频繁创建和回收，因此React引入事件池，在事件池中获取或释放事件对象(React17后被废弃)
@@ -23,30 +21,9 @@ React17版本开始，对事件系统的两个重要变更：
 ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/event.jpg)
 如图，如果点击button，会先从上到下依次执行事件捕获，然后从下到上依次冒泡
 
-#### 事件差异
-- 原生事件
-  + 命名方式： 全小写
-  + 事件处理函数： 字符串
-  + 阻止默认行为：返回false
-- 合成事件
-  + 命名方式： 小驼峰命名
-  + 事件处理函数： 函数对象
-  + 阻止默认行为：调用event.preventDefault()
-
-
-```jsx
-const handleClick = event => event.preventDefault();
-
-// 原生事件
-<a href="#" onclick="handleClick()">button</a>
-
-// 合成事件
-<a href="#" onClick={handleClick}>button</a>
-```
-
     
 #### React17以前
-事件委托绑定到document上。以react@16.14.0，react-dom@16.14.0为例
+合成事件委托绑定到document上，在document的冒泡阶段执行。以react@16.14.0，react-dom@16.14.0为例，观察控制台输出可以看出，先打印所有的原生事件，其次在document的冒泡阶段才执行完所有的捕获以及冒泡事件
 - 示例
 ```jsx
 import React from 'react';
@@ -121,7 +98,8 @@ export default App;
 // document冒泡    // 有意思的是document冒泡是最后执行的
 ```
 
-- 模拟React16事件委托实现
+#### 模拟React17以前合成事件实现
+合成事件绑定在document的冒泡阶段。点击目标元素时，在document的冒泡阶段获取目标元素上所有的父元素及祖先元素。然后执行这些元素的捕获及冒泡事件
 ```html
 <!DOCTYPE html>
 <html lang="en">
@@ -198,8 +176,8 @@ export default App;
 
 
 #### React17及以后
-事件委托不再绑定到document上，而是绑定到react挂载的容器上，即root。以react@17.0.1，react-dom@17.0.1为例
-- 相同的示例
+事件委托不再绑定到document上，而是绑定到react挂载的容器上，即render方法挂载的容器root。在root的捕获阶段执行react的合成的捕获事件，在root的冒泡阶段执行react的合成的冒泡事件。以react@17.0.1，react-dom@17.0.1为例
+
 ```jsx
 import React from 'react';
 
@@ -273,7 +251,7 @@ export default App;
 // document冒泡
 ```
 
-- 模拟实现
+#### 模拟React17合成事件实现
 ```html
 <!DOCTYPE html>
 <html lang="en">
