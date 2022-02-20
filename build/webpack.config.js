@@ -14,15 +14,18 @@ module.exports = {
   },
   resolve: {
     extensions: ['.js', '.jsx'],
+    alias: {
+      '@shared': path.resolve(__dirname, '../shared'),
+      '@react': path.resolve(__dirname, '../react'),
+      '@react-dom': path.resolve(__dirname, '../react-dom'),
+    }
   },
   module: {
     rules: [
       {
         test: /\.jsx?$/,
-        include: [
-            path.resolve(__dirname, '../src'),
-            path.resolve(__dirname, '../redux'),
-            path.resolve(__dirname, '../react-redux'),
+        exclude: [
+            path.resolve(__dirname, '../node_modules'),
         ],
         use: [
           {
