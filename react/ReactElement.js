@@ -49,6 +49,7 @@ export function createElement(type, config, children) {
       props.children = childArray;
     }
     return  {
+        mini: true, // mini react标记
         $$typeof: REACT_ELEMENT_TYPE,
         type: type,
         key: key,

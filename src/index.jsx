@@ -12,3 +12,5 @@ const element = (
 )
 
 console.log(element)
+
+ReactDOM.render(element, document.getElementById('root'))
