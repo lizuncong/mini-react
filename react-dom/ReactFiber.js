@@ -10,5 +10,11 @@ export function createHostRootFiber(){
  * pendingProps 等待生效的属性对象
 */
 function createFiber(tag, pendingProps, key){
+    return new FiberNode(tag, pendingProps, key)
+}
 
+function FiberNode(tag, pendingProps, key){
+    this.tag = tag
+    this.pendingProps = pendingProps
+    this.key = key
 }
