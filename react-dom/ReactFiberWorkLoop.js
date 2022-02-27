@@ -1,4 +1,6 @@
 import { createWorkInProgress } from './ReactFiber'
+import { beginWork } from './ReactFiberBeginWork'
+
 
 let workInProgressRoot = null // 当前正在更新的根
 let workInProgress = null; // 当前正在更新的fiber节点
@@ -17,8 +19,31 @@ function performSyncWorkOnRoot(fiberRoot){
     workInProgressRoot = fiberRoot
     // 根据老的fiber树和更新对象创建新的fiber树，然后根据新的fiber树更新真实DOM
     workInProgress = createWorkInProgress(workInProgressRoot.current);
-    console.log('createWorkInProgress..', workInProgress)
+
+    workLoopSync(); // 开启工作循环
+
 }
+
+// 开始自上而下构建新的fiber树
+function workLoopSync(){
+    while(workInProgress){
+        performUnitOfWork(workInProgress)
+    }
+}
+
+// 执行单个工作单元
+function performUnitOfWork(unitOfWork){
+    const current = unitOfWork.alternate
+    // beginWork返回下一个工作单元
+    const next = beginWork(current, unitOfWork)
+    if(next){
+        workInProgress = next
+    } else {
+        // 如果当前fiber没有子fiber，说明当前fiber可以完成了
+        completeUnitOfWork(unitOfWork)
+    }
+}
+
 function markUpdateLaneFromFiberToRoot(sourceFiber){
     let node = sourceFiber
     let parent = node.return
