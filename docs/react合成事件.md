@@ -405,3 +405,10 @@ class App extends React.Component {
 }
 export default App;
 ```
+
+
+
+### React合成事件分三个阶段
+- 事件注册
+- 事件绑定
+- 事件触发

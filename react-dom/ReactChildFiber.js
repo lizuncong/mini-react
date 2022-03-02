@@ -1,4 +1,6 @@
 import { REACT_ELEMENT_TYPE } from '@shared/ReactSymbols' 
+import { createFiberFromElement } from './ReactFiber'
+
 
 // shouldTrackSideEffects 是否要跟踪副作用
 function childReconciler(shouldTrackSideEffects){
