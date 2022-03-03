@@ -1,7 +1,7 @@
-// import React from './react'
-// import ReactDOM from './react-dom'
-import React from 'react'
-import ReactDOM from 'react-dom'
+import React from './react'
+import ReactDOM from './react-dom'
+// import React from 'react'
+// import ReactDOM from 'react-dom'
 
 
 const root = document.getElementById('root')
@@ -29,7 +29,7 @@ const element = (
 )
 console.log('element...', element)
 
-debugger
+// debugger
 ReactDOM.render(
     element,
     root
