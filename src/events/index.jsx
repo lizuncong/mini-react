@@ -1,5 +1,8 @@
-import React from './react'
-import ReactDOM from './react-dom'
+// import React from './react'
+// import ReactDOM from './react-dom'
+import React from 'react'
+import ReactDOM from 'react-dom'
+
 
 const root = document.getElementById('root')
 
@@ -20,12 +23,13 @@ const handleButtonClickCapture = () => {
 }
 
 const element = (
-    <div onClick={handleDivClick} onClickCapture={handleDivClickCapture}>
+    <div onScroll={() => { console.log('scroll')}} onClick={handleDivClick} onClickCapture={handleDivClickCapture}>
         <button onClick={handleButtonClick} onClickCapture={handleButtonClickCapture}>点击</button>
     </div>
 )
 console.log('element...', element)
 
+debugger
 ReactDOM.render(
     element,
     root
