@@ -4,7 +4,9 @@ import * as SimpleEventPlugin from './SimpleEventPlugin'
 import { getEventListenerSet } from './ReactDOMComponentTree'
 import { IS_CAPTURE_PHASE } from './EventSystemFlags'
 import { addEventBubbleListener, addEventCaptureListener } from './EventListener'
+import { HostComponent } from './ReactWorkTags'
 import { dispatchEvent } from './ReactDOMEventListener'
+import getListener from './getListener'
 SimpleEventPlugin.registerEvents()
 
 export const nonDelegatedEvents = new Set(['scroll']) // 这些事件只有捕获，没有冒泡阶段
@@ -64,5 +66,65 @@ export function dispatchEventForPluginEventSystem(domEventName, eventSystemFlags
         targetContainer
     )
 
-    console.log('dispatchQueue===', dispatchQueue)
+    processDispatchQueue(dispatchQueue, eventSystemFlags)
+}
+
+
+function processDispatchQueue(dispatchQueue, eventSystemFlags){
+    const isCapturePhase = (eventSystemFlags & IS_CAPTURE_PHASE) !== 0
+    for(let i = 0; i < dispatchQueue.length; i++){
+        const { event, listeners } = dispatchQueue[i]
+        processDispatchQueueItemsInOrder(event, listeners, isCapturePhase)
+    }
+}
+
+function processDispatchQueueItemsInOrder(event, listeners, isCapturePhase){
+    console.log('listenrs...', listeners)
+    if(isCapturePhase){
+        for(let i = listeners.length - 1; i >= 0; i--){
+            const [ currentTarget, listener ] = listeners[i]
+            if(event.isPropagationStopped()){
+                return
+            }
+            execDispatch(event, listener, currentTarget)
+        }
+    } else {
+        for(let i = 0; i < listeners.length; i++){
+            const [ currentTarget, listener ] = listeners[i]
+            if(event.isPropagationStopped()){
+                return
+            }
+            execDispatch(event, listener, currentTarget)
+        }
+    }
+}
+function execDispatch(event, listener, currentTarget){
+    event.currentTarget = currentTarget
+    listener(event)
+    event.currentTarget = null
+}
+
+export function accumulateSinglePhaseListeners(targetFiber, reactName, nativeType, inCapturePhase){
+    const captureName = reactName + 'Capture'
+    const reactEventName = inCapturePhase ? captureName : reactName
+    const listeners = []
+    let instance = targetFiber
+    let lastHostComponent = null
+    while(instance){
+        const { stateNode, tag } = instance
+        if(tag === HostComponent && stateNode !== null){
+            lastHostComponent = stateNode
+            const listener = getListener(instance, reactEventName)
+            if(listener){
+                listeners.push(createDispatchListener(instance, listener, lastHostComponent))
+            }
+        }
+        instance = instance.return
+    }
+    return listeners
+}
+
+
+function createDispatchListener(instance, listener, currentTarget){
+    return [instance, listener, currentTarget]
 }

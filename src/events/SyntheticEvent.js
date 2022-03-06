@@ -19,7 +19,7 @@ function createSyntheticEvent(Interface){
         }
 
         this.isDefaultPrevented = functionThatReturnsFalse
-        this.isPropagationPrevented = functionThatReturnsFalse
+        this.isPropagationStopped = functionThatReturnsFalse
 
         return this
     }
@@ -42,7 +42,7 @@ function createSyntheticEvent(Interface){
             } else {
                 event.cancelBubble = true; // IE
             }
-            this.isPropagationPrevented = functionThatReturnsTrue
+            this.isPropagationStopped = functionThatReturnsTrue
         }
     })
 
