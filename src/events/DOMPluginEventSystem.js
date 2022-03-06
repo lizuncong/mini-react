@@ -49,3 +49,20 @@ function getListenerSetKey(domEventName, isCaptruePhaseListener){
     return `${domEventName}__${isCaptruePhaseListener ? 'capture' : 'bubble' }`
 }
 
+
+export function dispatchEventForPluginEventSystem(domEventName, eventSystemFlags, nativeEvent, targetInst, targetContainer){
+    const nativeEventTarget = nativeEvent.target;
+    const dispatchQueue = []
+    // 由插件提取事件处理函数，填充 dispatchQueue 数组
+    SimpleEventPlugin.extractEvents(
+        dispatchQueue,
+        domEventName,
+        targetInst,
+        nativeEvent,
+        nativeEventTarget,
+        eventSystemFlags,
+        targetContainer
+    )
+
+    console.log('dispatchQueue===', dispatchQueue)
+}
