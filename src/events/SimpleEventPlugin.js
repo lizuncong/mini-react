@@ -1,3 +1,3 @@
-import { registerSimpleEvents } from '../DOMEventProperties'
+import { registerSimpleEvents } from './DOMEventProperties'
 
 export { registerSimpleEvents as registerEvents }
