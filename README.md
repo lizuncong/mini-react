@@ -15,7 +15,13 @@
 - 然后创建一个新项目，比如mini-react
 - 在mini-react中执行yarn link react react-dom即可
 
-### React相关知识文档
-- [React合成事件](https://github.com/lizuncong/mini-react/blob/master/docs/react%E5%90%88%E6%88%90%E4%BA%8B%E4%BB%B6.md)
-- [setState同步异步更新的问题](https://github.com/lizuncong/mini-react/blob/master/docs/setState%E5%90%8C%E6%AD%A5%E5%BC%82%E6%AD%A5%E6%9B%B4%E6%96%B0%E7%9A%84%E9%97%AE%E9%A2%98.md)
-- [手把手开发极简Fiber版本的React](https://github.com/lizuncong/mini-react/blob/master/docs/build_your_own_react.md)
+### React知识文档
+- React Fiber工作原理
+    + [手把手开发极简Fiber版本的React](https://github.com/lizuncong/mini-react/blob/master/docs/build_your_own_react.md)
+
+- React 合成事件原理
+    + [JavaScript事件基础]()
+    + [React合成事件](https://github.com/lizuncong/mini-react/blob/master/docs/react%E5%90%88%E6%88%90%E4%BA%8B%E4%BB%B6.md)
+
+- setState相关问题
+    + [setState同步异步更新的问题](https://github.com/lizuncong/mini-react/blob/master/docs/setState%E5%90%8C%E6%AD%A5%E5%BC%82%E6%AD%A5%E6%9B%B4%E6%96%B0%E7%9A%84%E9%97%AE%E9%A2%98.md)

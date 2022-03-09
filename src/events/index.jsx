@@ -23,13 +23,13 @@ const handleButtonClickCapture = () => {
 }
 
 const element = (
-    <div onScroll={() => { console.log('scroll')}} onClick={handleDivClick} onClickCapture={handleDivClickCapture}>
+    <div onClick={handleDivClick} onClickCapture={handleDivClickCapture}>
         <button onClick={handleButtonClick} onClickCapture={handleButtonClickCapture}>点击</button>
     </div>
 )
 console.log('element...', element)
 
-// debugger
+debugger
 ReactDOM.render(
     element,
     root
