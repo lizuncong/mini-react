@@ -20,7 +20,7 @@
     + [手把手开发极简Fiber版本的React](https://github.com/lizuncong/mini-react/blob/master/docs/build_your_own_react.md)
 
 - React 合成事件原理
-    + [JavaScript事件基础]()
+    + [JavaScript事件基础](https://github.com/lizuncong/mini-react/blob/master/docs/JavaScript%E4%BA%8B%E4%BB%B6%E5%9F%BA%E7%A1%80.md)
     + [React合成事件](https://github.com/lizuncong/mini-react/blob/master/docs/react%E5%90%88%E6%88%90%E4%BA%8B%E4%BB%B6.md)
 
 - setState相关问题
