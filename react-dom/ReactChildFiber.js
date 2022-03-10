@@ -23,7 +23,7 @@ function childReconciler(shouldTrackSideEffects){
     // currentFirstChild 旧的fiber节点 newChild新的虚拟DOM
     function reconcileChildFibers(returnFiber, currentFirstChild, newChild){
         // 判断newChild是不是一个对象，是的话说明新的虚拟DOM只有一个React元素节点
-        const isObject = typeof newChild === 'obj' && newChild
+        const isObject = typeof newChild === 'object' && newChild
         if(isObject){
             switch(newChild.$$typeof){
                 case REACT_ELEMENT_TYPE:

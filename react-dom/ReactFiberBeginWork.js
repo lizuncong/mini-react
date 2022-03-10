@@ -19,8 +19,15 @@ function updateHostRoot(current, workInProgress){
     return workInProgress.child
 }
 
-function updateHostComponent(){
-
+function updateHostComponent(current, workInProgress){
+    // 获取此原生组件的类型
+    const type = workInProgress.type
+    // 新属性
+    const nextProps = workInProgress.pendingProps
+    const nextChildren = nextProps.children
+    // 处理子节点，根据老fiber和新的虚拟dom进行对比，创建新的fiber树
+    reconcileChildren(current, workInProgress, nextChildren)
+    return workInProgress.child
 }
 
 
