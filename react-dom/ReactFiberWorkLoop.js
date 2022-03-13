@@ -1,6 +1,6 @@
 import { createWorkInProgress } from './ReactFiber'
 import { beginWork } from './ReactFiberBeginWork'
-
+import { completeWork } from './ReactFiberCompleteWork'
 
 let workInProgressRoot = null // 当前正在更新的根
 let workInProgress = null; // 当前正在更新的fiber节点
@@ -36,6 +36,8 @@ function performUnitOfWork(unitOfWork){
     const current = unitOfWork.alternate
     // beginWork返回下一个工作单元
     const next = beginWork(current, unitOfWork)
+    // 在beginWork后，需要把新属性同步到老属性上
+    unitOfWork.memoizedProps = unitOfWork.pendingProps;
     if(next){
         workInProgress = next
     } else {
@@ -44,6 +46,14 @@ function performUnitOfWork(unitOfWork){
     }
 }
 
+function completeUnitOfWork(unitOfWork){
+    let completeWork = unitOfWork
+    do {
+        const current = completeWork.alternate
+        const returnFiber = completeWork.return
+        completeWork(current, returnFiber)
+    } while(completeWork)
+}
 function markUpdateLaneFromFiberToRoot(sourceFiber){
     let node = sourceFiber
     let parent = node.return
