@@ -21,7 +21,12 @@
 
 - React 合成事件原理
     + [JavaScript事件基础](https://github.com/lizuncong/mini-react/blob/master/docs/JavaScript%E4%BA%8B%E4%BB%B6%E5%9F%BA%E7%A1%80.md)
-    + [React合成事件](https://github.com/lizuncong/mini-react/blob/master/docs/react%E5%90%88%E6%88%90%E4%BA%8B%E4%BB%B6.md)
+    + [React合成事件与原生事件的执行顺序](https://github.com/lizuncong/mini-react/blob/master/docs/react%E5%90%88%E6%88%90%E4%BA%8B%E4%BB%B6.md)
 
 - setState相关问题
     + [setState同步异步更新的问题](https://github.com/lizuncong/mini-react/blob/master/docs/setState%E5%90%8C%E6%AD%A5%E5%BC%82%E6%AD%A5%E6%9B%B4%E6%96%B0%E7%9A%84%E9%97%AE%E9%A2%98.md)
+
+
+
+### 参考链接
+- [react-in-depth](https://medium.com/react-in-depth)
