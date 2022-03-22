@@ -17,11 +17,11 @@
 
 ### React源码系列文档(基于React17.0.1版本)
 - React Fiber工作原理
-    + [手把手开发极简Fiber版本的React](https://github.com/lizuncong/mini-react/blob/master/docs/build_your_own_react.md)，译文，入门fiber的绝佳文章
+    + [手把手开发极简Fiber版本的React](https://github.com/lizuncong/mini-react/blob/master/docs/build_your_own_react.md)，译文，入门fiber的人类高质量文章
 
 - React 合成事件原理
     + [JavaScript事件基础](https://github.com/lizuncong/mini-react/blob/master/docs/JavaScript%E4%BA%8B%E4%BB%B6%E5%9F%BA%E7%A1%80.md)
-    + [React合成事件与原生事件的执行顺序，React17以后合成事件发生了什么变更](https://github.com/lizuncong/mini-react/blob/master/docs/react%E5%90%88%E6%88%90%E4%BA%8B%E4%BB%B6.md)
+    + [React合成事件与原生事件的执行顺序，React17以后合成事件发生了什么变更](https://github.com/lizuncong/mini-react/blob/master/docs/react%E5%90%88%E6%88%90%E4%BA%8B%E4%BB%B6%E4%B8%8E%E5%8E%9F%E7%94%9F%E4%BA%8B%E4%BB%B6%E6%89%A7%E8%A1%8C%E9%A1%BA%E5%BA%8F.md)
     + [如果没有React，如何从0到1模拟合成事件的机制]()
     + [React源码中合成事件的实现过程]()
 - setState相关问题
@@ -31,3 +31,4 @@
 
 ### 参考链接
 - [react-in-depth](https://medium.com/react-in-depth)
+- [inside-fiber-in-depth-overview-of-the-new-reconciliation-algorithm-in-react](https://indepth.dev/posts/1008/inside-fiber-in-depth-overview-of-the-new-reconciliation-algorithm-in-react) 介绍react reconciliation 算法的好文章

@@ -1,7 +1,7 @@
-import React from './react'
-import ReactDOM from './react-dom'
-// import React from 'react'
-// import ReactDOM from 'react-dom'
+// import React from './react'
+// import ReactDOM from './react-dom'
+import React from 'react'
+import ReactDOM from 'react-dom'
 
 
 const root = document.getElementById('root')
@@ -16,8 +16,8 @@ const handleDivClickCapture = event => {
 
 const handleButtonClick = event => {
     console.log('子元素冒泡')
+    console.log('event...', event)
     setTimeout(() => {
-        console.log('event...', event.target)
         console.log('event...currentTarget...', event.currentTarget)
     }, 3000);
 }
