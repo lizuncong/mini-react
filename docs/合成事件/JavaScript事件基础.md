@@ -29,7 +29,14 @@
 </body>
 ```
 
+
 ### 事件冒泡 VS 事件捕获
+- 事件捕获
+- 事件目标
+- 事件冒泡
+- 事件委托。react合成事件就是基于事件委托
+- 先绑定先执行
+
 先捕获后冒泡
 ```js
 target.addEventListener(type, listener, useCapture); // useCapture 为true则表示捕获阶段触发
