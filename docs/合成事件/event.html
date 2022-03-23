@@ -1,0 +1,56 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <title>React Event</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+</body>
+<script>
+    const root = document.getElementById('root')
+    const elementTree = {
+        type: 'div',
+        props: {
+            onClick: () => { 
+                console.log('父元素冒泡')
+            },
+            onClickCapture: () => {
+                console.log('父元素捕获')
+            }
+        },
+        children: {
+            type: 'button',
+            props: {
+                onClick: () => { 
+                    console.log('子元素冒泡')
+                },
+                onClickCapture: () => {
+                    console.log('子元素捕获')
+                }
+            },
+            children: '点击'
+        }
+    }
+    const render = (element) => {
+        
+    }
+    // 第一阶段 注册事件
+    // 将浏览器支持的所有原生事件枚举出来，下面的事件两两一对，奇数位代表原生事件名称，
+    // 偶数位用于模拟react事件名称，比如 'keyDown' 用于 'on' + 'KeyDown'，或者 'on' + 'KeyDown' + 'Capture'
+    const discreteEventPairsForSimpleEventPlugin = [
+        'click', 'click', 
+        'keydown', 'keyDown',
+        'keypress', 'keyPress',
+        'keyup', 'keyUp',
+        'mousedown', 'mouseDown',
+        'mouseup', 'mouseUp'
+    ]
+</script>
+</html>
