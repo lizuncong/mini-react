@@ -45,12 +45,73 @@
     // 将浏览器支持的所有原生事件枚举出来，下面的事件两两一对，奇数位代表原生事件名称，
     // 偶数位用于模拟react事件名称，比如 'keyDown' 用于 'on' + 'KeyDown'，或者 'on' + 'KeyDown' + 'Capture'
     const discreteEventPairsForSimpleEventPlugin = [
-        'click', 'click', 
-        'keydown', 'keyDown',
-        'keypress', 'keyPress',
-        'keyup', 'keyUp',
-        'mousedown', 'mouseDown',
-        'mouseup', 'mouseUp'
+        'click', 'Click', 
+        'keydown', 'KeyDown',
+        'keypress', 'KeyPress',
+        'keyup', 'KeyUp',
+        'mousedown', 'MouseDown',
+        'mouseup', 'MouseUp'
     ]
+    const allNativeEvents = new Set()
+    const registrationNameDependencies = {}
+    for(let i = 0; i < discreteEventPairsForSimpleEventPlugin.length; i+=2){
+        const topEvent = discreteEventPairsForSimpleEventPlugin[i] // 原生事件名称
+        const reactName = 'on' + discreteEventPairsForSimpleEventPlugin[i+1] // react事件
+        registrationNameDependencies[reactName] = [topEvent]
+        registrationNameDependencies[reactName + 'Capture'] = [topEvent]
+        allNativeEvents.add(topEvent)
+    }
+
+    // 第二阶段 事件绑定
+    // 根据收集的allNativeEvents给容器root注册所有的事件
+    function listenToAllSupportedEvents(container){
+        allNativeEvents.forEach(domEventName => {
+            listenToNativeEvent(domEventName, false, container) // 绑定冒泡事件
+            listenToNativeEvent(domEventName, true, container) // 绑定捕获事件
+        })
+    }
+    function listenToNativeEvent(domEventName, isCaptruePhaseListener, rootContainerElement){
+        let listener = dispatchEvent.bind(null, domEventName, isCaptruePhaseListener, rootContainerElement)
+        if(isCaptruePhaseListener){
+            target.addEventListener(domEventName, listener, true)
+        } else {
+            target.addEventListener(domEventName, listener, false)
+        }
+    }
+
+
+    // 第三阶段 事件触发
+    // 事件触发首先执行的是dispatchEvent
+    function dispatchEvent(domEventName, isCaptruePhaseListener, targetContainer, nativeEvent){
+        // 获取原生的事件源
+        const target = nativeEvent.target || nativeEvent.srcElement || window
+        
+        // 获取fiber实例
+        const targetInst = target.__reactFiber;
+        
+        dispatchEventForPluginEventSystem(
+            domEventName,
+            isCaptruePhaseListener,
+            nativeEvent,
+            targetInst,
+            targetContainer
+        )
+    }
+    function dispatchEventForPluginEventSystem(domEventName, isCaptruePhaseListener, nativeEvent, targetInst, targetContainer){
+        const nativeEventTarget = nativeEvent.target;
+        const dispatchQueue = []
+        // 由插件提取事件处理函数，填充 dispatchQueue 数组
+        SimpleEventPlugin.extractEvents(
+            dispatchQueue,
+            domEventName,
+            targetInst,
+            nativeEvent,
+            nativeEventTarget,
+            eventSystemFlags,
+            targetContainer
+        )
+
+        processDispatchQueue(dispatchQueue, eventSystemFlags)
+    }
 </script>
 </html>
