@@ -16,6 +16,7 @@ function mount(vdom, parentNode){
 }
 
 function createDOM(vdom, parentNode){
+
     const { type, props } = vdom
     let dom
     if(typeof vdom === 'string' || typeof vdom === 'number'){
