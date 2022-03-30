@@ -1,25 +1,10 @@
-/**
- * Copyright (c) Facebook, Inc. and its affiliates.
- *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
- *
- * @flow
- */
 
-import type {DOMEventName} from './DOMEventNames';
 import {
-  type EventSystemFlags,
   SHOULD_NOT_DEFER_CLICK_FOR_FB_SUPPORT_MODE,
   IS_LEGACY_FB_SUPPORT_MODE,
   SHOULD_NOT_PROCESS_POLYFILL_EVENT_PLUGINS,
 } from './EventSystemFlags';
-import type {AnyNativeEvent} from './PluginModuleType';
-import type {
-  KnownReactSyntheticEvent,
-  ReactSyntheticEvent,
-} from './ReactSyntheticEventType';
-import type {Fiber} from 'react-reconciler/src/ReactInternalTypes';
+import getEventTarget from './getEventTarget';
 
 import {registrationNameDependencies, allNativeEvents} from './EventRegistry';
 import {
@@ -36,7 +21,6 @@ import {
   ScopeComponent,
 } from 'react-reconciler/src/ReactWorkTags';
 
-import getEventTarget from './getEventTarget';
 import {
   getClosestInstanceFromNode,
   getEventListenerSet,

@@ -1,22 +1,5 @@
-/**
- * Copyright (c) Facebook, Inc. and its affiliates.
- *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
- *
- * @flow
- */
+export const allNativeEvents = new Set();
 
-import type {DOMEventName} from './DOMEventNames';
-
-import {enableCreateEventHandleAPI} from 'shared/ReactFeatureFlags';
-
-export const allNativeEvents: Set<DOMEventName> = new Set();
-
-if (enableCreateEventHandleAPI) {
-  allNativeEvents.add('beforeblur');
-  allNativeEvents.add('afterblur');
-}
 
 /**
  * Mapping from registration name to event name
