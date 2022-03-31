@@ -19,7 +19,7 @@ if (process.env.NODE_ENV !== 'production') {
 		var tracing = require('scheduler/tracing');
 
 		var ReactSharedInternals = React.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED;
-
+		// In DEV, calls to console.warn and console.error get replaced
 		// by calls to these methods by a Babel plugin.
 		//
 		// In PROD (or in packages without access to React internals),
@@ -83,6 +83,7 @@ if (process.env.NODE_ENV !== 'production') {
 				);
 			}
 		}
+		/***************** debugger packages/react-reconciler/src/ReactWorkTags.js ==start *****************/
 
 		var FunctionComponent = 0;
 		var ClassComponent = 1;
@@ -112,6 +113,8 @@ if (process.env.NODE_ENV !== 'production') {
 		var Block = 22;
 		var OffscreenComponent = 23;
 		var LegacyHiddenComponent = 24;
+		/***************** debugger packages/react-reconciler/src/ReactWorkTags.js ==end *****************/
+		/***************** debugger packages/shared/ReactFeatureFlags.js ==start *****************/
 
 		// Filter certain DOM attributes (e.g. src, href) if their values are empty strings.
 
@@ -120,6 +123,7 @@ if (process.env.NODE_ENV !== 'production') {
 		var enableFundamentalAPI = false; // Experimental Scope support.
 		var enableNewReconciler = false; // Errors that are thrown while unmounting (or after in the case of passive effects)
 		var warnAboutStringRefs = false;
+		/***************** debugger packages/shared/ReactFeatureFlags.js ==end *****************/
 
 		/***************** debugger react-dom/src/events/EventRegistry.js ==start *****************/
 
