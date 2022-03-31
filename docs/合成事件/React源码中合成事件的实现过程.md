@@ -4,13 +4,14 @@
 - 事件触发
 
 ### 流程
-- 注册阶段。这个阶段主要是收集所有的原生事件allNativeEvents
-    + DOMEventProperties.js。使用discreteEventPairsForSimpleEventPlugin = ['click', 'click']收集了原生事件和react事件名称，第一个是原生事件，第二个是react事件名称。SimpleEventPlugin.registerEvents()根据discreteEventPairsForSimpleEventPlugin创建topLevelEventsToReactNames={'click': 'onClick'}，然后调用
-    registerTwoPhaseEvent(reactName, [topEvent])，reactName是合成事件名称，topEvent是原生事件名称
+- 注册阶段。这个阶段主要是收集所有的原生事件`allNativeEvents`
+    + DOMEventProperties.js。       
+        >`discreteEventPairsForSimpleEventPlugin = ['click', 'click']`收集了原生事件和react事件名称，第一个是原生事件，第二个是react事件名称。`SimpleEventPlugin.registerEvents()`方法根据`discreteEventPairsForSimpleEventPlugin`创建`topLevelEventsToReactNames={click: 'onClick'}`，然后调用`registerTwoPhaseEvent(reactName, [topEvent])`，`reactName`是合成事件名称如`onClick`或者`onClickCapture`，`topEvent`是原生事件名称如`click`
 
-    + EventRegistry.js。registerTwoPhaseEvent，主要是给以下变量设置值
-    const registrationNameDependencies = { onClick: ['click'], onClickCapture: ['click'] }，key是react合成事件名称，值是原生事件依赖数组
-    const allNativeEvents = ['click']，原生事件集合，最终会在容器上绑定的事件
+    + EventRegistry.js。          
+        >`registerTwoPhaseEvent`方法主要是给以下变量设置值`const registrationNameDependencies = { onClick: ['click'], onClickCapture: ['click'] }`，key是react合成事件名称，值是原生事件依赖数组。`const allNativeEvents = ['click']`原生事件集合，这是最终会在容器上绑定的事件
+
+    + 结果。这一阶段最主要的结果就是`allNativeEvents`集合以及`topLevelEventsToReactNames`
 
 - 事件绑定
     + react-dom.js。事件绑定逻辑从listenToAllSupportedEvents入口开始。
