@@ -1,10 +1,10 @@
 // 用于手机所有的原生事件名称，最后根据这个集合注册原生事件
-export const allNativeEvents = new Set();
+export const allNativeEvents = new Set(); // ['click']
 
 /**
- * 注册名称和事件名称映射关系
+ * 合成事件名称和原生事件名称依赖关系关系
  */
-export const registrationNameDependencies = {};
+export const registrationNameDependencies = {}; //  { onClick: ['click'], onClickCapture: ['click'] }
 
 export function registerTwoPhaseEvent(registrationName, dependencies){
   registerDirectEvent(registrationName, dependencies);
