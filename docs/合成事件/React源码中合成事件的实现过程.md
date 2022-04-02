@@ -48,10 +48,17 @@ const element = (
 )
 ReactDOM.render(element, root)
 ```
+事件绑定阶段React往root注册的所有原生事件集合，这个集合用于防止重复绑定事件         
  ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/event-01.jpg)
      
+每个真实的DOM节点都会挂载两个属性：
+- __reactProps$xxx：关联节点的props，通过这个属性可以获取到对应的事件监听处理函数
+- __reactFiber$xxx：关联fiber节点，点击按钮的时候，可以通过fiber节点向上遍历找到父节点、祖父节点上的事件监听处理函数
+
+***问题：既然每个真实的DOM节点都挂载了一个__reactProps属性，那通过原生的dom节点的parent属性一样可以找到父级节点，为啥还要挂载一个__reactFiber属性，这个属性是否还有其他用途？？？***
  ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/event-02.jpg)
 
+React会给每个注册了`onClick` 事件的DOM节点绑定一个noop空函数，这仅仅只是为了兼容safari浏览器
  ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/event-03.jpg)
 
  ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/event-04.jpg)
