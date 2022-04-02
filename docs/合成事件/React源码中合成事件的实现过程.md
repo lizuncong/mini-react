@@ -3,7 +3,7 @@
 - 事件绑定
 - 事件触发
 
-### 流程阶段
+### 流程阶段概览
 - 事件名称注册阶段。这个阶段主要涉及两个方法：`registerSimpleEvents`以及`registerTwoPhaseEvent`。这个阶段主要是收集所有的原生事件`allNativeEvents`
     + registerSimpleEvents方法。在DOMEventProperties.js文件中。       
         >`registerSimpleEvents`方法根据原生事件集合`discreteEventPairsForSimpleEventPlugin = ['click', 'click', 'dragend', 'dragEnd']`(集合中第一个是原生事件名称，第二个是react事件名称)创建`topLevelEventsToReactNames={ click: 'onClick', dragend: 'onDragEnd' }`对象。然后调用`registerTwoPhaseEvent(reactName, [topEvent])`(`reactName`是合成事件名称如`onClick`，`topEvent`是原生事件名称如`click`)注册合成事件名称
@@ -31,4 +31,27 @@
             + 通过合成事件构造函数生成合成事件对象`event`，将`{event, listeners}`存入`dispatchQueue`数组中
         + 调用`processDispatchQueue`方法遍历执行事件处理函数
         
-      
+
+### 感受一下事件阶段相关属性
+通过几张截图来感受一下真实DOM和Fiber之间的关系，以下面的demo为例
+```jsx
+const element = (
+    <div id="parent" onClick={handleDivClick} onClickCapture={handleDivClickCapture}>
+        <button 
+            id="child" 
+            onClick={handleButtonClick} 
+            onClickCapture={handleButtonClickCapture}
+        >
+            点击
+        </button>
+    </div>
+)
+ReactDOM.render(element, root)
+```
+ ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/event-01.jpg)
+     
+ ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/event-02.jpg)
+
+ ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/event-03.jpg)
+
+ ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/event-04.jpg)

@@ -27,8 +27,8 @@ const handleButtonClickCapture = () => {
 }
 
 const element = (
-    <div onClick={handleDivClick} onClickCapture={handleDivClickCapture}>
-        <button onClick={handleButtonClick} onClickCapture={handleButtonClickCapture}>点击</button>
+    <div id="parent" onClick={handleDivClick} onClickCapture={handleDivClickCapture}>
+        <button id="child" onClick={handleButtonClick} onClickCapture={handleButtonClickCapture}>点击</button>
     </div>
 )
 console.log('element...', element)
