@@ -62,3 +62,7 @@ React会给每个注册了`onClick` 事件的DOM节点绑定一个noop空函数�
  ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/event-03.jpg)
 
  ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/event-04.jpg)
+
+
+### 源码
+合成事件源码在`react-dom/events`目录下，直接运行`react-dom/events/index.jsx`下面的代码即可测试
