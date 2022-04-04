@@ -1,20 +1,29 @@
-// 用于手机所有的原生事件名称，最后根据这个集合注册原生事件
-export const allNativeEvents = new Set(); // ['click']
+export const allNativeEvents = new Set()
+// 最后allNativeEvents注册的所有原生事件近80个，篇幅有限，这里只简单列举
+// ["cancel", "click", "close", "contextmenu", "copy", "cut", "auxclick", "dblclick","dragend",
+// "dragstart", "drop", "focusin", "focusout", "input", "invalid", "keydown", "keypress","keyup",
+// "mousedown", "mouseup", "paste", "pause", "play","touchcancel",
+// ..., "touchend", "touchstart"]
 
-/**
- * 合成事件名称和原生事件名称依赖关系关系
- */
-export const registrationNameDependencies = {}; //  { onClick: ['click'], onClickCapture: ['click'] }
 
+export const registrationNameDependencies = {}
+// {
+//     onClick: ['click'],
+//     onClickCapture: ['click'],
+//     onChange: ['change', 'click', 'focusin', 'focusout', 'input', 'keydown', 'keyup', 'selectionchange'],
+//     onChangeCapture: ['change', 'click', 'focusin', 'focusout', 'input', 'keydown', 'keyup', 'selectionchange']
+// }
+
+
+// registrationName 注册名称 onChange
 export function registerTwoPhaseEvent(registrationName, dependencies){
-  registerDirectEvent(registrationName, dependencies);
-  registerDirectEvent(registrationName + 'Capture', dependencies);
+    registerDirectEvent(registrationName, dependencies) // onClick
+    registerDirectEvent(registrationName + 'Capture', dependencies) // onClickCapture
 }
 
-export function registerDirectEvent(registrationName, dependencies) {
-  registrationNameDependencies[registrationName] = dependencies;
-
-  for (let i = 0; i < dependencies.length; i++) {
-    allNativeEvents.add(dependencies[i]);
-  }
+export function registerDirectEvent(registrationName, dependencies){
+    registrationNameDependencies[registrationName] = dependencies
+    for(let i = 0; i < dependencies.length; i++){
+        allNativeEvents.add(dependencies[i])
+    }
 }

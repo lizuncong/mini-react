@@ -1,77 +1,8 @@
-/**
- * Copyright (c) Facebook, Inc. and its affiliates.
- *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
- * @flow
- */
-
-import type {Fiber} from 'react-reconciler/src/ReactInternalTypes';
-import type {Props} from '../client/ReactDOMHostConfig';
-
-import invariant from 'shared/invariant';
-import {getFiberCurrentPropsFromNode} from '../client/ReactDOMComponentTree';
-
-function isInteractive(tag: string): boolean {
-  return (
-    tag === 'button' ||
-    tag === 'input' ||
-    tag === 'select' ||
-    tag === 'textarea'
-  );
-}
-
-function shouldPreventMouseEvent(
-  name: string,
-  type: string,
-  props: Props,
-): boolean {
-  switch (name) {
-    case 'onClick':
-    case 'onClickCapture':
-    case 'onDoubleClick':
-    case 'onDoubleClickCapture':
-    case 'onMouseDown':
-    case 'onMouseDownCapture':
-    case 'onMouseMove':
-    case 'onMouseMoveCapture':
-    case 'onMouseUp':
-    case 'onMouseUpCapture':
-    case 'onMouseEnter':
-      return !!(props.disabled && isInteractive(type));
-    default:
-      return false;
-  }
-}
-
-/**
- * @param {object} inst The instance, which is the source of events.
- * @param {string} registrationName Name of listener (e.g. `onClick`).
- * @return {?function} The stored callback.
- */
-export default function getListener(
-  inst: Fiber,
-  registrationName: string,
-): Function | null {
-  const stateNode = inst.stateNode;
-  if (stateNode === null) {
-    // Work in progress (ex: onload events in incremental mode).
-    return null;
-  }
-  const props = getFiberCurrentPropsFromNode(stateNode);
-  if (props === null) {
-    // Work in progress.
-    return null;
-  }
-  const listener = props[registrationName];
-  if (shouldPreventMouseEvent(registrationName, inst.type, props)) {
-    return null;
-  }
-  invariant(
-    !listener || typeof listener === 'function',
-    'Expected `%s` listener to be a function, instead got a value of `%s` type.',
-    registrationName,
-    typeof listener,
-  );
-  return listener;
+import { getFiberCurrentPropsFromNode } from '../client/ReactDOMComponentTree'
+export default function getListener(inst, registrationName){
+    // return inst.props[registrationName] // 直接返回行不行？不行，props上的事件，比如onclick已经被置为noop空函数
+    const stateNode = inst.stateNode
+    const props = getFiberCurrentPropsFromNode(stateNode)
+    const listener = props[registrationName]
+    return listener
 }
