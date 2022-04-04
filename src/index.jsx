@@ -1,42 +1,23 @@
-// import React from 'react'
-// import ReactDOM from 'react-dom'
+import React, { useReducer } from 'react'
+import ReactDOM from 'react-dom'
+
+function reducer(state, action){
+    if(action.type === 'add'){
+        return state + 1
+    } else {
+        return state
+    }
+}
+
+const Counter = () => {
+    debugger
+    const [count, dispatch] = useReducer(reducer, 0)
+    return (
+        <div onClick={() => dispatch({ type: 'add' })}>
+            计数器：{count}
+        </div>
+    )
+}
 
 
-// const element = (
-//     <div 
-//         key={{ a: 'hello' }} 
-//         id="title"
-//     >
-//         title
-//     </div>
-// )
-
-// console.log(element)
-
-// ReactDOM.render(element, document.getElementById('root'))
-
-
-// class ClickCounter extends React.Component {
-//     constructor(props) {
-//         super(props);
-//         this.state = {count: 0};
-//         this.handleClick = this.handleClick.bind(this);
-//     }
-
-//     handleClick() {
-//         debugger
-//         this.setState((state) => {
-//             return {count: state.count + 1};
-//         });
-//     }
-    
-//     componentDidUpdate() {}
-
-//     render() {
-//         return [
-//             <button key="1" onClick={this.handleClick}>Update counter</button>,
-//             <span key="2">{this.state.count}</span>
-//         ]
-//     }
-// }
-// ReactDOM.render(<ClickCounter />, document.getElementById('root'))
+ReactDOM.render(<Counter />, document.getElementById('root'))
