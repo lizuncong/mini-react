@@ -1,7 +1,7 @@
 import React from 'react'
 import { IndeterminateComponent } from './ReactWorkTags'
 import { render } from './ReactFiberWorkLoop'
-import { useReducer } from './ReactFiberHooks'
+import { useReducer, useState } from './ReactFiberHooks'
 
 function reducer(state, action){
     if(action.type === 'add'){
@@ -12,10 +12,12 @@ function reducer(state, action){
 }
 
 const Counter = () => {
-    debugger
-    const [count, dispatch] = useReducer(reducer, 0)
+    // debugger
+    // const [count, setCount] = useReducer(reducer, 0)
+    const [count, setCount] = useState(0)
+    console.log('render======')
     return (
-        <div onClick={() => dispatch({ type: 'add' })}>
+        <div onClick={() => setCount(2)}>
             计数器：{count}
         </div>
     )

@@ -7,16 +7,37 @@ let workInProgressHook = null; // 当前工作中的新的hook指针
 let currentHook = null; // 当前的旧的hook指针
 let currentlyRenderingFiber // 当前正在使用的fiber
 const HookDispatcherOnMount = { // 初次挂载时的方法
-    useReducer: mountReducer
+    useReducer: mountReducer,
+    useState: mountState, // useState其实是useReducer的语法糖
 }
 const HookDispatcherOnUpdate = { // 更新阶段的方法
-    useReducer: updateReducer
+    useReducer: updateReducer,
+    useState: updateState, // useState其实是useReducer的语法糖
 }
 
+function mountState(initialState){
+    const hook = mountWorkInProgressHook()
+    hook.memoizedState = initialState
+    const queue = (hook.queue = { 
+        pending: null,
+        lastRenderedReducer: basicStateReducer, // 用于判断useState调用多次，设置相同的值，不会触发重新渲染，比如多次setState(2)
+        lastRenderState: initialState, // 和上面的lastRenderedReducer一样用于判断useState调用多次，设置相同的值，不会触发重新渲染，比如多次setState(2)
+    })
+    const dispatch = dispatchAction.bind(null, currentlyRenderingFiber, queue)
+    return [hook.memoizedState, dispatch]
+}
+function basicStateReducer(state, action){
+    return typeof action === 'function' ? action(state) : action
+}
+function updateState(initialState){
+    return updateReducer(basicStateReducer, initialState)
+}
 function updateReducer(reducer, initialState){
     // 更新时也要构建一个新的hook链表
     const hook = updateWorkInProgressHook();
     const queue = hook.queue // 更新队列
+    const lastRenderedReducer = queue.lastRenderedReducer // 上一次reducer方法
+
     const current = currentHook
     const pendingQueue = queue.pending
     if(pendingQueue !== null){
@@ -31,6 +52,7 @@ function updateReducer(reducer, initialState){
         }while(update !== null && update !== first)
         queue.pending = null; // 更新完成，清空链表
         hook.memoizedState = newState; // 让新的hook对象的memoizedState等于计算的新状态
+        queue.lastRenderState = newState
     }
     const dispatch = dispatchAction.bind(null, currentlyRenderingFiber, queue)
     return [hook.memoizedState, dispatch]
@@ -63,6 +85,9 @@ function updateWorkInProgressHook(){
 }
 export function useReducer(reducer, initialState){
     return ReactCurrentDispatcher.current.useReducer(reducer, initialState)
+}
+export function useState(initialState){
+    return ReactCurrentDispatcher.current.useState(initialState)
 }
 // 不同的阶段useReducer有不同的实现
 export function renderWithHooks(current, workInProgress, Component){
@@ -101,6 +126,12 @@ function dispatchAction(currentlyRenderingFiber, queue, action){
         pending.next = update;
     }
     queue.pending = update
+    const lastRenderedReducer = queue.lastRenderedReducer // 上一次的reducer
+    const lastRenderState = queue.lastRenderState // 上一次的state
+    const eagerState = lastRenderedReducer(lastRenderState, action) // 计算新的state
+    if(Object.is(eagerState, lastRenderState)){
+        return
+    }
     scheduleUpdateOnFiber(currentlyRenderingFiber)
 }
 
