@@ -1,15 +1,26 @@
 import { SyncLane } from './ReactFiberLane'
+import { scheduleUpdateOnFiber } from './ReactFiberWorkLoop'
 const classComponentUpdater = {
     enqueueSetState(inst, payload){
         const fiber = get(inst)
         const eventTime = requestEventTime()
         const lane = requestUpdateLane(fiber)
-        const update = createUpdate() // 创建新的更新对象
+        const update = createUpdate(eventTime, lane) // 创建新的更新对象
+        update.payload = payload
+        enqueueUpdate(fiber, update)
+        scheduleUpdateOnFiber(fiber)
     }
 }
 
-function createUpdate(){
-    
+function enqueueUpdate(fiber, update){
+    fiber.updateQueue.push(update)
+}
+
+function createUpdate(eventTime, lane){
+    return {
+        eventTime,
+        lane
+    }
 }
 
 function requestEventTime(){
