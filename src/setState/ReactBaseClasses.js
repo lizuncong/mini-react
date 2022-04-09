@@ -35,7 +35,7 @@ function requestUpdateLane(fiber){
 }
 
 
-class Component{
+export class Component{
     constructor(){
         this.updater = classComponentUpdater
     }
