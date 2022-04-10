@@ -73,7 +73,7 @@
 - 创建一个老节点的映射 const map = { 'B': B, 'C': C, 'D': D, 'E': E, 'F': F }
 - 继续遍历新的节点
     + C节点去map里找，如果有key为C的fiber节点，说明位置变了，老节点可以复用(fiber和dom元素可以复用) 
-
+    + 如果map中的节点被匹配并复用，则从map中删除该节点，最后map只剩下D和F没有被复用，这两个节点被标记为删除
 
 从下图可以看出，先删除D和F，再更新A、C和E，然后移动并更新B，最后插入G
  ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/diff-01.jpg)
