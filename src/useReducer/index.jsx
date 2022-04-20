@@ -17,7 +17,7 @@ const Counter = () => {
   // const [count, setCount] = useReducer(reducer, 0)
   const [count, setCount] = useState(0);
   console.log("render======");
-  return <div onClick={() => setCount(2)}>计数器：{count}</div>;
+  return <div onClick={() => setCount(count + 1)}>计数器：{count}</div>;
 };
 
 render(<Counter />, document.getElementById("root"));
