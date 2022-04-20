@@ -16,7 +16,7 @@
 - 在mini-react中执行yarn link react react-dom即可
 
 ### React源码系列文档(基于React17.0.1版本)
-- React源码调试环境搭建
+- [React源码调试环境搭建](https://github.com/lizuncong/mini-react/blob/master/docs/how_to_debug_react_source_code.md)
 - React Fiber工作原理
     + [手把手开发极简Fiber版本的React](https://github.com/lizuncong/mini-react/blob/master/docs/build_your_own_react.md)，译文，入门fiber的人类高质量文章
 
