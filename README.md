@@ -38,3 +38,4 @@
 - [scheduling-in-react](https://philippspiess.com/scheduling-in-react/)
 - [react.jokcy.me](https://react.jokcy.me/book/api/react-children.html)
 - [react源码](https://xiaochen1024.com/courseware/60b1b2f6cf10a4003b634718/60b1b55ccf10a4003b634728)
+- [react源码环境](https://github.com/Terry-Su/debug-react-source-code)
