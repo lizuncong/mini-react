@@ -1,4 +1,36 @@
 ### 环状链表
+`React` 使用环状链表保存更新队列 `queue={ pending: null }`，`pending` 永远指向最后一个更新。比如多次调用 `setState` 时：
+```js
+const [count, setCount] = useReducer(reducer, 0)
+setCount(1) // 生成一个更新对象：update1 = { action: 1, next: update1 }
+setCount(2) // 生成一个更新对象：update2 = { action: 2, next: update1 }
+```
+ ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/queue-01.jpg)
+
+环状链表实现如下：
+```js
+const queue = { pending: null } // queue.pending永远指向最后一个更新
+
+function dispatchAction(action){
+    const update = { action, next: null }
+    const pending = queue.pending;
+    if(pending === null){
+        update.next = update
+    } else {
+        update.next = pending.next;
+        pending.next = update;
+    }
+    queue.pending = update
+}
+
+// 队列
+dispatchAction(1)
+dispatchAction(2)
+``` 
+
+
+
+
 
 ### hook链表
 ### 流程

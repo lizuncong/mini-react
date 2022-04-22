@@ -2,11 +2,7 @@ import React, { useReducer, useEffect, useState } from "react";
 import { render } from "react-dom";
 
 function reducer(state, action) {
-  if (action.type === "add") {
-    return state + 1;
-  } else {
-    return state;
-  }
+  return state + 1;
 }
 
 const Counter = () => {
@@ -15,7 +11,8 @@ const Counter = () => {
   return (
     <div 
       onClick={() => {
-        setCount(count + 1);
+        setCount(1)
+        setCount(2)
       }}
     >
       {count}
