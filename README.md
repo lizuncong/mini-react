@@ -16,7 +16,7 @@
 - 在mini-react中执行yarn link react react-dom即可
 
 ### React源码系列文档(基于React17.0.1版本)
-- [React源码调试环境搭建](https://github.com/lizuncong/mini-react/blob/master/docs/how_to_debug_react_source_code.md)
+- [提高React源码debug体验舒适度的一些奇淫技巧](https://github.com/lizuncong/mini-react/blob/master/docs/how_to_debug_react_source_code.md)
 - React Fiber工作原理
     + [手把手开发极简Fiber版本的React](https://github.com/lizuncong/mini-react/blob/master/docs/build_your_own_react.md)，译文，入门fiber的人类高质量文章
 
@@ -27,6 +27,7 @@
     + [React源码中合成事件的实现过程](https://github.com/lizuncong/mini-react/blob/master/docs/%E5%90%88%E6%88%90%E4%BA%8B%E4%BB%B6/React%E6%BA%90%E7%A0%81%E4%B8%AD%E5%90%88%E6%88%90%E4%BA%8B%E4%BB%B6%E7%9A%84%E5%AE%9E%E7%8E%B0%E8%BF%87%E7%A8%8B.md)
     + [React合成事件源码中浏览器兼容相关API收录](https://github.com/lizuncong/mini-react/blob/master/docs/%E5%90%88%E6%88%90%E4%BA%8B%E4%BB%B6/%E5%90%88%E6%88%90%E4%BA%8B%E4%BB%B6%E6%BA%90%E7%A0%81%E4%B8%AD%E6%B5%8F%E8%A7%88%E5%99%A8%E5%85%BC%E5%AE%B9%E7%9B%B8%E5%85%B3%E7%9A%84API.md)
 - 第二阶段 Hooks
+    + [React.useReducer原理及源码主流程](https://github.com/lizuncong/mini-react/blob/master/docs/hooks/how_useReducer_work.md)
 - 第三阶段 Reconciliation
 - setState相关问题
     + [setState同步异步更新的问题](https://github.com/lizuncong/mini-react/blob/master/docs/setState%E5%90%8C%E6%AD%A5%E5%BC%82%E6%AD%A5%E6%9B%B4%E6%96%B0%E7%9A%84%E9%97%AE%E9%A2%98.md)
