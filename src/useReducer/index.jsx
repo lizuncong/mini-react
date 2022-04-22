@@ -7,6 +7,10 @@ function reducer(state, action) {
 
 const Counter = () => {
   const [count, setCount] = useReducer(reducer, 0)
+  const [count2, setCount2] = useReducer(reducer, 1000)
+  useEffect(() => {
+    console.log('useEffect')
+  }, [])
   return (
     <div 
       onClick={() => {

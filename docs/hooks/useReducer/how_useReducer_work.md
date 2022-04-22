@@ -32,13 +32,15 @@ const [count, setCount] = useReducer(reducer, 0)
 setCount(1) // 生成一个更新对象：update1 = { action: 1, next: update1 }
 setCount(2) // 生成一个更新对象：update2 = { action: 2, next: update1 }
 ```
- ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/queue-01.jpg)
 
- `fiber` 中存储的 `queue` 队列如下：
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/queue-01.jpg)
+
+`fiber` 中存储的 `queue` 队列如下：
+
 ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/queue-02.jpg)
 
 
-环状链表实现如下：
+环状链表简单实现如下，这个可以动手写一下，找找感觉
 ```js
 const queue = { pending: null } // queue.pending永远指向最后一个更新
 
@@ -60,8 +62,13 @@ dispatchAction(2)
 ``` 
 
 ### 什么是hook链表
+假设我们有下面这段代码，`React` 每次执行到 `hook` 函数时，都会构造一个 `hook` 对象，并连接成一个链表
 ```js
-
+const [count, setCount] = useReducer(reducer, 0) // 构造一个hook对象 hook1 = { memoizedState: 0, next: hook2 }
+const [count2, setCount2] = useReducer(reducer, 1000) // 构造一个hook对象 hook2 = { memoizedState: 1000, hook3 }
+useEffect(() => { // 构造一个hook对象，hook3 = { memoizedState: { create: callback }, next: null}
+  console.log('useEffect')
+}, [])
 ```
 
 
