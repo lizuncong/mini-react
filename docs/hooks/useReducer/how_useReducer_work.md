@@ -1,11 +1,42 @@
+### 示例代码
+本章节所有案例都基于以下示例代码：
+```jsx
+import React, { useReducer, useEffect, useState } from "react";
+import { render } from "react-dom";
+
+function reducer(state, action) {
+  return state + 1;
+}
+
+const Counter = () => {
+  const [count, setCount] = useReducer(reducer, 0)
+  return (
+    <div 
+      onClick={() => {
+        debugger;
+        setCount(1)
+        setCount(2)
+      }}
+    >
+      {count}
+    </div>
+  )
+};
+
+render(<Counter />, document.getElementById("root"));
+```
 ### 环状链表
-`React` 使用环状链表保存更新队列 `queue={ pending: null }`，`pending` 永远指向最后一个更新。比如多次调用 `setState` 时：
+`React` 使用环状链表保存更新队列 `queue={ pending: null }`，其中 `pending` 永远指向最后一个更新。比如多次调用 `setState` 时：
 ```js
 const [count, setCount] = useReducer(reducer, 0)
 setCount(1) // 生成一个更新对象：update1 = { action: 1, next: update1 }
 setCount(2) // 生成一个更新对象：update2 = { action: 2, next: update1 }
 ```
  ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/queue-01.jpg)
+
+ `fiber` 中存储的 `queue` 队列如下：
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/queue-02.jpg)
+
 
 环状链表实现如下：
 ```js
@@ -28,11 +59,13 @@ dispatchAction(1)
 dispatchAction(2)
 ``` 
 
+### 什么是hook链表
+```js
+
+```
 
 
 
-
-### hook链表
 ### 流程
 - 初次挂载，即第一次执行
 - 点击按钮触发setState执行，构造updateQueue链表

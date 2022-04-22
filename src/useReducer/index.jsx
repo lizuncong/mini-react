@@ -7,10 +7,10 @@ function reducer(state, action) {
 
 const Counter = () => {
   const [count, setCount] = useReducer(reducer, 0)
-  console.log('render counter...', count)
   return (
     <div 
       onClick={() => {
+        debugger;
         setCount(1)
         setCount(2)
       }}
