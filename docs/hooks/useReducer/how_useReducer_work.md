@@ -225,7 +225,7 @@ function mountIndeterminateComponent(current, workInProgress, Component) {
 }
 ```
 
-ReactFiberHooks.js
+ReactFiberHooks.js，最主要的逻辑都在这个文件里面
 
 ```js
 import { scheduleUpdateOnFiber } from "./ReactFiberWorkLoop";
@@ -316,20 +316,13 @@ function mountWorkInProgressHook() {
 
   return workInProgressHook;
 }
-export function useReducer(reducer, initialState) {
-  return ReactCurrentDispatcher.current.useReducer(reducer, initialState);
-}
+
 // 不同的阶段useReducer有不同的实现
 export function renderWithHooks(current, workInProgress, Component) {
   currentlyRenderingFiber = workInProgress;
   currentlyRenderingFiber.memoizedState = null;
-  if (current !== null) {
-    // 说明是更新流程
-    ReactCurrentDispatcher.current = HooksDispatcherOnUpdate;
-  } else {
-    // 说明是初次挂载流程
-    ReactCurrentDispatcher.current = HooksDispatcherOnMount;
-  }
+  ReactCurrentDispatcher.current =
+    current !== null ? HooksDispatcherOnUpdate : HooksDispatcherOnMount;
   const children = Component();
   currentlyRenderingFiber = null;
   workInProgressHook = null;
@@ -350,10 +343,15 @@ function dispatchAction(currentlyRenderingFiber, queue, action) {
   const lastRenderedReducer = queue.lastRenderedReducer; // 上一次的reducer
   const lastRenderState = queue.lastRenderState; // 上一次的state
   const eagerState = lastRenderedReducer(lastRenderState, action); // 计算新的state
+  // 如果新的state和旧的state相同，则跳过更新
   if (Object.is(eagerState, lastRenderState)) {
     return;
   }
   scheduleUpdateOnFiber(currentlyRenderingFiber);
+}
+
+export function useReducer(reducer, initialState) {
+  return ReactCurrentDispatcher.current.useReducer(reducer, initialState);
 }
 ```
 
