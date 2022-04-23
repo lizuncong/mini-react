@@ -6,22 +6,18 @@ function reducer(state, action) {
 }
 
 const Counter = () => {
-  const [count, setCount] = useReducer(reducer, 0)
-  const [count2, setCount2] = useReducer(reducer, 1000)
-  useEffect(() => {
-    console.log('useEffect')
-  }, [])
+  const [count, setCount] = useReducer(reducer, 0);
   return (
-    <div 
+    <div
       onClick={() => {
         debugger;
-        setCount(1)
-        setCount(2)
+        setCount(1);
+        setCount(2);
       }}
     >
       {count}
     </div>
-  )
+  );
 };
 
 render(<Counter />, document.getElementById("root"));

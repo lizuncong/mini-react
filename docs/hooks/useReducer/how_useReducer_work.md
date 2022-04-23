@@ -5,6 +5,9 @@
 - 认识什么是更新队列，什么是 hook 链表
 - 如何查看 fiber 节点中真实的 hook 链表
 - hook 的主流程以及源码剖析
+- 同步更新以及异步更新
+
+建议在阅读主流程源码时，在主流程函数各个入口打个断点，走一遍主流程的源码会更有感觉
 
 本章节所有案例都基于以下示例代码：
 
@@ -141,3 +144,219 @@ useEffect(() => {
 `mountWorkInProgressHook` 方法主要就是构造 `hook` 链表
 
 #### 触发更新阶段
+
+```jsx
+const Counter = () => {
+  const [count, setCount] = useReducer(reducer, 0);
+  return (
+    <div
+      onClick={() => {
+        debugger;
+        setCount(1);
+        setCount(2);
+      }}
+    >
+      {count}
+    </div>
+  );
+};
+```
+
+当我们点击按钮时，调用 `setCount` 方法，实际上调用的是 `dispatchAction` 方法，主要逻辑如下：
+
+- 构造更新队列。生成一个更新对象 `update`，并加入 `hook` 的更新队列 `queue`
+- 计算新的状态值并缓存起来。通过 `update.eagerState` 缓存，这是 `React` 的一种优化手段，当我们多次调用 `setCount(2)`，传的是相同的值时，`React` 不会再触发更新。
+- 如果判断 `update.eagerState` 和上一次的 `currentState` 相同，则不触发更新。否则调用 `scheduleUpdateOnFiber` 触发更新
+
+#### 更新阶段
+
+这个阶段，函数组件第 2 次执行或者第 n(n > 2)次执行，这个阶段也是从 `performUnitOfWork` 开始。主流程如下：
+
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/hook-08.jpg)
+
+### 第四节 hook 主流程源码实现
+
+ReactFiberBeginWork.js
+
+```js
+import {
+  IndeterminateComponent,
+  FunctionComponent,
+  HostComponent,
+} from "./ReactWorkTags";
+import { renderWithHooks } from "./ReactFiberHooks";
+export function beginWork(current, workInProgress) {
+  if (current) {
+    switch (workInProgress.tag) {
+      case FunctionComponent:
+        return updateFunctionComponent(
+          current,
+          workInProgress,
+          workInProgress.type
+        );
+      default:
+        break;
+    }
+  } else {
+    switch (workInProgress.tag) {
+      case IndeterminateComponent:
+        return mountIndeterminateComponent(
+          current,
+          workInProgress,
+          workInProgress.type
+        );
+      default:
+        break;
+    }
+  }
+}
+
+function updateFunctionComponent(current, workInProgress, Component) {
+  const newChildren = renderWithHooks(current, workInProgress, Component);
+  reconcileChildren(null, workInProgress, newChildren);
+  return workInProgress.child;
+}
+
+function mountIndeterminateComponent(current, workInProgress, Component) {
+  const children = renderWithHooks(current, workInProgress, Component);
+  workInProgress.tag = FunctionComponent; // 初次渲染后，此时组件类型已经明确，因此需要修改tag
+  reconcileChildren(null, workInProgress, children);
+  return workInProgress.child; // null
+}
+```
+
+ReactFiberHooks.js
+
+```js
+import { scheduleUpdateOnFiber } from "./ReactFiberWorkLoop";
+const ReactCurrentDispatcher = {
+  current: null,
+};
+let workInProgressHook = null; // 当前工作中的新的hook指针
+let currentHook = null; // 当前的旧的hook指针
+let currentlyRenderingFiber; // 当前正在工作的fiber
+const HooksDispatcherOnMount = {
+  useReducer: mountReducer,
+};
+const HooksDispatcherOnUpdate = {
+  useReducer: updateReducer,
+};
+
+function updateReducer(reducer, initialState) {
+  const hook = updateWorkInProgressHook();
+  const queue = hook.queue; // 更新队列
+  const lastRenderedReducer = queue.lastRenderedReducer; // 上一次reducer方法
+
+  const current = currentHook;
+  const pendingQueue = queue.pending;
+  if (pendingQueue !== null) {
+    // 根据旧的状态和更新队列里的更新对象计算新的状态
+    const first = pendingQueue.next; // 第一个更新对象
+    let newState = current.memoizedState; // 旧的状态
+    let update = first;
+    do {
+      const action = update.action;
+      newState = reducer(newState, action);
+      update = update.next;
+    } while (update !== null && update !== first);
+    queue.pending = null; // 更新完成，清空链表
+    hook.memoizedState = newState; // 让新的hook对象的memoizedState等于计算的新状态
+    queue.lastRenderState = newState;
+  }
+  const dispatch = dispatchAction.bind(null, currentlyRenderingFiber, queue);
+  return [hook.memoizedState, dispatch];
+}
+function updateWorkInProgressHook() {
+  let nextCurrentHook;
+  if (currentHook === null) {
+    // 如果currentHook为null，说明这是第一个hook
+    const current = currentlyRenderingFiber.alternate; // 旧的fiber节点
+    nextCurrentHook = current.memoizedState; // 旧的fiber的memoizedState指向旧的hook链表的第一个节点
+  } else {
+    nextCurrentHook = currentHook.next;
+  }
+
+  currentHook = nextCurrentHook;
+
+  const newHook = {
+    memoizedState: currentHook.memoizedState,
+    queue: currentHook.queue,
+    next: null,
+  };
+
+  if (workInProgressHook === null) {
+    // 说明这是第一个hook
+    currentlyRenderingFiber.memoizedState = workInProgressHook = newHook;
+  } else {
+    workInProgressHook.next = newHook;
+    workInProgressHook = workInProgressHook.next = newHook;
+  }
+  return workInProgressHook;
+}
+function mountReducer(reducer, initialState) {
+  // 构建hooks单向链表
+  const hook = mountWorkInProgressHook();
+  hook.memoizedState = initialState;
+  const queue = (hook.queue = { pending: null }); // 更新队列
+  const dispatch = dispatchAction.bind(null, currentlyRenderingFiber, queue);
+  return [hook.memoizedState, dispatch];
+}
+function mountWorkInProgressHook() {
+  const hook = {
+    // 创建一个hook对象
+    memoizedState: null, // 自己的状态
+    queue: null, // 自己的更新队列，环形列表
+    next: null, // 下一个更新
+  };
+  if (workInProgressHook === null) {
+    currentlyRenderingFiber.memoizedState = workInProgressHook = hook;
+  } else {
+    workInProgressHook = workInProgressHook.next = hook;
+  }
+
+  return workInProgressHook;
+}
+export function useReducer(reducer, initialState) {
+  return ReactCurrentDispatcher.current.useReducer(reducer, initialState);
+}
+// 不同的阶段useReducer有不同的实现
+export function renderWithHooks(current, workInProgress, Component) {
+  currentlyRenderingFiber = workInProgress;
+  currentlyRenderingFiber.memoizedState = null;
+  if (current !== null) {
+    // 说明是更新流程
+    ReactCurrentDispatcher.current = HooksDispatcherOnUpdate;
+  } else {
+    // 说明是初次挂载流程
+    ReactCurrentDispatcher.current = HooksDispatcherOnMount;
+  }
+  const children = Component();
+  currentlyRenderingFiber = null;
+  workInProgressHook = null;
+  currentHook = null;
+  return children;
+}
+
+function dispatchAction(currentlyRenderingFiber, queue, action) {
+  const update = { action, next: null };
+  const pending = queue.pending;
+  if (pending === null) {
+    update.next = update;
+  } else {
+    update.next = pending.next;
+    pending.next = update;
+  }
+  queue.pending = update;
+  const lastRenderedReducer = queue.lastRenderedReducer; // 上一次的reducer
+  const lastRenderState = queue.lastRenderState; // 上一次的state
+  const eagerState = lastRenderedReducer(lastRenderState, action); // 计算新的state
+  if (Object.is(eagerState, lastRenderState)) {
+    return;
+  }
+  scheduleUpdateOnFiber(currentlyRenderingFiber);
+}
+```
+
+### 同步更新以及异步更新
+
+搬砖中 ing
