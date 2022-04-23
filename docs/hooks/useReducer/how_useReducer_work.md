@@ -87,6 +87,17 @@ useEffect(() => {
 
 ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/hook-01.jpg)
 
+#### 如何查看真实的 hook 链表？
+
+这里有两种方法，一种是通过容器节点`root`，一种是在源码中打断点
+
+通过容器节点 `root` 查找对应的 `fiber` 节点
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/hook-03.jpg)
+
+另一种方法是在源码中打断点，这个需要了解源码。在`react-dom.development.js`中搜索`renderWithHooks`方法，在 `var children = Component(props, secondArg)` 处打一个断点，然后在它下面一行再打一个断点，等 `Component(props, secondArg)` 函数执行完成，则 `hook` 链表构造完成，此时可以在控制台打印`console.log(workInProgress)`即可看到当前 `fiber` 节点的信息
+
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/hook-04.jpg)
+
 ### 流程
 
 - 初次挂载，即第一次执行
