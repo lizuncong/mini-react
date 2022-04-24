@@ -28,6 +28,7 @@
     + [React合成事件源码中浏览器兼容相关API收录](https://github.com/lizuncong/mini-react/blob/master/docs/%E5%90%88%E6%88%90%E4%BA%8B%E4%BB%B6/%E5%90%88%E6%88%90%E4%BA%8B%E4%BB%B6%E6%BA%90%E7%A0%81%E4%B8%AD%E6%B5%8F%E8%A7%88%E5%99%A8%E5%85%BC%E5%AE%B9%E7%9B%B8%E5%85%B3%E7%9A%84API.md)
 - 第二阶段 Hooks
     + [React.useReducer原理及源码主流程](https://github.com/lizuncong/mini-react/blob/master/docs/hooks/useReducer/how_useReducer_work.md)
+    + [useReducer批量&同步更新原理](https://github.com/lizuncong/mini-react/blob/master/docs/hooks/useReducer/how_batchedUpdates_work.md)
 - 第三阶段 Reconciliation
 - setState相关问题
     + [setState同步异步更新的问题](https://github.com/lizuncong/mini-react/blob/master/docs/setState%E5%90%8C%E6%AD%A5%E5%BC%82%E6%AD%A5%E6%9B%B4%E6%96%B0%E7%9A%84%E9%97%AE%E9%A2%98.md)

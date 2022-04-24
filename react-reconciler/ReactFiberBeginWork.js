@@ -1,6 +1,5 @@
 import { IndeterminateComponent, FunctionComponent, HostComponent } from './ReactWorkTags'
 import { renderWithHooks } from './ReactFiberHooks'
-// current 上一个fiber，workInProgress正在构建中的fiber
 export function beginWork(current, workInProgress){
     if(current){ // 有值说明是更新
         switch(workInProgress.tag){
@@ -30,7 +29,6 @@ export function beginWork(current, workInProgress){
 function updateFunctionComponent(current, workInProgress, Component){
     const newChildren = renderWithHooks(current, workInProgress, Component)
 
-    window.counter = newChildren
     // 根据儿子的或者说上面返回的虚拟dom，构建Fiber子树
     reconcileChildren(null, workInProgress, newChildren)
     return workInProgress.child
@@ -39,7 +37,6 @@ function updateFunctionComponent(current, workInProgress, Component){
 
 function mountIndeterminateComponent(current, workInProgress, Component){
     const children = renderWithHooks(current, workInProgress, Component) // children就是Counter组件函数的返回值
-    window.counter = children
     workInProgress.tag = FunctionComponent // 初次渲染后，此时组件类型已经明确，因此需要修改tag
 
     // 根据儿子的或者说上面返回的虚拟dom，构建Fiber子树

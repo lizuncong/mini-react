@@ -5,7 +5,6 @@
 - 认识什么是更新队列，什么是 hook 链表
 - 如何查看 fiber 节点中真实的 hook 链表
 - hook 的主流程以及源码剖析
-- 同步更新以及异步更新
 
 建议在阅读主流程源码时，在主流程函数各个入口打个断点，走一遍主流程的源码会更有感觉
 
@@ -354,7 +353,3 @@ export function useReducer(reducer, initialState) {
   return ReactCurrentDispatcher.current.useReducer(reducer, initialState);
 }
 ```
-
-### 同步更新以及异步更新
-
-卷不动了，今晚再说
