@@ -1,4 +1,15 @@
 ### react源码调试
+- git clone下载react源码
+- cd react进入react源码目录
+- yarn build react, shared, scheduler, react-reconciler, react-dom --type=NODE
+- cd build/node_modules/react
+- yarn link
+- cd build/node_modules/react-dom
+- yarn link
+
+- 然后创建一个新项目，比如mini-react
+- 在mini-react中执行yarn link react react-dom即可
+
 `react` 源码使用 `rollup` 打包，将所有的模块都打包到一个文件中，比如 `react.development.js` 以及 `react-dom.development.js`，没有对应
 的 `sourcemap`，导致阅读源码的过程当中无法得知源码位于哪个文件，如下图中红框内的源码无法映射到原文件，阅读体验不好。
 

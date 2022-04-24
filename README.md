@@ -1,20 +1,8 @@
 ### 目录划分
-- docs。react相关知识文档目录
+- docs。react相关知识文档&源码剖析目录
 - react。手写react源码目录，对应的官方react版本为17.0.1
 - react-dom。手写react-dom源码目录，对应的官方react-dom版本为17.0.1
-
-### react源码调试
-- git clone下载react源码
-- cd react进入react源码目录
-- yarn build react, shared, scheduler, react-reconciler, react-dom --type=NODE
-- cd build/node_modules/react
-- yarn link
-- cd build/node_modules/react-dom
-- yarn link
-
-- 然后创建一个新项目，比如mini-react
-- 在mini-react中执行yarn link react react-dom即可
-
+- react-reconciler。手写react-reconciler源码目录，对应的官方react-reconciler版本为17.0.1
 ### React源码系列文档(基于React17.0.1版本)
 - [提高React源码debug体验舒适度的一些奇淫技巧](https://github.com/lizuncong/mini-react/blob/master/docs/how_to_debug_react_source_code.md)
 - React Fiber工作原理
