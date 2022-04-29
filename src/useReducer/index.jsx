@@ -14,10 +14,10 @@ const Counter = () => {
         // debugger;
         // setCount(1);
         // setCount(2);
-        const iframe = document.createElement('iframe')
-        iframe.src = 'http://127.0.0.1:4000/api/product'
-        document.body.appendChild(iframe)
-        // fetch('http://127.0.0.1:4000/api/product')
+        // const iframe = document.createElement('iframe')
+        // iframe.src = 'http://127.0.0.1:4000/api/product'
+        // document.body.appendChild(iframe)
+        fetch('http://127.0.0.1:4000/api/product')
         setTimeout(() => {
           debugger;
           setCount(1);
