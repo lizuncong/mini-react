@@ -2,9 +2,20 @@
 ## 批处理（异步更新）机制简述
 在 `React` 源码中，通过全局变量 `executionContext` 控制 `React` 执行上下文，指示 `React` 开启同步或者异步更新。`executionContext` 一开始被初始化为 `NoContext`，因此 `React` 默认是同步更新的。
 
-当我们在合成事件中调用 `setState` 时，实际上合成事件会调用 `batchedEventUpdates`：
+当我们在合成事件中调用 `setState` 时：
+
+```jsx
+const onBtnClick = () => {
+  debugger;
+  setCount(1);
+  setCount(2);
+}
+<button onClick={onBtnClick}>{count}</button>
+```
+
+实际上合成事件会调用 `batchedEventUpdates(onBtnClick)`，将我们的合成事件包裹一层。`batchedEventUpdates` 实现如下：
 ```js
-function batchedEventUpdates$1(fn, a) {
+function batchedEventUpdates(fn, a) {
    var prevExecutionContext = executionContext; // 保存原来的值
    executionContext |= EventContext;
    try {
@@ -20,7 +31,7 @@ function batchedEventUpdates$1(fn, a) {
    }
 }
 ```
-可以看出该方法在执行时会更改 `executionContext` 指示 `React` 异步更新。这也是为什么我们在合成事件中多次调用 `setState`，而 `React` 只会更新一次的原因。
+可以看出该方法在执行时会更改 `executionContext` 指示 `React` 异步更新。这也是为什么我们在合成事件中多次调用 `setState`，而 `React` 只会更新一次的原因。函数执行完成，`executionContext` 又会恢复成原来的值。因此如果我们的 `setState` 逻辑是在 `setTimeout` 中
 
 在 `React17` 版本中提供了一个 `unstable_batchedUpdates` API，如果我们希望在 `setTimeout` 等异步任务中开启批量更新，则可以使用这个方法包裹一下我们的业务代码。
 ```js

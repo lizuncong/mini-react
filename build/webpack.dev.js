@@ -12,6 +12,16 @@ const devConfig = {
         overlay: {
             errors: true,
         },
+        proxy: {
+            '/server': {
+                target: 'http://localhost:3000',
+                // secure: false, // 如果请求的网址是https，需要配置secure: false
+                pathRewrite: {
+                    '/server': '',
+                },
+                changeOrigin: true,
+            },
+        },
     },
 };
 
