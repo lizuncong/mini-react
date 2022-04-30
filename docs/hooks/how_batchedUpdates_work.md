@@ -166,6 +166,10 @@ const scheduleUpdateOnFiber = (fiber, lane, eventTime) => {
     ensureRootIsScheduled(root);
     // 如果当前的executionContext执行上下文环境是NoContext(非批量)
     if (executionContext === NoContext) {
+      // 需要注意，我们在ensureRootIsScheduled函数中，将flushSyncCallbackQueue放在了微任务中去执行，
+      // 但是如果executionContext是同步更新的话，这里会直接调用flushSyncCallbackQueue开始更新任务，更新完成后
+      // flushSyncCallbackQueue会清空syncQueue
+
       flushSyncCallbackQueue();
     }
   }
