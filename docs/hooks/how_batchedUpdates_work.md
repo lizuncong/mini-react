@@ -151,7 +151,7 @@ const Counter = () => {
 
 ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/batchupdate-02.jpg)
 
-回到 `dispatchAction` 方法中，这个方法主要是构造更新队列，然后调用 `scheduleUpdateOnFiber` 开始调度更新！！`scheduleUpdateOnFiber` 主要流程如下：
+回到 `dispatchAction` 方法中，这个方法主要是构造更新队列，然后调用 `scheduleUpdateOnFiber` 开始调度更新，异步 or 同步更新的逻辑主要在这个函数的流程中！！`scheduleUpdateOnFiber` 主要流程如下：
 
 ```js
 const SyncLane = 1;
@@ -208,3 +208,7 @@ function flushSyncCallbackQueue() {
 ```
 
 `performSyncWorkOnRoot` 从根节点开始更新，这个不属于本节内容。
+
+当我们点击按钮，从合成事件派发到 `React` 从当前 `fiber` 节点开始调度更新，并且决定是异步或者同步更新的主要流程如下图：
+
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/batchupdate-03.jpg)
