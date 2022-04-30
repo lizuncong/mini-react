@@ -15,14 +15,14 @@ const onBtnClick = () => {
 <button onClick={onBtnClick}>{count}</button>;
 ```
 
-实际上合成事件会调用 `batchedEventUpdates(onBtnClick)`，将我们的合成事件包裹一层。`batchedEventUpdates` 实现如下：
+实际上合成事件会调用 `batchedEventUpdates(onBtnClick)`，将我们的函数 `onBtnClick` 拦截一层。`batchedEventUpdates` 实现如下：
 
 ```js
 function batchedUpdates(fn, a) {
   var prevExecutionContext = executionContext; // 保存原来的值
   executionContext |= EventContext;
   try {
-    return fn(a); // 此时执行我们的合成事件逻辑
+    return fn(a); // 调用我们的合成事件逻辑onBtnClick
   } finally {
     executionContext = prevExecutionContext; // 函数执行完成恢复成原来的值
 
@@ -148,6 +148,7 @@ const Counter = () => {
 ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/batchupdate-01.jpg)
 
 合成事件调用了 `batchedEventUpdates`，此时 `executionContext` 已经被设置为**批量更新**了
+
 ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/batchupdate-02.jpg)
 
 回到 `dispatchAction` 方法中，这个方法主要是构造更新队列，然后调用 `scheduleUpdateOnFiber` 开始调度更新！！`scheduleUpdateOnFiber` 主要流程如下：
