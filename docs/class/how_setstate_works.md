@@ -127,7 +127,7 @@ this.setState({ number: 2 });
 this.setState({ number: 3 });
 ```
 
-实际上更新队列保存在 `fiber.updateQueue`中，`fiber.updateQueue.shared.pending` 指向最后一个 `this.setState()`
+实际上更新队列保存在 `fiber.updateQueue`中，`fiber.updateQueue.shared.pending` 指向最后一个 `this.setState()` 生成的更新对象
 
 ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/setstate-08.jpg)
 
