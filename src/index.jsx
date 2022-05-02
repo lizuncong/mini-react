@@ -1,7 +1,7 @@
 // import "./setState/index.jsx";
 // import './workLoop'
 
-import React, { Component } from "react";
+import React, { Component, PureComponent } from "react";
 import ReactDOM from "react-dom";
 class Counter extends Component {
   constructor(props) {
@@ -13,7 +13,8 @@ class Counter extends Component {
   }
   handleClick = (event) => {
     debugger;
-    this.setState({ number: this.state.number + 1 });
+    this.setState({ number: 1 });
+    this.setState({ number: 2 });
   };
 
   render() {
