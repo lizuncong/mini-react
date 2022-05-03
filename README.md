@@ -26,7 +26,8 @@
   - [React 批量&同步更新场景](https://github.com/lizuncong/mini-react/blob/master/docs/setState%E5%90%8C%E6%AD%A5%E5%BC%82%E6%AD%A5%E6%9B%B4%E6%96%B0%E7%9A%84%E9%97%AE%E9%A2%98.md)
   - [Class Component setState 主流程及源码，类组件与函数组件对应的 fiber.memoizedState 的区别](https://github.com/lizuncong/mini-react/blob/master/docs/class/how_setstate_works.md)
   - [React 批量&同步更新原理及主流程源码](https://github.com/lizuncong/mini-react/blob/master/docs/hooks/how_batchedUpdates_work.md)
-- 第四阶段 Reconciliation
+- 第四阶段 Reconciler
+  - [Dom Diff 算法简介]()
 
 ### 参考链接
 

@@ -1,6 +1,3 @@
-// import "./setState/index.jsx";
-// import './workLoop'
-
 import React, { Component, PureComponent } from "react";
 import ReactDOM from "react-dom";
 class Counter extends Component {
