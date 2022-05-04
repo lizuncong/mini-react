@@ -13,7 +13,7 @@
 - 如果两个元素类型相同，则保留 DOM 节点，仅比对及更新有改变的属性
 - 组件元素类型相同时，组件实例保持不变
 
-**在整个 diffing 过程中，同时使用 type 和 key 判断是否复用**
+**在整个 diffing 过程中，同时使用 type 和 key 判断是否复用，首先判断 key，其次判断 type**
 
 ### 为什么需要 key
 
@@ -88,31 +88,54 @@ React 并不会意识到应该保留 `<li>Duke</li>` 和 `<li>Villanova</li>`，
 ```jsx
 // 旧的 fiber 树
 <div>
-    <h1 key="h1">h1</h1>
-    <h2 key="h2">h2</h2>
+    <h1 key="h1-key">h1</h1>
+    <h2 key="h2-key">h2</h2>
 </div>
 // 更新后的 element tree
 <div>
-    <h2 key="h2">h2</h2>
+    <h2 key="h2-key">h2</h2>
 </div>
 ```
 
-旧的 fiber 树有两个节点 `h1` 和 `h2`。 新的 `<h2 key="h2">h2</h2>` 和旧的 `<h1 key="h1">h1</h1>` 比较，发现 `<h1 key="h1">h1</h1>` 不能复用，则标记为删除。新的 `<h2 key="h2">h2</h2>` 和旧的 `<h2 key="h2">h2</h2>`相比，发现 `key` 和 `type` 相同，则可以复用。因此这个场景中只需要把 `h1` 删除即可。如果旧的 fiber 树中，`h2` 后面还有 `h3`，`h4`等，依然只是保留 `h2`，将其他的删除
+首先比较 `key`
+
+- `h2-key` 和 `h1-key` 不同，则 `h1-key` 标记为删除
+- 继续遍历旧的 fiber 树，`h2-key` 相同，同时 type 相同，则可以复用
+
+如果旧的 fiber 树中，`h2` 后面还有 `h3`，`h4`等，依然只是保留 `h2`，将其他的删除
 
 ```jsx
 <div>
-    <h1 key="h1">h1</h1>
-    <h2 key="h2">h2</h2>
-    <h3 key="h3">h3</h3>
-    <h4 key="h4">h4</h4>
+    <h1 key="h1-key">h1</h1>
+    <h2 key="h2-key">h2</h2>
+    <h3 key="h3-key">h3</h3>
+    <h4 key="h4-key">h4</h4>
 </div>
 // 更新后的 element tree
 <div>
-    <h2 key="h2">h2</h2>
+    <h2 key="h2-key">h2</h2>
 </div>
 ```
 
-只保留 `h2` 其他节点删除
+当遍历到 `h2-key` 时，发现 `key` 和 `type` 都相同，因此 `h2` 可以复用，此时已经没有必要再继续比较接下来的节点，因此 `h3` 和 `h4` 都标记为删除
+
+如果 `key` 相同， `type` 不同：
+
+```jsx
+<div>
+    <h1 key="h1-key">h1</h1>
+    <p key="h2-key">h2</p>
+    <h3 key="h3-key">h3</h3>
+    <h4 key="h4-key">h4</h4>
+</div>
+// 更新后的 element tree
+<div>
+    <h2 key="h2-key">h2</h2>
+</div>
+```
+
+- 比较 `h1-key`，发现 `key` 不同，则 `h1` 标记为删除，继续遍历
+- 比较 `h2-key` 发现 `key` 相同，比较 `type` 发现不同，则标记 `p` 删除，由于已经找到相同的 `key`，根据 react 的假设，已经没有必要再继续遍历下去了，因此 `h3` 和 `h4` 标记为删除。重新创建一个 `h2` 节点
 
 ### 多节点
 
@@ -127,7 +150,7 @@ React 并不会意识到应该保留 `<li>Duke</li>` 和 `<li>Villanova</li>`，
 
 #### 第一种情况：更新
 
-全部子节点都可以复用，只需要更新即可
+全部子节点都可以复用，只需要更新即可，这种只需要一轮循环
 
 ```jsx
 <ul>
@@ -148,64 +171,137 @@ React 并不会意识到应该保留 `<li>Duke</li>` 和 `<li>Villanova</li>`，
 
 #### 第二种情况：key 相同，type 不同
 
+在这种情况中，由于 `key` 相同而 `type` 不同导致不可复用，则将 旧的 fiber 节点标记为删除，并继续遍历，此时不会跳出第一轮循环
+
 ```jsx
 <ul>
-    <li key="A">A</li>
-    <li key="B">B</li>
-    <li key="C">C</li>
-    <li key="D">D</li>
+    <li key="A-key">A</li>
+    <li key="B-key">B</li>
+    <li key="C-key">C</li>
+    <li key="D-key">D</li>
 </ul>
 
 // 更新后：
 <ul>
-    <div key="A">A-new</div>
-    <li key="B">B-new</li>
-    <li key="C">C-new</li>
-    <li key="D">D-new</li>
+    <div key="A-key">A-new</div>
+    <li key="B-key">B-new</li>
+    <li key="C-key">C-new</li>
+    <li key="D-key">D-new</li>
 </ul>
 ```
 
-由于子节点 `key` 都相同，因此这里只需要一轮循环，执行以下操作：
+首先判断 `key`
 
-- 删除老的 `<li key="A">A</li>` 节点
-- 插入新的 `<div key="A">A-new</div>` 节点
-- 更新 `B`、`C`、`D` 节点
+- `A-key` 相同，但是 `type` 不同，因此将 `<li key="A-key">A</li>` 标记为删除，重新创建 `<div key="A-key">A-new</div>` 节点
+- 由于其余节点的 `key` 和 `type` 都相同，因此都可以复用
 
-#### 第三种情况：移动
+#### 第三种情况：key 不同，退出第一轮循环
 
 如果第一轮遍历的时候，发现 key 不一样，则立刻跳出第一轮循环。key 不一样，说明可能有位置变化
 
 ```jsx
 <ul>
-    <li key="A">A</li>
-    <li key="B">B</li>
-    <li key="C">C</li>
-    <li key="D">D</li>
-    <li key="E">E</li>
-    <li key="F">F</li>
+    <li key="A-key">A</li>          // oldIndex 为0
+    <li key="B-key">B</li>          // oldIndex 为1
+    <li key="C-key">C</li>          // oldIndex 为2
+    <li key="D-key">D</li>          // oldIndex 为3
+    <li key="E-key">E</li>          // oldIndex 为4
+    <li key="F-key">F</li>          // oldIndex 为5
 </ul>
 
 // 更新后：
 <ul>
-    <li key="A">A-new</li>
-    <li key="C">C-new</li>
-    <li key="E">E-new</li>
-    <li key="B">B-new</li>
-    <li key="G">G-new</li>
+    <li key="A-key">A-new</li>
+    <li key="C-key">C-new</li>
+    <li key="E-key">E-new</li>
+    <li key="B-key">B-new</li>
+    <li key="G-key">G-new</li>
 </ul>
 ```
 
 第一轮循环：
 
-- A=A 能复用，更新 A 就可以
-- B 和 C 对比，KEY 不一样，则马上跳出第一轮循环，进入第二轮循环
+- `A-key` 相同并且 `type` 相同，能复用，更新 A 就可以
+- `B-key` 和 `C-key` 不同，立即退出第一轮循环，初始化 `lastPlacedIndex` 为旧的 fiber `A-key`的索引。
+  `lastPlacedIndex` 表示最近的一个可复用的节点在 旧 fiber 节点中的位置索引
+- 从 `B-key` 节点开始遍历旧的 fiber 节点，并构造一个 map：
 
-第二轮循环：
+```js
+const fiberMap = { "B-key": B, "C-key": C, "D-key": D, "E-key": E, "F-key": F };
+```
 
-- 创建一个老节点的映射 const map = { 'B': B, 'C': C, 'D': D, 'E': E, 'F': F }
-- 继续遍历新的节点
-  - C 节点去 map 里找，如果有 key 为 C 的 fiber 节点，说明位置变了，老节点可以复用(fiber 和 dom 元素可以复用)
-  - 如果 map 中的节点被匹配并复用，则从 map 中删除该节点，最后 map 只剩下 D 和 F 没有被复用，这两个节点被标记为删除
+`fiberMap` 的键值是元素的 `key`，值对应元素的 `fiber` 节点
 
-从下图可以看出，先删除 D 和 F，再更新 A、C 和 E，然后移动并更新 B，最后插入 G
-![image](https://github.com/lizuncong/mini-react/blob/master/imgs/diff-01.jpg)
+- 继续遍历剩余的 新的子节点
+- `C-key` 在 `fiberMap` 中存在，并且旧的 `C-key` 节点的 `oldIndex = 2 大于 lastPlacedIndex = 0`，因此 `C-key` 不需要移动，标记更新即可。将 `lastPlacedIndex` 设置为 `C-key` 的 `oldIndex`，此时 `lastPlacedIndex = 2`。同时将 `C-key` 从 `fiberMap` 中删除，最终得到
+
+```jsx
+lastPlacedIndex = 2;
+fiberMap = { "B-key": B, "D-key": D, "E-key": E, "F-key": F };
+```
+
+- `E-key` 在 `fiberMap` 中存在，同时 `E-key` 节点的 `oldIndex` 也大于 `lastPlacedIndex`，同 `C-key` 一样不需要移动，标记为更新即可，最终得到：
+
+```jsx
+lastPlacedIndex = 4; // 将lastPlacedIndex设置为 `E-key` 的oldIndex
+fiberMap = { "B-key": B, "D-key": D, "F-key": F }; // 从 fiberMap中删除 `E-key`
+```
+
+- `B-key` 在 `fiberMap` 中存在，**需要注意，由于 `B-key` 的 `oldIndex` 小于 `lastPlacedIndex`，因此这个节点需要标记为移动并且更新**，最终得到：
+
+```jsx
+lastPlacedIndex = 4; // lastPlacedIndex不变
+fiberMap = { "D-key": D, "F-key": F }; // 从 fiberMap中删除 `B-key`
+```
+
+- `G-key` 在 `fiberMap` 中不存在，因此这是一个新增的节点
+
+- 到此，新的节点已经遍历完成，将 `fiberMap` 中剩余的旧节点都标记为删除
+
+- 最后，在 commit 阶段，先删除 D 和 F，再更新 A、C 和 E，然后移动并更新 B，最后插入 G
+
+#### 第四种情况：极端场景，前面的节点都需要移动
+
+这种场景将后面的节点移动到了前面，性能不好，因此应该避免这种写法
+
+```jsx
+<ul>
+    <li key="A-key">A</li>  // oldIndex 0
+    <li key="B-key">B</li>  // oldIndex 1
+    <li key="C-key">C</li>  // oldIndex 2
+    <li key="D-key">D</li>  // oldIndex 3
+</ul>
+
+// 更新后：
+<ul>
+    <li key="D-key">D</li>
+    <li key="A-key">A</li>
+    <li key="B-key">B</li>
+    <li key="C-key">C</li>
+</ul>
+```
+
+第一轮遍历：
+
+- `D-key` 和 `A-key` 不同，`key` 改变了，不能复用，跳出第一轮循环
+
+第二轮循环
+
+初始化 `lastPlacedIndex = 0`，并创建一个旧的 fiber 节点的映射
+
+```js
+const fiberMap = { "A-key": A, "B-key": B, "C-key": C, "D-key": D };
+```
+
+- `D-key` 在 `fiberMap` 中存在，并且 `oldIndex > lastPlacedIndex` ，因此可以复用并且标记为更新，不需要移动
+
+```js
+lastPlacedIndex = 3; // 将 lastPlacedIndex 设置为 D-key 的 oldIndex
+const fiberMap = { "A-key": A, "B-key": B, "C-key": C }; // 将 D-key 从 fiberMap 中删除
+```
+
+- 继续遍历接下来的节点，可想而知，由于 `lastPlacedIndex` 都大于这些节点的 `oldIndex`，因此这些节点都需要标记为移动并且更新
+
+从中可以看出，这种更新，react 并不会仅仅将 D-key 节点移动到前面，而是将 A-key，B-key，C-key 都移动到 D-key 后面。
+
+**因此我们需要避免将节点从后面移动到前面的操作**
