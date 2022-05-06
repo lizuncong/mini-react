@@ -1,3 +1,5 @@
+![Version](https://img.shields.io/github/issues/lizuncong/mini-react)
+
 ### 目录划分
 
 - docs。react 相关知识文档&源码剖析目录
