@@ -1,4 +1,6 @@
-![Version](https://img.shields.io/github/issues/lizuncong/mini-react)
+![Issues](https://img.shields.io/github/issues/lizuncong/mini-react)
+![Forks](https://img.shields.io/github/forks/lizuncong/mini-react)
+![Stars](https://img.shields.io/github/stars/lizuncong/mini-react)
 
 ### 目录划分
 
