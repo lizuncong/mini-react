@@ -12,9 +12,11 @@
 ### React 源码系列文档(基于 React17.0.1 版本)
 
 - [提高 React 源码 debug 体验舒适度的一些奇淫技巧](https://github.com/lizuncong/mini-react/blob/master/docs/how_to_debug_react_source_code.md)
-- React Fiber 工作原理
 
-  - [手把手开发极简 Fiber 版本的 React](https://github.com/lizuncong/mini-react/blob/master/docs/build_your_own_react.md)，译文，入门 fiber 的人类高质量文章
+- React 工作原理
+
+  - [手把手开发极简 Fiber 版本的 React](https://github.com/lizuncong/mini-react/blob/master/docs/%E8%AF%91%E6%96%87/build_your_own_react.md)，译文，入门 fiber 的人类高质量文章
+  - [Fiber 内部：React 中新的协调算法的深入概述]()
 
 - 第一阶段 React 合成事件原理
   - [JavaScript 事件基础](https://github.com/lizuncong/mini-react/blob/master/docs/%E5%90%88%E6%88%90%E4%BA%8B%E4%BB%B6/JavaScript%E4%BA%8B%E4%BB%B6%E5%9F%BA%E7%A1%80.md)
