@@ -69,7 +69,7 @@ React 在**协调**期间执行了各种活动。例如，在我们的简单应�
 
 ### 从 React Elements 到 Fiber 节点
 
-React 中的每个组件都有一个从render方法返回的UI表示，我们可以称为视图或模板。这是我们 ClickCounter 组件的模板：
+React 中的每个组件都有一个从 render 方法返回的 UI 表示，我们可以称为视图或模板。这是我们 ClickCounter 组件的模板：
 
 ```jsx
 <button key="1" onClick={this.onClick}>Update counter</button>
@@ -77,7 +77,9 @@ React 中的每个组件都有一个从render方法返回的UI表示，我们可
 ```
 
 #### React Elements
-一旦经过 babel 编译，react 组件的render方法返回的就是一个 react elements tree，而不是html。由于我们不是必须使用 JSX，因此我们可以使用 `createElement` 重写我们的 ClickCounter 组件的 render 方法。
+
+一旦经过 babel 编译，render 方法返回的就是一个 react elements tree，而不是 html。由于我们不是必须使用 JSX，因此我们可以使用 `createElement` 重写我们的 ClickCounter 组件的 render 方法。
+
 ```jsx
 class ClickCounter {
     ...
@@ -102,7 +104,8 @@ class ClickCounter {
     }
 }
 ```
-React.createElement方法 将创建两个数据结构，如下所示：
+
+React.createElement 方法 将创建两个数据结构，如下所示：
 
 ```jsx
 [
@@ -125,9 +128,10 @@ React.createElement方法 将创建两个数据结构，如下所示：
     }
 ]
 ```
-你可以看到React为这些对象都添加了一个 $$typeof 属性，用于将它们标识为 React elements。type，key 和 props 用于描述 element，这些值从 React.createElement传递进来。注意 React 如何将文本内容表示为 span 和 button 节点的子节点。点击事件添加到props中。React 元素上还有其他字段，例如超出本文范围的字段。keypropsReact.createElementspanbuttonbuttonref
 
-的 React 元素 ClickCounter 没有任何道具或键：
+你可以看到 React 为这些对象都添加了一个 $$typeof 属性，用于将它们标识为 React elements。type，key 和 props 用于描述 element，这些值从 React.createElement 传递进来。注意 React 如何将文本内容表示为 span 和 button 节点的子节点。button 元素的点击事件也添加到 props 属性中。React 元素上还有其他字段不在本篇文章讨论范围，例如 ref。
+
+ClickCounter 元素没有任何属性或者 key
 
 ```jsx
 {
@@ -139,45 +143,50 @@ React.createElement方法 将创建两个数据结构，如下所示：
 }
 ```
 
-### 光纤节点
+#### Fiber 节点
 
-在协调 过程中，该方法返回的每个 React 元素的数据都 render 被合并到 Fiber 节点树中。每个 React 元素都有一个对应的 Fiber 节点。与 React 元素不同，Fiber 不会在每次渲染时重新创建。这些是保存组件状态和 DOM 的可变数据结构。
+在协调过程中，render 方法返回的每个 React 元素的数据都被合并到 Fiber tree 中。每个 React 元素都有一个对应的 Fiber 节点。与 React 元素不同，**Fiber 不会在每次渲染时重新创建**。Fiber 是保存组件状态和 DOM 的**可变**数据结构。
 
-我们之前讨论过，根据 React 元素的类型，框架需要执行不同的活动。在我们的示例应用程序中，对于类组件 ClickCounter，它调用生命周期方法和 render 方法，而对于 span 宿主组件（DOM 节点），它执行 DOM 突变。因此，每个 React 元素都被转换为相应类型的 Fiber 节点，该节点描述了需要完成的工作。
+我们之前讨论过，根据 React 元素的类型，框架需要执行不同的活动。在我们的示例应用程序中，对于类组件 ClickCounter，它调用生命周期方法和 render 方法，而对于 span 宿主组件（DOM 节点），它执行 DOM 更新。因此，每个 React 元素都被转换为相应类型的 Fiber 节点，该节点描述了需要完成的工作。
 
-您可以将纤程视为一种数据结构，它代表一些要完成的工作，或者换句话说，一个工作单元。Fiber 的架构还提供了一种方便的方式来跟踪、调度、暂停和中止工作。
+**你可以将 fiber 当作一种数据结构，它代表一些要完成的工作，或者换句话说，一个工作单元。Fiber 的架构还提供了一种方便的方式来跟踪、调度、暂停和中止工作。**
 
-当一个 React 元素第一次转换为一个 Fiber 节点时，React 使用来自该元素的数据在 createFiberFromTypeAndProps 函数中创建一个 Fiber。在随后的更新中，React 重用了 Fiber 节点，并且只使用来自相应 React 元素的数据更新了必要的属性。key 如果不再从 render 方法返回相应的 React 元素，React 可能还需要根据 prop 移动层次结构中的节点或将其删除。
+当一个 React 元素第一次转换为一个 Fiber 节点时，React 在 createFiberFromTypeAndProps 函数中使用 element 中的数据创建一个 fiber。在随后的更新中，React 复用 Fiber 节点，并且仅使用对应的 react element 中的数据更新必要的属性。
+React 可能需要基于 key 属性移动节点或者如果 render 方法返回的相应的 react element 已经不存在，则删除节点。
 
-查看 ChildReconciler 函数以查看 React 为现有纤程节点执行的所有活动和相应函数的列表。
+> [ChildReconciler](https://github.com/facebook/react/blob/95a313ec0b957f71798a69d8e83408f40e76765b/packages/react-reconciler/src/ReactChildFiber.js#L239)函数列举了所有的 React 为 fiber 节点所执行的所有活动及其对应的函数
 
-因为 React 为每个 React 元素创建了一个纤程，并且由于我们有这些元素的树，所以我们将有一个纤程节点树。在我们的示例应用程序中，它看起来像这样：
+因为 React 为每个 React element 创建了一个 fiber，并且由于我们有一个 React element 树，那么对应的我们也会有一个 fiber 节点树。在我们的示例应用程序中，它看起来像这样：
 
 ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/reconciler-01.png)
 
-所有光纤节点都通过使用光纤节点上的以下属性的链表连接 child：sibling 和 return。有关它为何以这种方式工作的更多详细信息，请查看我的文章 The how and why on React 在 Fiber 中使用链表（如果您尚未阅读）。
+所有 fiber 节点都通过 child、sibling 以及 return 属性链接成一个链表。可以阅读我这篇文章[ The how and why on React’s usage of linked list in Fiber](https://medium.com/dailyjs/the-how-and-why-on-reacts-usage-of-linked-list-in-fiber-67f1014d0eb7)去了解为什么需要这么做。
 
-### 当前和进行中的树
+#### Current and work in progress trees
 
-在第一次渲染之后，React 最终会生成一个纤维树，它反映了用于渲染 UI 的应用程序的状态。这棵树通常被称为 current。当 React 开始处理更新时，它会构建一个所谓的 workInProgress 树，以反映要刷新到屏幕的未来状态。
+在第一次渲染之后，React 最终会生成一个 fiber 树，它反映了用于渲染 UI 的应用程序的状态。**这棵树通常被称为 current**。当 React 开始处理更新时，它会构建一个所谓的 workInProgress 树，以反映要刷新到屏幕的最新的状态。
 
-所有工作都在 workInProgress 树中的纤维上执行。当 React 遍历 current 树时，对于每个现有的 Fiber 节点，它都会创建一个构成 workInProgress 树的备用节点。该节点是使用该 render 方法返回的 React 元素中的数据创建的。处理完更新并完成所有相关工作后，React 将准备好备用树以刷新到屏幕上。一旦这 workInProgress 棵树在屏幕上呈现，它就变成了 current 树。
+> 译者注：current tree 就是当前屏幕上显示的页面对应的 fiber tree
+
+所有工作都在 workInProgress 树中的 fiber 节点上执行。当 React 遍历 current 树时，对于每个现有的 Fiber 节点，它都会创建一个构成 workInProgress 树的 alternate (备用)节点。alternate 节点是使用 render 方法返回的 React element 中的数据创建的。处理完更新并完成所有相关工作后，React 将准备好 alternate 树以更新到屏幕上。一旦 workInProgress 树在屏幕上呈现，它就变成了 current 树。
 
 React 的核心原则之一是一致性。React 总是一次性更新 DOM——它不会显示部分结果。workInProgress 树充当用户不可见的“草稿”，因此 React 可以首先处理所有组件，然后将它们的更改刷新到屏幕上。
 
-在源代码中，您会看到许多从树 current 和 workInProgress 树中获取光纤节点的函数。这是一个这样的函数的签名：
+> 译者注：更新 DOM 是同步的，根据 render 方法返回的 react element tree 构建 workInProgress tree 这个过程是可以批量，并且可打断的。
+
+在源代码中，你会看到很多函数都使用了 current 和 workInProgress tree 中的 fiber 节点。这是其中一个函数的签名：
 
 ```jsx
 function updateHostComponent(current, workInProgress, renderExpirationTime) {...}
 ```
 
-每个纤程节点都持有对来自备用字段中另一棵树的对应节点的引用。树中的节点 current 指向树中的节点，workInProgress 反之亦然。
+每个 fiber 节点都有一个 alternate 字段引用旧的 fiber 树上的节点。current 树中的节点指向 workInProgress 树中的节点，反之亦然。
 
-### 副作用
+### 副作用(Side-effects)
 
-我们可以将 React 中的组件视为使用 state 和 props 来计算 UI 表示的函数。任何其他活动，如改变 DOM 或调用生命周期方法都应该被视为副作用，或者简单地说，是一种效果。文档中还提到了效果：
+我们可以将 React 中的组件当作使用 state 和 props 来计算 UI 表示的函数。**任何活动，如改变 DOM 或调用生命周期方法都应该被视为副作用，或者简单地说，是一种效果(effect)**。文档中还提到了效果(Effects)：
 
-> 您之前可能已经执行过数据获取、订阅或手动更改 React 组件中的 DOM。我们将这些操作称为“副作用”（或简称为“效果”），因为它们会影响其他组件并且在渲染期间无法完成。
+> 你之前可能已经执行过数据获取、订阅或手动更改 React 组件中的 DOM。我们将这些操作称为“副作用”（或简称为“效果”），因为它们会影响其他组件并且在渲染期间无法完成。
 
 您可以看到大多数状态和道具更新将如何导致副作用。而且由于应用效果是一种工作，光纤节点是一种方便的机制，除了更新之外还可以跟踪效果。每个光纤节点都可以有与之相关的效果。它们在 effectTag 现场编码。
 
