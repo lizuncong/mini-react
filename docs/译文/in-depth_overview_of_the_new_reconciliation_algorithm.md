@@ -291,7 +291,7 @@ fiber 节点有相当多的字段。在前面的章节中我已经描述了 alte
 
 定义与 fiber 关联的函数或类。对于类组件，它指向构造函数，对于 DOM 元素，它指定 HTML 标记。我经常使用这个字段来了解 fiber 节点是什么类型的元素。
 
-### 标签(tag)
+#### 标签(tag)
 
 定义 fiber 的类型。它在协调算法中用于确定需要完成的工作。如前所述，工作因 React 元素的类型而异。函数 createFiberFromTypeAndProps 将 React 元素映射到相应的 fiber 节点类型。在我们的应用程序中，ClickCounter 组件的 tag 属性是 1，表示这是一个 ClassComponent。span 元素的 tag 属性是 5，表示这是一个 HostComponent。
 
@@ -307,61 +307,65 @@ fiber 节点有相当多的字段。在前面的章节中我已经描述了 alte
 
 > 译者注：在类组件中，memoizedState 用于保存状态(state)，然而在函数组件中，memoizedState 用来保存 hook 链表
 
-### memoizedProps
+#### memoizedProps
 
-在上一次渲染期间用于创建输出的光纤道具。
+上一次渲染期间使用的 props
 
-### 待定道具
+#### pendingProps
 
-已从 React 元素中的新数据更新并需要应用于子组件或 DOM 元素的道具。
+新的 React element 中的数据更新后的 props，需要应用到子组件或者 DOM 元素上
 
-### 钥匙
+#### key
 
-一组孩子的唯一标识符，以帮助 React 确定哪些项目已更改，已从列表中添加或删除。它与此处描述的 React 的“列表和键”功能有关。
+一组子节点的唯一标志，用于帮助 React 确定哪些元素更改，添加，或者删除。它与[此处](https://reactjs.org/docs/lists-and-keys.html#keys)描述的 React 的“列表和 keys”功能有关。
 
-您可以在此处找到光纤节点的完整结构。我在上面的解释中省略了一堆字段。特别是，我跳过了指针 child，sibling 它 return 构成了我在上一篇文章中描述的树数据结构。以及特定于 expirationTime 的一类字段。childExpirationTime mode Scheduler
+你可以在[此处](https://github.com/facebook/react/blob/6e4f7c788603dac7fccd227a4852c110b072fe16/packages/react-reconciler/src/ReactFiber.js#L78)找到 fiber 节点的完整结构。我在上面的解释中省略了一堆字段。特别是，我跳过了构成树数据结构的 child，sibling 以及 return 指针。我在[上一篇文章](https://indepth.dev/posts/1007/the-how-and-why-on-reacts-usage-of-linked-list-in-fiber-to-walk-the-components-tree)有介绍过。以及和调度有关的一类字段，比如 expirationTime，childExpirationTime 以及 mode
 
-### 通用算法
+### 通用算法(General algorithm)
 
-React 在两个主要阶段执行工作：渲染和提交。
+React 在两个主要阶段执行工作：**渲染(render)和提交(commit)**。
 
-在第一 render 阶段，React 将更新应用到通过 setStateor 安排的组件 React.render，并找出需要在 UI 中更新的内容。如果是初始渲染，React 会为 render 方法返回的每个元素创建一个新的 Fiber 节点。在接下来的更新中，现有 React 元素的纤维被重新使用和更新。该阶段的结果是一棵标有副作用的纤维节点树。效果描述了在下一个阶段需要完成的工作。在 commit 这个阶段，React 获取一个标记有效果的纤维树并将它们应用于实例。它遍历效果列表并执行 DOM 更新和用户可见的其他更改。
+在第一阶段，即 render 阶段，react 将更新应用到组件上，通过 setState 或者 React.render 调度，并找出需要在 UI 中更新的内容。如果是第一次渲染，React 会为 render 方法返回的每个元素创建一个新的 Fiber 节点。在接下来的更新中，已存在的 React 元素的 fiber 节点将被重新使用和更新。**render 阶段的结果是一个标有副作用的 fiber 节点树**。效果(effects)描述了在下一个阶段(commit 阶段)需要完成的工作。在 commit 阶段，React 得到一个标记有效果的 fiber 树并将它们应用于实例。它遍历效果列表并执行 DOM 更新和用户可见的其他更改。
 
-重要的是要了解第一 render 阶段的工作可以异步执行。React 可以根据可用时间处理一个或多个光纤节点，然后停止以存储已完成的工作并屈服于某些事件。然后它从停止的地方继续。但有时，它可能需要放弃已完成的工作并重新从头开始。这些暂停之所以成为可能，是因为在此阶段执行的工作不会导致任何用户可见的更改，例如 DOM 更新。相反，接下来的 commit 阶段总是同步的。这是因为在此阶段执行的工作会导致用户可见的更改，例如 DOM 更新。这就是为什么 React 需要一次性完成它们的原因。
+**重要的是要了解 render 阶段的工作可以异步执行**。React 可以根据可用时间处理一个或多个 fiber 节点，然后暂停以响应其他事件。然后它从暂停的地方继续。**但有时，它可能需要放弃已完成的工作并重新从头开始**。这些暂停之所以成为可能，是因为在 render 阶段执行的工作不会导致任何用户可见的更改，例如 DOM 更新。**相反，接下来的 commit 阶段总是同步的**。这是因为在 commit 阶段执行的工作会导致用户可见的更改，例如 DOM 更新。这就是为什么 React 需要一次性完成它们的原因。
 
-调用生命周期方法是 React 执行的一种工作。在阶段期间调用一些方法，在 render 阶段期间调用其他方法 commit。以下是在第一 render 阶段工作时调用的生命周期列表：
+> 译者注：由于 commit 阶段执行 DOM 的变更，操作真实的 DOM，如果是可中断的，那么用户看到的界面将是不完整的，因此 commit 阶段一旦开始，就不能停止
 
-- [UNSAFE_]componentWillMount（已弃用）
-- [UNSAFE_]componentWillReceiveProps（已弃用）
+React 执行的其中一种工作就是调用生命周期方法。有些生命周期方法在 render 阶段调用，另外一些在 commit 阶段调用。以下是在 render 阶段工作时调用的生命周期方法：
+
+- [UNSAFE_]componentWillMount (deprecated)
+- [UNSAFE_]componentWillReceiveProps (deprecated)
 - getDerivedStateFromProps
-- 应该组件更新
-- [UNSAFE_]componentWillUpdate（已弃用）
-- 使成为
+- shouldComponentUpdate
+- [UNSAFE_]componentWillUpdate (deprecated)
+- render
 
-如您所见，在该 render 阶段执行的一些遗留生命周期方法被标记为 UNSAFE 从版本 16.3 开始。它们现在在文档中称为遗留生命周期。它们将在未来的 16.x 版本中被弃用，并且不带 UNSAFE 前缀的对应物将在 17.0 中删除。您可以在此处阅读有关这些更改和建议的迁移路径的更多信息。
+如您所见，从 16.3 版本开始，在 render 阶段执行的一些遗留的生命周期方法被标记为 UNSAFE。它们现在在文档中称为遗留生命周期。它们将在未来的 16.x 版本中被弃用，并且不带 UNSAFE 前缀的将在 17.0 中删除。你可以在[此处](https://reactjs.org/blog/2018/03/27/update-on-async-rendering.html)阅读有关这些更改和建议的迁移路径的更多信息。
 
-你对这其中的原因感到好奇吗？
+你对这其中的原因感到好奇吗？(指的是为什么需要移除这些 API)
 
-好吧，我们刚刚了解到，由于 render 阶段不会产生像 DOM 更新那样的副作用，React 可以异步处理对组件的更新（甚至可能在多个线程中进行）。但是，标记为的生命周期 UNSAFE 经常被误解并巧妙地滥用。开发人员倾向于将具有副作用的代码放在这些方法中，这可能会导致新的异步渲染方法出现问题。尽管只会 UNSAFE 删除不带前缀的对应项，但它们仍然可能在即将到来的并发模式（您可以选择退出）中引起问题。
+好吧，我们刚刚了解到，由于 render 阶段不会产生像 DOM 更新那样的副作用，React 可以异步处理对组件的更新（甚至可能在多个线程中进行）。但是，标记为 UNSAFE 的生命周期方法经常被误解并误用。开发人员倾向于将具有副作用的代码放在这些方法中，在新的异步渲染方案中，这可能会出现问题。尽管只会删除不带 UNSAFE 前缀的对应方法，但它们仍然可能在即将到来的并发模式中引起问题。
 
-以下是在第二 commit 阶段执行的生命周期方法列表：
+> 译者注：在 17 版本中，React 将会移除不带 UNSAFE 前缀的具有副作用的生命周期方法，即 componentWillMount，componentWillReceiveProps 以及 componentWillUpdate，带 UNSAFE 前缀的目前不会移除，但会在将来移除，因此建议不要使用。
+
+**以下是在第二阶段，即 commit 阶段执行的生命周期方法列表：**
 
 - getSnapshotBeforeUpdate
-- 组件 DidMount
-- 组件 DidUpdate
-- 组件 WillUnmount
+- componentDidMount
+- componentDidUpdate
+- componentWillUnmount
 
-因为这些方法在同步 commit 阶段执行，它们可能包含副作用并触及 DOM。
+因为这些方法在同步的 commit 阶段执行，它们可能包含副作用并操作 DOM。
 
-好的，现在我们有背景来看看用于遍历树并执行工作的通用算法。让我们潜入水中。
+好的，现在我们有背景来看看用于遍历树并执行工作的通用算法。让我们深入探讨。
 
-### 渲染阶段
+#### 渲染阶段(Render phase)
 
-协调算法总是使用 renderRoot 函数从最顶层的 HostRoot 光纤节点开始。但是，React 会退出（跳过）已处理的 Fiber 节点，直到找到未完成工作的节点。例如，如果您在组件树的深处调用，React 将从顶部开始但快速跳过父节点，直到到达调用了它的方法的组件。setStatesetState
+协调算法总是使用 [renderRoot](https://github.com/facebook/react/blob/95a313ec0b957f71798a69d8e83408f40e76765b/packages/react-reconciler/src/ReactFiberScheduler.js#L1132) 函数从最顶层的 HostRoot fiber 节点开始。但是，React 会退出（跳过）已处理的 Fiber 节点，直到找到未完成工作的节点。**例如，如果你在组件树的深处调用 setState，React 将从顶部开始但快速跳过父节点，直到到达调用了 setState 方法的组件**
 
-### 工作循环的主要步骤
+#### 工作循环的主要步骤(Main steps of the work loop)
 
-所有光纤节点都在工作循环中处理。这是循环的同步部分的实现：
+所有 fiber 节点都在工作循环中处理。这是循环的同步部分的实现：
 
 ```jsx
 function workLoop(isYieldy) {
@@ -373,24 +377,24 @@ function workLoop(isYieldy) {
 }
 ```
 
-在上面的代码中，nextUnitOfWork 保存了对树中纤维节点的引用，该节点 workInProgress 有一些工作要做。当 React 遍历 Fibers 树时，它使用这个变量来了解是否还有其他未完成工作的 Fiber 节点。处理当前纤程后，变量将包含对树中下一个纤程节点的引用或 null. 在这种情况下，React 退出工作循环并准备好提交更改。
+在上面的代码中，nextUnitOfWork 保存了对 workInProgress 树中 fiber 节点的引用，该节点有一些工作要做。当 React 遍历 Fibers 树时，它使用这个变量来判断是否还有其他未完成工作的 Fiber 节点。处理当前 fiber 后，变量将包含对树中下一个 fiber 节点的引用或 null。 在 null 情况下，React 退出工作循环并准备好提交更改。
 
-有 4 个主要函数用于遍历树并启动或完成工作：
+有 4 个主要函数用于遍历树，以及启动或完成工作：
 
-- 执行工作单元
-- 开始工作
-- 完成工作单元
-- 完成工作
+- performUnitOfWork
+- beginWork
+- completeUnitOfWork
+- completeWork
 
-为了演示如何使用它们，请查看以下遍历纤维树的动画。我在演示中使用了这些函数的简化实现。每个函数都需要一个纤程节点来处理，当 React 沿着树向下移动时，您可以看到当前活动的纤程节点发生了变化。您可以在视频中清楚地看到算法是如何从一个分支转到另一个分支的。它首先完成了孩子的工作，然后才转移给父母。
+为了演示如何使用它们，请查看以下遍历 fiber 树的动画。我在演示中使用了这些函数的简化实现。每个函数都需要处理一个 fiber 节点，当 React 沿着树向下移动时，你可以看到当前活动的 fiber 节点发生了变化。你可以在视频中清楚地看到算法是如何从一个分支转到另一个分支的。**它首先完成了子节点的工作，然后才转移给父节点**。
 
 ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/reconciler-03.gif)
 
-> 请注意，直的垂直连接表示兄弟姐妹，而弯曲的连接表示孩子，例如 b1 没有孩子，而 b2 有一个孩子 c1。
+> 请注意，垂直连接线表示兄弟节点，而弯曲的连线表示子节点，例如 b1 没有子节点，而 b2 有一个子节点 c1。
 
-这是视频的链接，您可以在其中暂停播放并检查当前节点和函数状态。从概念上讲，您可以将“开始”视为“进入”一个组件，将“完成”视为“走出”它。当我解释这些函数的作用时，您还可以在此处使用示例和实现。
+这是[视频的链接](https://vimeo.com/302222454)，你可以在其中暂停播放并检查当前节点和函数状态。从概念上讲，你可以将“开始”视为“进入”一个组件，将“完成”视为“走出”它。当我解释这些函数的作用时，你还可以在[此处](https://stackblitz.com/edit/js-ntqfil?file=index.js)使用示例和实现。
 
-让我们从前两个函数 performUnitOfWork 和开始 beginWork：
+让我们从前两个函数 performUnitOfWork 和 beginWork 开始：
 
 ```jsx
 function performUnitOfWork(workInProgress) {
@@ -407,9 +411,9 @@ function beginWork(workInProgress) {
 }
 ```
 
-该函数从树 performUnitOfWork 中接收一个纤程节点并通过调用函数开始工作。该函数将启动需要为纤程执行的所有活动。出于演示的目的，我们只记录光纤的名称以表示工作已经完成。该函数总是返回一个指向循环中要处理的下一个子节点的指针，或者。workInProgressbeginWork beginWork null
+performUnitOfWork 函数从 workInProgress 树中接收一个 fiber 节点并通过调用 beginWork 函数开始工作。performUnitOfWork 函数将启动所有的需要为 fiber 执行的活动。出于演示的目的，我们只输出 fiber 的名称以表示工作已经完成。**beginWork 函数总是返回指向下一个需要处理的子节点的指针，或者 null**
 
-如果有下一个孩子，它将被分配给函数 nextUnitOfWork 中的变量。workLoop 但是，如果没有子节点，React 知道它到达了分支的末尾，因此它可以完成当前节点。一旦节点完成，它需要为兄弟姐妹执行工作并在此之后回溯到父节点。这是在 completeUnitOfWork 函数中完成的：
+如果有下一个子节点，它将在 workLoop 函数中被分配 给 nextUnitOfWork。但是，如果没有子节点，React 知道它到达了分支的末尾，因此它可以完成当前节点。**一旦节点完成，它需要为兄弟节点执行工作并在此之后回溯到父节点**。这是在 completeUnitOfWork 函数中完成的：
 
 ```jsx
 function completeUnitOfWork(workInProgress) {
@@ -441,23 +445,25 @@ function completeWork(workInProgress) {
 }
 ```
 
-您可以看到该函数的要点是一个大 while 循环。workInProgress 当节点没有子节点时，React 会进入此函数。在完成当前纤程的工作后，它会检查是否有兄弟姐妹。如果找到，React 退出函数并返回指向兄弟的指针。它将被分配给 nextUnitOfWork 变量，React 将从这个兄弟节点开始执行分支的工作。重要的是要理解，此时 React 只完成了前面兄弟姐妹的工作。它还没有完成父节点的工作。只有从子节点开始的所有分支都完成后，它才能完成父节点和回溯的工作。
+你可以看到 completeUnitOfWork 函数的要点是一个 while 循环。当一个 workInProgress 节点没有子节点时，React 会进入此函数。在完成当前 fiber 的工作后，它会检查是否有兄弟节点。如果找到，React 退出函数并返回指向兄弟节点的指针。它将被分配给 nextUnitOfWork 变量，React 将从这个兄弟节点开始执行分支的工作。重要的是要理解，此时 React 只完成了前面节点的工作。它还没有完成父节点的工作。**只有从子节点开始的所有分支都完成后，它才能完成父节点和回溯的工作。**
 
-从实现中可以看出， 和 completeUnitOfWork 都主要用于迭代目的，而主要活动发生在 beginWorkandcompleteWork 函数中。在本系列的后续文章中，我们将了解当 React 进入和运行时 ClickCounter 组件和节点会发生什么。spanbeginWorkcompleteWork
+> 译者注：即当所有的子节点完成后，父节点才能完成并回溯
 
-### 提交阶段
+从实现中可以看出， performUnitOfWork 和 completeUnitOfWork 函数 都主要用于遍历，而主要的逻辑都在 beginWork 和 completeWork 函数中。在本系列的后续文章中，我们将了解 React 在 beginWork 和 completeWork 函数中如何处理 ClickCounter 组件以及 span 节点
 
-该阶段从函数 completeRoot 开始。这是 React 更新 DOM 并调用突变前后生命周期方法的地方。
+### 提交阶段(Commit phase)
 
-当 React 进入这个阶段时，它有 2 棵树和效果列表。第一个树代表当前在屏幕上呈现的状态。然后在该 render 阶段构建了一个备用树。它在源代码中称为 finishedWorkor workInProgress，表示需要在屏幕上反映的状态。该替代树通过 child 和 sibling 指针与当前树类似地链接。
+该阶段从函数 completeRoot 开始。这是 React 更新 DOM 并调用更新前及更新后(pre and post mutation)生命周期方法的地方。
 
-然后，有一个效果列表——通过指针链接的树 中的节点子集。请记住，效果列表是运行阶段的结果。渲染的重点是确定哪些节点需要插入、更新或删除，哪些组件需要调用其生命周期方法。这就是效果列表告诉我们的。它正是在提交阶段迭代的节点集。finishedWorknextEffectrender
+**当 React 进入这个阶段时，它有 2 棵树和效果列表(effects list)**。第一个树代表当前在屏幕上呈现的状态。另外一棵树是在 render 阶段构建的备用树(alternate tree)。它在源代码中称为 finishedWork 或者 workInProgress，表示需要在屏幕上呈现的状态。和 current 树一样，alternate 树也是通过 child 和 sibling 指针链接在一起。
 
-> 出于调试目的，current 可以通过 current 光纤根的属性访问树。树 finishedWork 可以通过当前树中节点的 alternate 属性来访问。HostFiber
+然后，有一个效果列表(effects list)——finishedWork 树的子集，通过 nextEffect 指针链接在一起。**请记住，效果列表(effect list)是 render 阶段的结果**。**渲染的重点是确定哪些节点需要插入、更新或删除，哪些组件需要调用其生命周期方法**。这就是效果列表告诉我们的。**它正是用于在 commit 阶段遍历的节点集**
 
-在提交阶段运行的主要功能是 commitRoot。基本上，它执行以下操作：
+> 出于调试目的，current 树可以通过 fiber root 的 current 属性访问。finishedWork 树可以通过 current 树中的 HostFiber 节点的 alternate 属性访问
 
-- getSnapshotBeforeUpdate 在标记有 Snapshot 效果的节点上调用生命周期方法
+在 commit 阶段运行的主要函数是 [commitRoot](https://github.com/facebook/react/blob/95a313ec0b957f71798a69d8e83408f40e76765b/packages/react-reconciler/src/ReactFiberScheduler.js#L523)。基本上，它执行以下操作：
+
+- 在标记有 Snapshot 效果(effect)的节点上调用 getSnapshotBeforeUpdate 生命周期方法
 - componentWillUnmount 在标记有 Deletion 效果的节点上调用生命周期方法
 - 执行所有 DOM 插入、更新和删除
 - 将 finishedWork 树设置为当前
