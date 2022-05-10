@@ -24,7 +24,7 @@ React 官方文档很好的概述了该机制：React 元素的角色、生命�
 
 这是一个简单的应用程序，我将在整个系列中使用它。我们有一个按钮，可以简单地增加屏幕上呈现的数字：
 
-![image](https://images.indepth.dev/images/2019/07/tmp1.gif)
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/reconciler-04.gif)
 
 这是实现：
 
@@ -182,66 +182,70 @@ function updateHostComponent(current, workInProgress, renderExpirationTime) {...
 
 每个 fiber 节点都有一个 alternate 字段引用旧的 fiber 树上的节点。current 树中的节点指向 workInProgress 树中的节点，反之亦然。
 
-### 副作用(Side-effects)
+#### 副作用(Side-effects)
 
 我们可以将 React 中的组件当作使用 state 和 props 来计算 UI 表示的函数。**任何活动，如改变 DOM 或调用生命周期方法都应该被视为副作用，或者简单地说，是一种效果(effect)**。文档中还提到了效果(Effects)：
 
 > 你之前可能已经执行过数据获取、订阅或手动更改 React 组件中的 DOM。我们将这些操作称为“副作用”（或简称为“效果”），因为它们会影响其他组件并且在渲染期间无法完成。
 
-您可以看到大多数状态和道具更新将如何导致副作用。而且由于应用效果是一种工作，光纤节点是一种方便的机制，除了更新之外还可以跟踪效果。每个光纤节点都可以有与之相关的效果。它们在 effectTag 现场编码。
+你可以看到大多数 state 和 props 更新是怎样导致副作用。同时由于应用这些效果(effects)也是一种类型的工作，一个 fiber 节点提供了一种方便的机制去跟踪效果(effects)以及更新。每个 fiber 节点都可以有与之相关的效果。使用 effectTag 字段表示。
 
-因此，Fiber 中的效果基本上定义了在处理更新后需要为实例完成的工作。对于宿主组件（DOM 元素），工作包括添加、更新或删除元素。对于类组件，React 可能需要更新 refs 并调用 componentDidMount 和 componentDidUpdate 生命周期方法。还有对应于其他类型的纤维的其他效果。
+因此，在处理完更新后，Fiber 中的效果(effects)基本上定义了需要为实例完成的工作。对于宿主组件（DOM 元素），工作包括添加、更新或删除元素。对于类组件，React 可能需要更新 refs 并调用 componentDidMount 和 componentDidUpdate 生命周期方法。当然还有和其他类型 fiber 对应的效果。
 
-### 效果列表
+#### 副作用列表(Effects list)
 
-React 进程更新非常快，为了达到这种性能水平，它采用了一些有趣的技术。其中之一是构建具有快速迭代效果的光纤节点线性列表。 迭代线性列表比树快得多，并且无需在没有副作用的节点上花费时间。
+React 处理更新非常快，为了达到这种性能水平，它采用了一些有趣的技术。**其中之一是将有副作用的 fiber 节点构建成线性列表，方便快速遍历**。 遍历线性列表比树快得多，并且无需在没有副作用的节点上花费时间。
 
-此列表的目标是标记具有 DOM 更新或与其相关联的其他效果的节点。此列表是树的子集，并使用属性而不是树中使用的属性 finishedWork 进行链接。nextEffectchildcurrentworkInProgress
+此列表的目标是标记具有 DOM 更新或其他相关联的副作用的节点。此列表是 finishedWork 树的子集，并且使用 nextEffect 属性相连，而不是使用 current 或者 workInProgress 树中的 child 属性
 
-Dan Abramov 提供了一个效果列表的类比。他喜欢把它想象成一棵圣诞树，用“圣诞灯”将所有有效的节点绑定在一起。为了可视化这一点，让我们想象以下纤维节点树，其中突出显示的节点有一些工作要做。例如，我们的更新导致 c2 插入到 DOM 中，d2 并 c1 更改属性，并 b2 触发生命周期方法。效果列表会将它们链接在一起，以便 React 稍后可以跳过其他节点：
+[Dan Abramov](https://medium.com/@dan_abramov) 提供了一个效果列表的类比。他喜欢把它想象成一棵圣诞树，用“圣诞灯”将所有有效的节点绑定在一起。为了直观的感受这一点，假设我们有以下 fiber 节点树，其中高亮的节点表示有一些工作要做。例如，我们的更新导致 c2 插入到 DOM 中，d2 和 c1 需要更新属性(attributes)，b2 调用生命周期方法。这些有副作用的节点会连接成一个链表，这样 React 就可以跳过其他没有副作用的节点
 
 ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/reconciler-02.png)
 
-您可以看到具有效果的节点是如何链接在一起的。当遍历节点时，React 使用 firstEffect 指针来确定列表的开始位置。所以上图可以表示为这样的线性列表：
+你可以看到具有副作用的节点是如何链接在一起的。当遍历节点时，React 使用 firstEffect 指针来确定列表的开始位置。所以上图可以表示为这样的线性列表：
 
 ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/reconciler-03.png)
 
-### 纤维树的根
+> 译者注：不管是效果列表还是副作用列表，其实都是指的 effect list。一般称为副作用列表会好点，用于指那些有副作用的 fiber 节点构成的链表
 
-每个 React 应用程序都有一个或多个充当容器的 DOM 元素。在我们的例子中，它是 div 带有 ID 的元素 container。
+#### Fiber tree 的根(Root of the Fiber tree)
+
+每个 React 应用程序都有一个或多个充当容器的 DOM 元素。在我们的例子中，它是 id 为 container 的 div 元素
 
 ```jsx
 const domContainer = document.querySelector("#container");
 ReactDOM.render(React.createElement(ClickCounter), domContainer);
 ```
 
-React 为每个容器创建一个纤程根对象。您可以使用对 DOM 元素的引用来访问它：
+React 为每个容器创建一个 fiber root 对象。你可以使用 DOM 元素上的引用来访问它：
 
 ```jsx
 const fiberRoot = query("#container")._reactRootContainer._internalRoot;
 ```
 
-这个纤程根是 React 保存对纤程树的引用的地方。它存储在 current 纤维根的属性中：
+这个 fiber root 是 React 保存对 fiber tree 的引用的地方。它保存在 fiber root 的 current 属性中
 
 ```jsx
 const hostRootFiberNode = fiberRoot.current;
 ```
 
-光纤树以一种特殊类型的光纤节点开始，即 HostRoot. 它是在内部创建的，并充当您最顶层组件的父级。有一个从 HostRoot 光纤节点返回到 FiberRootthroughstateNode 属性的链接：
+fiber 树的根节点是一种特殊的类型，即 HostRoot。它是在内部创建的，并充当最顶层组件的父级。HostRoot Fiber 节点有个 stateNode 属性 指向 fiberRoot(fiberRoot 即 query("#container").\_reactRootContainer.\_internalRoot)
 
 ```jsx
 fiberRoot.current.stateNode === fiberRoot; // true
 ```
 
-HostRoot 您可以通过光纤根访问最顶层的光纤节点来探索光纤树。或者您可以从组件实例中获取单个光纤节点，如下所示：
+你可以通过 fiber root 访问最顶层的 HostRoot fiber 节点来探索 fiber tree。或者可以从组件实例中获取单个 fiber 节点，如下所示：
 
 ```jsx
 compInstance._reactInternalFiber;
 ```
 
-### 光纤节点结构
+> 译者注：fiberRoot 的类型是 FiberRootNode，并不是 FiberNode 类型，因此这并不是一个 Fiber 节点。hostRootFiberNode 是 FiberNode 类型， 它是 container 容器对应的 Fiber 节点。也是整个 fiber tree 的根 fiber，因此也称为 HostRoot Fiber。
 
-现在让我们看一下为 ClickCounter 组件创建的光纤节点的结构：
+#### Fiber 节点结构
+
+现在让我们看一下 ClickCounter 组件对应的 fiber 节点的结构：
 
 ```jsx
 {
@@ -259,7 +263,7 @@ compInstance._reactInternalFiber;
 }
 ```
 
-和 spanDOM 元素：
+span 元素对应的 fiber 节点结构：
 
 ```jsx
 {
@@ -277,29 +281,33 @@ compInstance._reactInternalFiber;
 }
 ```
 
-光纤节点上有相当多的字段。我已经描述了字段的用途 alternate，effectTag 并且 nextEffect 在前面的部分中。现在让我们看看为什么我们需要其他人。
+fiber 节点有相当多的字段。在前面的章节中我已经描述了 alternate，effectTag 以及 nextEffect 的作用。现在让我们看看为什么我们需要其他字段
 
-### 状态节点
+#### 状态节点(stateNode)
 
-保存对组件的类实例、DOM 节点或与 Fiber 节点关联的其他 React 元素类型的引用。一般来说，我们可以说这个属性用于保存与光纤相关的本地状态。
+用于保存组件的类实例、DOM 节点或与 Fiber 节点相关的其他 React 元素类型。一般来说，我们可以说这个属性用于保存与 fiber 相关的本地状态。
 
-### 类型
+#### 类型(type)
 
-定义与此纤程关联的函数或类。对于类组件，它指向构造函数，对于 DOM 元素，它指定 HTML 标记。我经常使用这个字段来了解光纤节点与什么元素相关。
+定义与 fiber 关联的函数或类。对于类组件，它指向构造函数，对于 DOM 元素，它指定 HTML 标记。我经常使用这个字段来了解 fiber 节点是什么类型的元素。
 
-### 标签
+### 标签(tag)
 
-定义纤维的类型。它在协调算法中用于确定需要完成的工作。如前所述，工作因 React 元素的类型而异。函数 createFiberFromTypeAndProps 将 React 元素映射到相应的光纤节点类型。在我们的应用程序中，组件的属性是 tag 表示 a ，而元素的属性表示 a 。ClickCounter1ClassComponentspan5HostComponent
+定义 fiber 的类型。它在协调算法中用于确定需要完成的工作。如前所述，工作因 React 元素的类型而异。函数 createFiberFromTypeAndProps 将 React 元素映射到相应的 fiber 节点类型。在我们的应用程序中，ClickCounter 组件的 tag 属性是 1，表示这是一个 ClassComponent。span 元素的 tag 属性是 5，表示这是一个 HostComponent。
 
-### 更新队列
+#### 更新队列(updateQueue)
 
 状态更新、回调和 DOM 更新的队列。
 
-### 记忆状态
+> 译者注：这是在类组件中使用的更新队列
 
-用于创建输出的光纤的状态。在处理更新时，它会反映当前在屏幕上呈现的状态。
+#### memoizedState
 
-### 记忆道具
+保存 fiber 的状态。在处理更新时，它会反映当前在屏幕上呈现的状态。
+
+> 译者注：在类组件中，memoizedState 用于保存状态(state)，然而在函数组件中，memoizedState 用来保存 hook 链表
+
+### memoizedProps
 
 在上一次渲染期间用于创建输出的光纤道具。
 
