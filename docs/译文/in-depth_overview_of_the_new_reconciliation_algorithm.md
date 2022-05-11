@@ -2,9 +2,11 @@
 
 > 深入了解 React 的 Fiber 新架构，并了解新协调算法的两个主要阶段。我们将详细了解 React 如何更新 state 和 props 以及处理子节点
 
-React 是一个用于构建用户界面的 JavaScript 库。其核心机制在于跟踪组件状态变化并将更新的状态展示到屏幕。在 React 中，我们将此过程称为**协调**。我们调用 setState 方法，框架会检查状态(state)或属性(props)是否已更改，并重新渲染组件。
+React 是一个用于构建用户界面的 JavaScript 库。其核心机制在于跟踪组件状态变化并将更新的状态展示到屏幕。在 React 中，我们将此过程称为**协调**。我们调用 setState 方法，框架会检查状态(state)或属性(props)是否已更改，并重新渲染组件到页面上。
 
 React 官方文档很好的概述了该机制：React 元素的角色、生命周期方法和 render 方法，以及应用于组件子节点的 dom diff 算法。**render 方法返回的不可变的 React elements tree 通常被称为“虚拟 DOM”**。该术语有助于在早期向人们解释 React，但它也引起了困惑，并且不再在 React 文档中使用。在本文中，我将统一称它为 React elements tree。
+
+> 译者注：这里需要注意，每次调用 render 方法，都会重新生成一棵 react element tree，同时 react element tree 是不可修改的。
 
 除了 React elements tree 之外，还有一个用于保存状态的内部实例(组件、DOM 节点等)树。从 16 版本开始，React 推出了该内部实例树的全新实现，对应的算法称为**Fiber**。要了解 Fiber 架构带来的优势，请查看 [The how and why on React’s usage of linked list in Fiber.](https://indepth.dev/posts/1007/the-how-and-why-on-reacts-usage-of-linked-list-in-fiber-to-walk-the-components-tree)。
 
@@ -299,7 +301,7 @@ fiber 节点有相当多的字段。在前面的章节中我已经描述了 alte
 
 状态更新、回调和 DOM 更新的队列。
 
-> 译者注：这是在类组件中使用的更新队列
+> 译者注：这是在类组件中使用的更新队列，函数组件的更新队列在 memoizedState.queue 中
 
 #### memoizedState
 
