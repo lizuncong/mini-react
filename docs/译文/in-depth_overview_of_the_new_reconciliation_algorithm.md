@@ -4,9 +4,9 @@
 
 React 是一个用于构建用户界面的 JavaScript 库。其核心机制在于跟踪组件状态变化并将更新的状态展示到屏幕。在 React 中，我们将此过程称为**协调**。我们调用 setState 方法，框架会检查状态(state)或属性(props)是否已更改，并重新渲染组件。
 
-React 官方文档很好的概述了该机制：React 元素的角色、生命周期方法和 render 方法，以及应用于组件子节点的 dom diff 算法。**_render 方法返回的不可变的 React elements tree 通常被称为“虚拟 DOM”。_**该术语有助于在早期向人们解释 React，但它也引起了困惑，并且不再在 React 文档中使用。在本文中，我将统一称它为 React elements tree。
+React 官方文档很好的概述了该机制：React 元素的角色、生命周期方法和 render 方法，以及应用于组件子节点的 dom diff 算法。**render 方法返回的不可变的 React elements tree 通常被称为“虚拟 DOM”。**该术语有助于在早期向人们解释 React，但它也引起了困惑，并且不再在 React 文档中使用。在本文中，我将统一称它为 React elements tree。
 
-除了 React elements tree 之外，还有一个用于保存状态的内部实例(组件、DOM 节点等)树。从 16 版本开始，React 推出了该内部实例树的全新实现，对应的算法称为**_Fiber_**。要了解 Fiber 架构带来的优势，请查看 [The how and why on React’s usage of linked list in Fiber.](https://indepth.dev/posts/1007/the-how-and-why-on-reacts-usage-of-linked-list-in-fiber-to-walk-the-components-tree)。
+除了 React elements tree 之外，还有一个用于保存状态的内部实例(组件、DOM 节点等)树。从 16 版本开始，React 推出了该内部实例树的全新实现，对应的算法称为**Fiber**。要了解 Fiber 架构带来的优势，请查看 [The how and why on React’s usage of linked list in Fiber.](https://indepth.dev/posts/1007/the-how-and-why-on-reacts-usage-of-linked-list-in-fiber-to-walk-the-components-tree)。
 
 这是本系列的第一篇文章，旨在介绍 React 的内部架构。在本文中，我想深入概述与算法相关的重要概念和数据结构。一旦我们有足够的背景知识，我们将探索用于遍历和处理**fiber tree**的算法和主要函数。本系列的下一篇文章将演示 React 如何使用该算法来执行初次渲染以及处理状态(state)和属性(props)更新。然后我们将继续详细介绍调度(scheduler)、子元素协调过程以及构建 effects list 的机制。
 
@@ -464,15 +464,17 @@ function completeWork(workInProgress) {
 在 commit 阶段运行的主要函数是 [commitRoot](https://github.com/facebook/react/blob/95a313ec0b957f71798a69d8e83408f40e76765b/packages/react-reconciler/src/ReactFiberScheduler.js#L523)。基本上，它执行以下操作：
 
 - 在标记有 Snapshot 效果(effect)的节点上调用 getSnapshotBeforeUpdate 生命周期方法
-- componentWillUnmount 在标记有 Deletion 效果的节点上调用生命周期方法
-- 执行所有 DOM 插入、更新和删除
-- 将 finishedWork 树设置为当前
-- componentDidMount 在标记有 Placement 效果的节点上调用生命周期方法
-- componentDidUpdate 在标记有 Update 效果的节点上调用生命周期方法
+- 在标记有 Deletion 效果(effect)的节点上调用 componentWillUnmount 生命周期方法
+- 执行所有的 DOM 插入、更新和删除操作
+- 将 finishedWork 树设置为 current tree
+- 在标记有 Placement 效果(effect)的节点上调用 componentDidMount 生命周期方法
+- 在标记有 Update 效果(effect)的节点上调用 componentDidUpdate 生命周期方法
 
-在调用 pre-mutation 方法之后 getSnapshotBeforeUpdate，React 会在树中提交所有副作用。它分两次完成。第一遍执行所有 DOM（主机）插入、更新、删除和 ref 卸载。然后 React 将 finishedWork 树分配给将树 FiberRoot 标记 workInProgress 为 current 树。这是在提交阶段的第一遍之后完成的，因此前一棵树在 期间仍然是当前的 componentWillUnmount，但在第二遍之前，因此完成的工作在 期间是当前的。在第二遍中，React 调用所有其他生命周期方法和 ref 回调。这些方法作为单独的传递执行，因此整个树中的所有放置、更新和删除都已被调用。componentDidMount/Update
+在更新前(pre-mutation)调用 getSnapshotBeforeUpdate 方法之后 ，React 会在树中 commit 所有副作用(side-effects)。它分两部分完成。第一部分执行所有 DOM（host）插入、更新、删除和卸载 ref。然后 React 将 finishedWork 树分配给 FiberRoot，将 workInProgress 树标记为 current 树。这是在 commit 阶段的第一部分之后完成的，因此前一棵树(previous tree)在 componentWillUnmount 期间仍然是当前的，但在第二遍之前，在 componentDidMount/Update 期间，finishedWork 树已经被设置为当前的 current tree。在第二部分中，React 调用所有其他生命周期方法和 ref 回调。这些方法作为单独的部分执行，至此整个树中的所有替换、更新和删除都已被调用。
 
-以下是运行上述步骤的函数的要点：
+> 译者注：这里有点拗口。在执行 commit 阶段的第一部分前，当前的有两棵树，一颗 current 树，一棵 finishedWork 树。在我们调用组件的 componentWillUnmount 方法期间，current 树此时还没改变。但是 commit 阶段第一部分执行完成后，finishedWork 树就变成了 current 树，因此在我们调用组件的 componentDidMount/Update 期间，此时的 current 树就已经被设置为 finishedWork 树，具体可以看下面函数的要点加以理解
+
+下面是运行上述步骤的函数的要点：
 
 ```jsx
 function commitRoot(root, finishedWork) {
@@ -483,11 +485,13 @@ function commitRoot(root, finishedWork) {
 }
 ```
 
-这些子函数中的每一个都实现了一个循环，该循环遍历效果列表并检查效果的类型。当它找到与功能目的相关的效果时，它会应用它。
+> 译者注：注意 root.current = finishedWork;的时机
 
-### 突变前生命周期方法
+每一个子函数都实现了一个循环，遍历效果列表(the list of effects)并检查效果(effects)的类型(type)。当它找到与函数功能匹配的效果(effect)时，它会应用它。
 
-例如，下面是遍历效果树并检查节点是否具有 Snapshot 效果的代码：
+#### 更新前的生命周期方法(Pre-mutation lifecycle methods)
+
+例如，下面是遍历效果列表(effect list)并检查节点是否具有 Snapshot 效果(effect)的代码：
 
 ```jsx
 function commitBeforeMutationLifecycles() {
@@ -504,9 +508,9 @@ function commitBeforeMutationLifecycles() {
 
 对于一个类组件，这个效果意味着调用 getSnapshotBeforeUpdate 生命周期方法。
 
-### DOM 更新
+#### DOM 更新(DOM updates)
 
-commitAllHostEffects 是 React 执行 DOM 更新的函数。该函数基本上定义了需要对节点执行的操作类型并执行它：
+[commitAllHostEffects](https://github.com/facebook/react/blob/95a313ec0b957f71798a69d8e83408f40e76765b/packages/react-reconciler/src/ReactFiberScheduler.js#L376) 是 React 执行 DOM 更新的函数。该函数基本上定义了需要对节点执行的操作类型并执行它：
 
 ```jsx
 function commitAllHostEffects() {
@@ -532,10 +536,10 @@ function commitAllHostEffects() {
 }
 ```
 
-有趣的是，React 调用该 componentWillUnmount 方法作为 commitDeletion 函数中删除过程的一部分。
+有趣的是，在 commitDeletion 函数中，React 将调用 componentWillUnmount 方法作为删除过程的一部分
 
-### 突变后生命周期方法
+#### 更新后的生命周期方法(Post-mutation lifecycle method)
 
-commitAllLifecycles 是 React 调用所有剩余生命周期方法 componentDidUpdate 和 componentDidMount.
+[commitAllLifecycles](https://github.com/facebook/react/blob/95a313ec0b957f71798a69d8e83408f40e76765b/packages/react-reconciler/src/ReactFiberScheduler.js#L465) 函数是 React 调用所有剩余的 componentDidUpdate 和 componentDidMount 生命周期方法的地方
 
-我们终于完成了。让我知道你对这篇文章的看法或在评论中提问。查看 React 中状态和道具更新的深入解释系列中的下一篇文章。我还有更多的文章正在编写中，为调度程序、子协调过程以及如何构建效果列表提供了深入的解释。我还计划创建一个视频，在其中我将展示如何使用本文作为基础来调试应用程序。
+我们终于完成了。让我知道你对这篇文章的看法或在评论中提问。**可以点击查看本系列的下一篇文章：[In-depth explanation of state and props update in React](https://indepth.dev/in-depth-explanation-of-state-and-props-update-in-react/)**。我还有更多的文章正在编写中，深入解读 scheduler、子元素协调过程(children reconciliation process)、以及如何构建副作用列表(effects list)。我还计划录制一个视频，在其中我将展示如何使用本文作为基础来调试应用程序。
