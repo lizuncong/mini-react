@@ -1,26 +1,26 @@
 import React, { Component, PureComponent } from "react";
 import ReactDOM from "react-dom";
-class Counter extends Component {
+class ClickCounter extends React.Component {
   constructor(props) {
-    debugger;
     super(props);
+    this.state = { count: 0 };
+    this.handleClick = this.handleClick.bind(this);
   }
+
   handleClick() {
-    fetch("http://localhost:4000/api/auth");
+    this.setState((state) => {
+      return { count: state.count + 1 };
+    });
   }
-  handleClickAuth() {
-    fetch("/server/api/authSuccess");
-  }
+
   render() {
-    return (
-      <>
-        <button onClick={this.handleClick}>点击发起鉴权请求</button>
-        <button onClick={this.handleClickAuth}>
-          手动发起 auth success 请求
-        </button>
-      </>
-    );
+    return [
+      <button key="1" onClick={this.handleClick}>
+        Update counter
+      </button>,
+      <span key="2">{this.state.count}</span>,
+    ];
   }
 }
 
-ReactDOM.render(<Counter />, document.getElementById("root"));
+ReactDOM.render(<ClickCounter />, document.getElementById("root"));
