@@ -15,7 +15,7 @@
 
 - React 工作原理
 
-  这目录下的文章均是翻译的文章，对理解 react 工作原理有很大的启发作用
+  对理解 react 工作原理有很大的启发作用
 
   - [手把手开发极简 Fiber 版本的 React](https://github.com/lizuncong/mini-react/blob/master/docs/%E8%AF%91%E6%96%87/build_your_own_react.md)
   - [Fiber 内部：React 中新的协调算法的深入概述](https://github.com/lizuncong/mini-react/blob/master/docs/%E8%AF%91%E6%96%87/in-depth_overview_of_the_new_reconciliation_algorithm.md)
