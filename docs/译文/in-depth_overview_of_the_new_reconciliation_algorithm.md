@@ -543,3 +543,7 @@ function commitAllHostEffects() {
 [commitAllLifecycles](https://github.com/facebook/react/blob/95a313ec0b957f71798a69d8e83408f40e76765b/packages/react-reconciler/src/ReactFiberScheduler.js#L465) 函数是 React 调用所有剩余的 componentDidUpdate 和 componentDidMount 生命周期方法的地方
 
 我们终于完成了。让我知道你对这篇文章的看法或在评论中提问。**可以点击查看本系列的下一篇文章：[In-depth explanation of state and props update in React](https://indepth.dev/in-depth-explanation-of-state-and-props-update-in-react/)**。我还有更多的文章正在编写中，深入解读 scheduler、子元素协调过程(children reconciliation process)、以及如何构建副作用列表(effects list)。我还计划录制一个视频，在其中我将展示如何使用本文作为基础来调试应用程序。
+
+### 原文链接
+
+- [Inside Fiber: in-depth overview of the new reconciliation algorithm in React](https://indepth.dev/posts/1008/inside-fiber-in-depth-overview-of-the-new-reconciliation-algorithm-in-react)
