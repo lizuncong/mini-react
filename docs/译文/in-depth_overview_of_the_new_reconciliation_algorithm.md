@@ -2,7 +2,7 @@
 
 > 深入了解 React 的 Fiber 新架构，并了解新协调算法的两个主要阶段。我们将详细了解 React 如何更新 state 和 props 以及处理子节点
 
-React 是一个用于构建用户界面的 JavaScript 库。其核心机制在于跟踪组件状态变化并将更新的状态展示到屏幕。在 React 中，我们将此过程称为**_协调_**。我们调用 setState 方法，框架会检查状态(state)或属性(props)是否已更改，并重新渲染组件。
+React 是一个用于构建用户界面的 JavaScript 库。其核心机制在于跟踪组件状态变化并将更新的状态展示到屏幕。在 React 中，我们将此过程称为**协调**。我们调用 setState 方法，框架会检查状态(state)或属性(props)是否已更改，并重新渲染组件。
 
 React 官方文档很好的概述了该机制：React 元素的角色、生命周期方法和 render 方法，以及应用于组件子节点的 dom diff 算法。**_render 方法返回的不可变的 React elements tree 通常被称为“虚拟 DOM”。_**该术语有助于在早期向人们解释 React，但它也引起了困惑，并且不再在 React 文档中使用。在本文中，我将统一称它为 React elements tree。
 
