@@ -12,6 +12,8 @@ class ClickCounter extends React.Component {
       return { count: state.count + 1 };
     });
   }
+  
+  componentDidUpdate() {}
 
   render() {
     return [
