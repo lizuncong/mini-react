@@ -455,7 +455,7 @@ function completeWork(workInProgress) {
 
 ### 提交阶段(Commit phase)
 
-该阶段从函数 completeRoot 开始。这是 React 更新 DOM 并调用更新前及更新后(pre and post mutation)生命周期方法的地方。
+该阶段从函数 [completeRoot](https://github.com/facebook/react/blob/95a313ec0b957f71798a69d8e83408f40e76765b/packages/react-reconciler/src/ReactFiberScheduler.js#L2306) 开始。这是 React 更新 DOM 并调用更新前及更新后(pre and post mutation)生命周期方法的地方。
 
 **当 React 进入这个阶段时，它有 2 棵树和效果列表(effects list)**。第一个树代表当前在屏幕上呈现的状态。另外一棵树是在 render 阶段构建的备用树(alternate tree)。它在源代码中称为 finishedWork 或者 workInProgress，表示需要在屏幕上呈现的状态。和 current 树一样，alternate 树也是通过 child 和 sibling 指针链接在一起。
 
@@ -549,3 +549,131 @@ function commitAllHostEffects() {
 ### 原文链接
 
 - [Inside Fiber: in-depth overview of the new reconciliation algorithm in React](https://indepth.dev/posts/1008/inside-fiber-in-depth-overview-of-the-new-reconciliation-algorithm-in-react)
+
+### 读后总结
+
+简单总结一下两个阶段所涉及的方法，其实由于作者写这篇文章时间比较早，有些方法已经变了，比如 renderRoot 和 commitRoot，但不影响整个流程。建议可以结合源码一起看看消化
+
+#### render 阶段
+
+render 阶段从 renderRoot 函数开始，从最顶层的 HostRoot Fiber 节点开始遍历，会快速条狗已处理的节点，直到到达调用了 setState 方法的组件。
+
+```js
+function workLoop(isYieldy) {
+  if (!isYieldy) {
+    while (nextUnitOfWork !== null) {
+      nextUnitOfWork = performUnitOfWork(nextUnitOfWork);
+    }
+  } else {...}
+}
+```
+
+- performUnitOfWork
+- beginWork
+- completeUnitOfWork
+- completeWork
+
+```js
+function performUnitOfWork(workInProgress) {
+  let next = beginWork(workInProgress);
+  if (next === null) {
+    next = completeUnitOfWork(workInProgress);
+  }
+  return next;
+}
+
+function beginWork(workInProgress) {
+  console.log("work performed for " + workInProgress.name);
+  return workInProgress.child;
+}
+
+function completeUnitOfWork(workInProgress) {
+  while (true) {
+    let returnFiber = workInProgress.return;
+    let siblingFiber = workInProgress.sibling;
+
+    nextUnitOfWork = completeWork(workInProgress);
+
+    if (siblingFiber !== null) {
+      // If there is a sibling, return it
+      // to perform work for this sibling
+      return siblingFiber;
+    } else if (returnFiber !== null) {
+      // If there's no more work in this returnFiber,
+      // continue the loop to complete the parent.
+      workInProgress = returnFiber;
+      continue;
+    } else {
+      // We've reached the root.
+      return null;
+    }
+  }
+}
+
+function completeWork(workInProgress) {
+  console.log("work completed for " + workInProgress.name);
+  return null;
+}
+```
+
+render 阶段调用的方法：
+
+- [UNSAFE_]componentWillMount (deprecated)
+- [UNSAFE_]componentWillReceiveProps (deprecated)
+- getDerivedStateFromProps
+- shouldComponentUpdate
+- [UNSAFE_]componentWillUpdate (deprecated)
+- render
+
+#### commit 阶段
+
+commit 阶段从[completeRoot](https://github.com/facebook/react/blob/95a313ec0b957f71798a69d8e83408f40e76765b/packages/react-reconciler/src/ReactFiberScheduler.js#L2306)函数开始。进入这个阶段，React 就会有一棵 current tree 和 一棵 finishedWork tree(或者 workInProgress tree)，以及一个副作用列表
+
+在 commit 阶段运行的主要函数是 commitRoot。基本上，它执行以下操作：
+
+- 在标记有 Snapshot 效果(effect)的节点上调用 getSnapshotBeforeUpdate 生命周期方法
+- 在标记有 Deletion 效果(effect)的节点上调用 componentWillUnmount 生命周期方法
+- 执行所有的 DOM 插入、更新和删除操作
+- 将 finishedWork 树设置为 current tree
+- 在标记有 Placement 效果(effect)的节点上调用 componentDidMount 生命周期方法
+- 在标记有 Update 效果(effect)的节点上调用 componentDidUpdate 生命周期方法
+
+```js
+function commitRoot(root, finishedWork) {
+  commitBeforeMutationLifecycles();
+  commitAllHostEffects();
+  root.current = finishedWork;
+  commitAllLifeCycles();
+}
+function commitBeforeMutationLifecycles() {
+  while (nextEffect !== null) {
+    const effectTag = nextEffect.effectTag;
+    if (effectTag & Snapshot) {
+      const current = nextEffect.alternate;
+      commitBeforeMutationLifeCycles(current, nextEffect);
+    }
+    nextEffect = nextEffect.nextEffect;
+  }
+}
+function commitAllHostEffects() {
+    switch (primaryEffectTag) {
+        case Placement: {
+            commitPlacement(nextEffect);
+            ...
+        }
+        case PlacementAndUpdate: {
+            commitPlacement(nextEffect);
+            commitWork(current, nextEffect);
+            ...
+        }
+        case Update: {
+            commitWork(current, nextEffect);
+            ...
+        }
+        case Deletion: {
+            commitDeletion(nextEffect);
+            ...
+        }
+    }
+}
+```
