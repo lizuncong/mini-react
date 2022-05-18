@@ -556,7 +556,7 @@ function commitAllHostEffects() {
 
 #### render 阶段
 
-render 阶段从 renderRoot 函数开始，从最顶层的 HostRoot Fiber 节点开始遍历，会快速条狗已处理的节点，直到到达调用了 setState 方法的组件。
+render 阶段从 renderRoot 函数开始，从最顶层的 HostRoot Fiber 节点开始遍历，会快速跳过已处理的节点，直到到达调用了 setState 方法的组件。
 
 ```js
 function workLoop(isYieldy) {
