@@ -1,4 +1,13 @@
 function collectEffectList(returnFiber, completedWork) {
+  if (!returnFiber.firstEffect) {
+    returnFiber.firstEffect = completedWork.firstEffect;
+  }
+  if (completedWork.lastEffect) {
+    if (returnFiber.lastEffect) {
+      returnFiber.lastEffect.nextEffect = completedWork.firstEffect;
+    }
+    returnFiber.lastEffect = completedWork.lastEffect;
+  }
   const flags = completedWork.flags;
   if (flags) {
     if (returnFiber.lastEffect) {
