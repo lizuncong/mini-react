@@ -1,5 +1,6 @@
 import { createWorkInProgress } from "./ReactFiber";
 import { beginWork } from "./ReactFiberBeginWork";
+import { Placement } from "./ReactFiberFlags";
 import { completeWork } from "./ReactFiberCompleteWork";
 
 let workInProgressRoot = null; // 当前正在更新的根
@@ -21,8 +22,41 @@ function performSyncWorkOnRoot(fiberRoot) {
   workInProgress = createWorkInProgress(workInProgressRoot.current);
 
   workLoopSync(); // 开启工作循环
+
+  commitRoot();
 }
 
+function commitRoot() {
+  const finishedWork = workInProgressRoot.current.alternate;
+  workInProgressRoot.finishedWork = finishedWork;
+  commitMutationEffects(workInProgressRoot);
+}
+
+function commitMutationEffects(root) {
+  const finishedWork = root.finishedWork;
+  let nextEffect = finishedWork.firstEffect;
+  let effectList = "";
+  while (nextEffect) {
+    effectList += `(${nextEffect.flags}#${nextEffect.type}#${nextEffect.key})`;
+    const flags = nextEffect.flags;
+    if (flags === Placement) {
+      commitPlacement(nextEffect);
+    }
+    nextEffect = nextEffect.nextEffect;
+  }
+
+  effectList += "null";
+
+  console.log(effectList);
+
+  root.current = finishedWork;
+}
+
+function commitPlacement(nextEffect) {
+  const stateNode = nextEffect.stateNode;
+  const parentStateNode = nextEffect.return.stateNode.containerInfo;
+  parentStateNode.appendChild(stateNode);
+}
 // 开始自上而下构建新的fiber树
 function workLoopSync() {
   while (workInProgress) {
@@ -51,11 +85,18 @@ function completeUnitOfWork(unitOfWork) {
     const current = completedWork.alternate;
     const returnFiber = completedWork.return;
     // 完成此fiber对应的真实DOM节点创建和属性赋值的功能
-    completeWork(current, returnFiber);
+    completeWork(current, completedWork);
     // 收集当前fiber的副作用到父fiber上
     collectEffectList(returnFiber, completedWork);
     // 当前fiber完成后，查找下一个要构建的fiber
-  } while (completedWork);
+    const siblingFiber = completedWork.sibling;
+    if (siblingFiber) {
+      workInProgress = siblingFiber;
+      return;
+    }
+    completedWork = returnFiber;
+    workInProgress = completedWork;
+  } while (workInProgress);
 }
 
 // 副作用链表(Effect List)
@@ -68,6 +109,7 @@ function completeUnitOfWork(unitOfWork) {
 // fiber节点构建完成的操作执行在 completeUnitOfWork 方法，在这个方法里，不仅会对节点完成构建，
 // 也会将有flags的fiber节点添加到effectlist中
 function collectEffectList(returnFiber, completedWork) {
+  if (!returnFiber) return;
   // 如果父节点没有effectList，那就让父节点的firstEffect链表头指向当前节点
   if (!returnFiber.firstEffect) {
     returnFiber.firstEffect = completedWork.firstEffect;
