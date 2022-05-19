@@ -550,9 +550,17 @@ function commitAllHostEffects() {
 
 - [Inside Fiber: in-depth overview of the new reconciliation algorithm in React](https://indepth.dev/posts/1008/inside-fiber-in-depth-overview-of-the-new-reconciliation-algorithm-in-react)
 
-### 读后总结
+### 读后总结核心知识点
 
-简单总结一下两个阶段所涉及的方法，其实由于作者写这篇文章时间比较早，有些方法已经变了，比如 renderRoot 和 commitRoot，但不影响整个流程。建议可以结合源码一起看看消化
+- Virtual DOM。render 方法返回的不可变的 React elements tree。注意是不可改变的。
+- current tree。当前界面对应的 fiber tree。
+- workInProgress tree。React 开始处理更新时，构建的树
+- alternate 节点。每个 fiber 节点都有一个 alternate 字段引用旧的 fiber 树上的节点。current 树中的节点指向 workInProgress 树中的节点，反之亦然。需要搞清楚 alternate 节点都有哪些属性，current 树中的节点如何指向 workInProgress 树
+- 副作用。改变 DOM 或调用生命周期方法都应该被视为副作用
+- 副作用列表。自底向上构建的线性链表。使用 nextEffect 属性相连接
+- FiberRootNode。React 为每个容器创建的节点，里面有 current 和 finishWork 属性。可以通过 `root._reactRootContainer._internalRoot` 访问这个节点。
+- render 阶段的结果是一个标有副作用的 fiber 节点树
+- commit 阶段遍历副作用列表并执行 DOM 更新和调用生命周期方法等工作
 
 #### render 阶段
 
@@ -616,7 +624,7 @@ function completeWork(workInProgress) {
 }
 ```
 
-render 阶段调用的方法：
+render 阶段调用的生命周期方法：
 
 - [UNSAFE_]componentWillMount (deprecated)
 - [UNSAFE_]componentWillReceiveProps (deprecated)
@@ -641,7 +649,7 @@ commit 阶段从[completeRoot](https://github.com/facebook/react/blob/95a313ec0b
 ```js
 function commitRoot(root, finishedWork) {
   commitBeforeMutationLifecycles();
-  commitAllHostEffects();
+  commitAllHostEffects(); // 执行dom更新
   root.current = finishedWork;
   commitAllLifeCycles();
 }
