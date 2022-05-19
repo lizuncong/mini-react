@@ -570,3 +570,7 @@ function commitLifeCycles(finishedRoot, current, ...) {
 ```
 
 你还可以看到，这是 ReactcomponentDidMount 为第一次渲染的组件调用方法的函数
+
+### 原文链接
+
+- [in-depth-explanation-of-state-and-props-update-in-react](https://indepth.dev/posts/1009/in-depth-explanation-of-state-and-props-update-in-react)
