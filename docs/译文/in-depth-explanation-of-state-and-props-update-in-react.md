@@ -1,4 +1,4 @@
-> 这篇文章虽然写于 18 年，4 年后再看仍然经典
+> 好的文章就像 90 年代的港片让人回味无穷。这篇文章虽然写于 18 年，现在看来对理解 React Fiber 的工作流程依然有很大的帮助。有些 API 在最新版本的 React 中已经被废弃，但丝毫不影响整体流程的理解
 
 ### 深入理解 React 中 state 和 props 的更新
 
@@ -109,13 +109,13 @@ class ClickCounter extends React.Component {
 
 所有工作都在这个 Fiber 节点的克隆副本上执行，(副本)存储在 Fiber 节点的 alternate 字段中。如果尚未创建 alternate 节点，那么在处理更新前，React 会在函数 [createWorkInProgress](https://github.com/facebook/react/blob/769b1f270e1251d9dbdce0fcbd9e92e502d059b8/packages/react-reconciler/src/ReactFiber.js#L326) 中创建副本。让我们假设变量 nextUnitOfWork 指向 ClickCounter Fiber 节点的 alternate 节点。
 
-### 开始工作
+### 开始工作(beginWork)
 
-首先，我们的 Fiber 进入 [beginWork](https://github.com/facebook/react/blob/cbbc2b6c4d0d8519145560bd8183ecde55168b12/packages/react-reconciler/src/ReactFiberBeginWork.js#L1489) 函数。
+我们的 Fiber 节点首先经过 [beginWork](https://github.com/facebook/react/blob/cbbc2b6c4d0d8519145560bd8183ecde55168b12/packages/react-reconciler/src/ReactFiberBeginWork.js#L1489) 函数处理。
 
-> 因为这个函数是针对树中的每个 Fiber 节点执行的，所以如果你想调试 render 阶段，这是一个放置断点的好地方。我经常这样做并检查光纤节点的类型以确定我需要的节点。
+> 因为 Fiber 树中每个 Fiber 节点都会经过 beginWork 函数处理，所以如果你想调试 render 阶段，这是一个打断点的好地方。我经常这样做并根据 Fiber 节点的 type 添加条件断点
 
-该 beginWork 函数基本上是一个大 switch 语句，它通过标签确定一个 Fiber 节点需要完成的工作类型，然后执行相应的函数来执行工作。如果 CountClicks 它是类组件，则将采用此分支：
+beginWork 函数就是一个大 switch 语句，它通过 tag 确定一个 Fiber 节点需要完成的工作类型，然后执行相应的函数来执行工作。在本例中， CountClicks 是一个类组件，因此采用此分支：
 
 ```jsx
 function beginWork(current$$1, workInProgress, ...) {
@@ -133,7 +133,7 @@ function beginWork(current$$1, workInProgress, ...) {
 }
 ```
 
-我们进入 [updateClassComponent](https://github.com/facebook/react/blob/1034e26fe5e42ba07492a736da7bdf5bf2108bc6/packages/react-reconciler/src/ReactFiberBeginWork.js#L428) 函数。根据它是组件的第一次渲染、正在恢复的工作还是 React 更新，React 要么创建一个实例并挂载组件，要么只是更新它：
+我们进入 [updateClassComponent](https://github.com/facebook/react/blob/1034e26fe5e42ba07492a736da7bdf5bf2108bc6/packages/react-reconciler/src/ReactFiberBeginWork.js#L428) 函数。根据组件是第一次渲染还是更新，React 会创建一个实例或者挂载组件并更新
 
 ```jsx
 function updateClassComponent(current, workInProgress, Component, ...) {
