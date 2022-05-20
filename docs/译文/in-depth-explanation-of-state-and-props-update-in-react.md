@@ -329,9 +329,9 @@ export const Update = 0b00000000100;
 
 好吧，这就是 React 在 render 阶段为 ClickCounter Fiber 节点执行的所有工作。由于按钮是 ClickCounter 组件的第一个子节点，它将被分配给 nextUnitOfWork 变量。(按钮节点)没有什么可做的，所以 React 将移动到它的兄弟节点，即 span Fiber 节点。根据[这里描述](https://medium.com/react-in-depth/inside-fiber-in-depth-overview-of-the-new-reconciliation-algorithm-in-react-e1c04700ef6e)的算法，它发生在 completeUnitOfWork 函数中
 
-### 处理 Span 光纤的更新
+### 处理 Span fiber 的更新(Processing updates for the Span fiber)
 
-因此，该变量 nextUnitOfWork 现在指向 spanFiber 的备用，React 开始处理它。与为 执行的步骤类似 ClickCounter，我们从 [beginWork](https://github.com/facebook/react/blob/cbbc2b6c4d0d8519145560bd8183ecde55168b12/packages/react-reconciler/src/ReactFiberBeginWork.js#L1489) 函数开始。
+变量 nextUnitOfWork 现在指向 span fiber 的备用(alternate)节点，React 开始处理它。与为 ClickCounter 执行的步骤类似，我们从 [beginWork](https://github.com/facebook/react/blob/cbbc2b6c4d0d8519145560bd8183ecde55168b12/packages/react-reconciler/src/ReactFiberBeginWork.js#L1489) 函数开始。
 
 由于我们的 span 节点是 HostComponent 类型的，所以这次在 switch 语句中 React 采用了这个分支：
 
@@ -347,15 +347,15 @@ function beginWork(current$$1, workInProgress, ...) {
 }
 ```
 
-并在 [updateHostComponent](https://github.com/facebook/react/blob/cbbc2b6c4d0d8519145560bd8183ecde55168b12/packages/react-reconciler/src/ReactFiberBeginWork.js#L686) 函数中结束。您可以看到与 updateClassComponent 类组件调用的函数的并行。对于功能组件，它将是 updateFunctionComponent 等等。[ReactFiberBeginWork.js](https://github.com/facebook/react/blob/1034e26fe5e42ba07492a736da7bdf5bf2108bc6/packages/react-reconciler/src/ReactFiberBeginWork.js) 您可以在文件中找到所有这些功能。
+并在 [updateHostComponent](https://github.com/facebook/react/blob/cbbc2b6c4d0d8519145560bd8183ecde55168b12/packages/react-reconciler/src/ReactFiberBeginWork.js#L686) 函数中结束。同时，你还可以看到为 ClassComponent 调用的 updateClassComponent 函数。对于 FunctionalComponent，它将是 updateFunctionComponent 等等。你可以在[ReactFiberBeginWork.js](https://github.com/facebook/react/blob/1034e26fe5e42ba07492a736da7bdf5bf2108bc6/packages/react-reconciler/src/ReactFiberBeginWork.js) 文件中找到所有这些函数
 
-### 为跨度光纤调和孩子
+### 协调 span fiber 的子元素(Reconciling children for the span fiber)
 
-span 在我们的例子中，. 中的节点没有任何重要的事情发生 updateHostComponent。
+在我们的例子中，updateHostComponent 函数并没有对 span 节点做任何重要的事情。因此可以简单略过
 
-### 完成 Span Fiber 节点的工作
+### 完成 Span Fiber 节点的工作(Completing work for the Span Fiber node)
 
-beginWork 完成后，节点进入函数 completeWork。但在此之前，React 需要更新 memoizedPropsspan 光纤上的。你可能还记得在为组件协调子 ClickCounter 组件时，React 更新 pendingProps 了 spanFiber 节点上的：
+beginWork 完成后，节点进入 completeWork 函数。但在此之前，React 需要更新 span fiber 上的 memoizedProps 属性。你可能还记得在为 ClickCounter 组件协调子元素时，React 更新了 span fiber 节点上的 pendingProps 属性
 
 ```jsx
 {
@@ -368,7 +368,7 @@ beginWork 完成后，节点进入函数 completeWork。但在此之前，React 
 }
 ```
 
-因此，一旦 beginWork 完成了 spanFiber，React 就会更新 pendingProps 以匹配 memoizedProps：
+因此，一旦 span fiber 节点的 beginWork 完成了，React 就会更新 memoizedProps：
 
 ```jsx
 function performUnitOfWork(workInProgress) {
@@ -379,7 +379,7 @@ function performUnitOfWork(workInProgress) {
 }
 ```
 
-然后它调用该 completeWork 函数，该函数基本上是一个 switch 类似于我们在中看到的语句 beginWork：
+然后它调用 completeWork 函数，和 beginWork 函数一样，completeWork 函数也只是一个大的 switch 语句：
 
 ```jsx
 function completeWork(current, workInProgress, ...) {
@@ -396,13 +396,13 @@ function completeWork(current, workInProgress, ...) {
 }
 ```
 
-由于我们的 spanFiber 节点是 HostComponent，它运行该 [updateHostComponent](https://github.com/facebook/react/blob/cbbc2b6c4d0d8519145560bd8183ecde55168b12/packages/react-reconciler/src/ReactFiberBeginWork.js#L686) 函数。在这个函数中，React 基本上做了以下事情：
+由于我们的 span Fiber 节点是 HostComponent，它调用[updateHostComponent](https://github.com/facebook/react/blob/cbbc2b6c4d0d8519145560bd8183ecde55168b12/packages/react-reconciler/src/ReactFiberBeginWork.js#L686) 函数。在这个函数中，React 基本上做了以下事情：
 
 - 准备 DOM 更新
-- 将它们添加到 updateQueue 纤维 span 中
-- 添加更新 DOM 的效果
+- 将它们添加到 span fiber 的 updateQueue 中。
+- 添加更新 DOM 的 effect
 
-在执行这些操作之前，spanFiber 节点如下所示：
+在执行这些操作之前，span fiber 节点如下所示：
 
 ```jsx
 {
@@ -426,48 +426,49 @@ function completeWork(current, workInProgress, ...) {
 }
 ```
 
-注意 effectTag 和 updateQueue 字段的区别。它不再 0 是，它的价值是 4。在二进制中 this is 100，这意味着设置了第三位，这正是 Update 副作用标记的位。这是 React 在接下来的提交阶段需要为这个节点做的唯一工作。该 updateQueue 字段包含将用于更新的有效负载。
+注意 effectTag 和 updateQueue 字段的差异。effectTag 从 0 变成 4。在二进制中这是 100，这意味着第三位设置成了 1，这正是 update 副作用对应的 tag 类型。这是 React 在接下来的 commit 阶段需要为这个节点做的唯一工作。updateQueue 字段保存了将用于更新的数据(payload)。
 
-ClickCounter 一旦 React 及其子进程处理完毕，render 阶段就完成了。它现在可以将完成的备用树分配给 上的 finishedWork 属性 FiberRoot。这是需要刷新到屏幕上的新树。它可以在 render 阶段之后立即处理，也可以在浏览器给 React 时间时稍后再提取。
+一旦 React 处理完成 ClickCounter 及其子元素，render 阶段就完成了。它现在可以将完成的 alternate 树分配给 FiberRoot 的 finishedWork 属性。这是需要刷新到屏幕上的新树。它可以在 render 阶段之后立即处理，也可以在浏览器空闲时间处理。
 
-### 效果列表
+### 副作用列表(Effects list)
 
-在我们的例子中，由于 span 节点和 ClickCounter 组件都有副作用，React 会将 spanFiber 节点的链接添加 firstEffect 到 HostFiber.
+在我们的例子中，由于 span 节点和 ClickCounter 组件都有副作用，React 会将 span fiber 节点的链接添加到 HostFiber 的 firstEffect 属性.
 
-React 在 [compliteUnitOfWork](https://github.com/facebook/react/blob/d5e1bf07d086e4fc1998653331adecddcd0f5274/packages/react-reconciler/src/ReactFiberScheduler.js#L999) 函数中构建效果列表。这是具有更新 span 节点文本和调用钩子效果的 Fiber 树的 ClickCounter 样子：
+React 在 [completeUnitOfWork](https://github.com/facebook/react/blob/d5e1bf07d086e4fc1998653331adecddcd0f5274/packages/react-reconciler/src/ReactFiberScheduler.js#L999) 函数中构建副作用列表。这是具有更新 span 节点文本和调用 ClickCounter 钩子
+副作用的 Fiber 树的样子：
 
-![image](https://github.com/lizuncong/mini-react/blob/master/imgs/reconciler-04.gif)
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/update-01.png)
 
-这是具有效果的节点的线性列表：
+这是具有副作用的节点的线性列表：
 
-![image](https://github.com/lizuncong/mini-react/blob/master/imgs/reconciler-04.gif)
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/update-02.png)
 
-### 提交阶段
+### 提交阶段(Commit phase)
 
-这个阶段从函数 [completeRoot](https://github.com/facebook/react/blob/95a313ec0b957f71798a69d8e83408f40e76765b/packages/react-reconciler/src/ReactFiberScheduler.js#L2306) 开始。在它开始做任何工作之前，它将 finishedWork 属性设置在 FiberRootto 上 null：
+这个阶段从[completeRoot](https://github.com/facebook/react/blob/95a313ec0b957f71798a69d8e83408f40e76765b/packages/react-reconciler/src/ReactFiberScheduler.js#L2306) 函数开始。在它开始做任何工作之前，它将 FiberRoot 的 finishedWork 属性重置为 null：
 
 ```jsx
 root.finishedWork = null;
 ```
 
-与第一 render 阶段不同，该 commit 阶段始终是同步的，因此它可以安全地更新 HostRoot 以指示提交工作已经开始。
+与 render 阶段不同，commit 阶段始终是同步的，因此它可以安全地更新 HostRoot 以指示 commit 工作已经开始。
 
-该 commit 阶段是 React 更新 DOM 并调用 post mutation 生命周期方法的地方 componentDidUpdate。为此，它会遍历在前一阶段构建的效果列表 render 并应用它们。
+在 commit 阶段， React 更新 DOM 并调用 post mutation 生命周期方法，如 componentDidUpdate。为此，它会遍历在 render 阶段构建的副作用列表并应用它们。
 
-我们在 render 阶段中为我们的 span 和 ClickCounter 节点定义了以下效果：
+我们在 render 阶段中为我们的 span 和 ClickCounter 节点定义了以下 effects：
 
 ```jsx
 { type: ClickCounter, effectTag: 5 }
 { type: 'span', effectTag: 4 }
 ```
 
-效果标签的值 ClickCounter 是 5 或 101 二进制，并定义了 Update 基本上转化 componentDidUpdate 为类组件生命周期方法的工作。render 最低有效位也设置为表示该光纤节点在该阶段的所有工作都已完成。
+ClickCounter 的 effect tag 是 5 或 二进制的 101，这意味着需要调用 componentDidUpdate 方法。最低有效位也设置为表示该 Fiber 节点在 render 阶段的所有工作都已完成。
 
-效果标签的值 span 是 4 或 100 二进制，定义了 update 主机组件 DOM 更新的工作。在 span 元素的情况下，React 将需要更新 textContent 元素。
+span 的 effect tag 是 4 或 二进制的 100，定义了需要更新 host component 的 dom 节点的更新工作。对于 span 元素，React 需要更新元素的 textContent 属性。
 
-### 应用效果
+### 应用效果(Applying effects)
 
-让我们看看 React 如何应用这些效果。用于应用效果的函数 [commitRoot](https://github.com/facebook/react/blob/95a313ec0b957f71798a69d8e83408f40e76765b/packages/react-reconciler/src/ReactFiberScheduler.js#L523) 由 3 个子函数组成：
+让我们看看 React 如何应用这些 effects。用于应用 effects 的[commitRoot](https://github.com/facebook/react/blob/95a313ec0b957f71798a69d8e83408f40e76765b/packages/react-reconciler/src/ReactFiberScheduler.js#L523)函数由 3 个子函数组成：
 
 ```jsx
 function commitRoot(root, finishedWork) {
@@ -478,15 +479,15 @@ function commitRoot(root, finishedWork) {
 }
 ```
 
-这些子函数中的每一个都实现了一个循环，该循环遍历效果列表并检查效果的类型。当它找到与功能目的相关的效果时，它会应用它。在我们的例子中，它将调用组件的 componentDidUpdate 生命周期方法并更新元素 ClickCounter 的文本。span
+这些子函数中的每一个都实现了一个循环，这些循环遍历副作用列表并检查 effect 的类型。当它找到与函数功能相关的 effect 时，它会应用它。在我们的例子中，它将调用 ClickCounter 组件的 componentDidUpdate 生命周期方法并更新 span 元素的文本。
 
-第一个函数 [commitBeforeMutationLifeCycles](https://github.com/facebook/react/blob/fefa1269e2a67fa5ef0992d5cc1d6114b7948b7e/packages/react-reconciler/src/ReactFiberCommitWork.js#L183) 查找 [Snapshot](https://github.com/facebook/react/blob/b87aabdfe1b7461e7331abb3601d9e6bb27544bc/packages/shared/ReactSideEffectTags.js#L25) 效果并调用该 getSnapshotBeforeUpdate 方法。但是，由于我们没有在 ClickCounter 组件上实现方法，所以 React 没有在 render 阶段添加效果。所以在我们的例子中，这个函数什么都不做。
+第一个函数 [commitBeforeMutationLifeCycles](https://github.com/facebook/react/blob/fefa1269e2a67fa5ef0992d5cc1d6114b7948b7e/packages/react-reconciler/src/ReactFiberCommitWork.js#L183) 查找 [Snapshot](https://github.com/facebook/react/blob/b87aabdfe1b7461e7331abb3601d9e6bb27544bc/packages/shared/ReactSideEffectTags.js#L25) effect 并调用 getSnapshotBeforeUpdate 方法。但是，由于我们没有在 ClickCounter 组件上实现这个方法，所以 React 没有在 render 阶段添加对应的 Snapshot effect。所以在我们的例子中，这个函数什么都不做。
 
-### DOM 更新
+### DOM 更新(DOM updates)
 
-Next React 转到该 [commitAllHostEffects](https://github.com/facebook/react/blob/95a313ec0b957f71798a69d8e83408f40e76765b/packages/react-reconciler/src/ReactFiberScheduler.js#L376) 函数。这是 React 将 span 元素上的文本从 0 更改为 的地方 1。ClickCounter 因为类组件对应的节点没有任何 DOM 更新，所以对 Fiber 没有什么可做的。
+下一步，React 执行[commitAllHostEffects](https://github.com/facebook/react/blob/95a313ec0b957f71798a69d8e83408f40e76765b/packages/react-reconciler/src/ReactFiberScheduler.js#L376) 函数。这里 React 将 span 元素的文本从 0 更改为 1。由于类组件对应的节点没有任何 DOM 更新，因此这里不需要处理 ClickCounter fiber。
 
-该功能的要点是它选择正确的效果类型并应用相应的操作。在我们的例子中，我们需要更新 span 元素上的文本，所以我们在 Update 这里使用分支：
+这个函数的目的是选择正确的 effect 类型并执行相应的操作。在我们的例子中，我们需要更新 span 元素上的文本，所以我们在这里使用 Update 分支：
 
 ```jsx
 function updateHostEffects() {
@@ -504,7 +505,7 @@ function updateHostEffects() {
 }
 ```
 
-通过下降到 commitWork，我们最终将进入该 [updateDOMProperties](https://github.com/facebook/react/blob/8a8d973d3cc5623676a84f87af66ef9259c3937c/packages/react-dom/src/client/ReactDOMComponent.js#L326) 函数。它将阶段 updateQueue 期间添加的有效负载 render 带到 Fiber 节点，并更新元素 textContent 上的属性：span
+继续往下执行 commitWork 函数，我们最终进入[updateDOMProperties](https://github.com/facebook/react/blob/8a8d973d3cc5623676a84f87af66ef9259c3937c/packages/react-dom/src/client/ReactDOMComponent.js#L326) 函数。它使用 render 阶段添加的 updateQueue 数据更新 span 元素的 textContent 属性。
 
 ```jsx
 function updateDOMProperties(domElement, updatePayload, ...) {
@@ -520,15 +521,15 @@ function updateDOMProperties(domElement, updatePayload, ...) {
 }
 ```
 
-在应用 DOM 更新后，React 将 finishedWork 树分配给 HostRoot. 它将备用树设置为当前树：
+在应用 DOM 更新后，React 将 finishedWork 树分配给 HostRoot。它将 alternate 树设置为 current 树：
 
 ```jsx
 root.current = finishedWork;
 ```
 
-### 调用突变后生命周期钩子
+### 调用 post mutation 生命周期钩子(Calling post mutation lifecycle hooks)
 
-最后剩下的函数是 [commitAllLifecycles](https://github.com/facebook/react/blob/d5e1bf07d086e4fc1998653331adecddcd0f5274/packages/react-reconciler/src/ReactFiberScheduler.js#L479)。这就是 React 调用突变后生命周期方法的地方。在这个 render 阶段，React 将 Update 效果添加到 ClickCounter 组件中。这是函数 commitAllLifecycles 寻找并调用 componentDidUpdate 方法的效果之一：
+最后剩下的函数是 [commitAllLifecycles](https://github.com/facebook/react/blob/d5e1bf07d086e4fc1998653331adecddcd0f5274/packages/react-reconciler/src/ReactFiberScheduler.js#L479)。这里 React 调用 post mutational 生命周期方法。在 render 阶段，React 将 Update effect 添加到 ClickCounter 组件中。这是 commitAllLifecycles 函数寻找并调用 componentDidUpdate 方法的效果之一：
 
 ```jsx
 function commitAllLifeCycles(finishedRoot, ...) {
@@ -549,7 +550,7 @@ function commitAllLifeCycles(finishedRoot, ...) {
 }
 ```
 
-该函数还会更新 [refs](https://reactjs.org/docs/refs-and-the-dom.html)，但由于我们没有任何此功能，因此不会使用。该方法在 [commitLifeCycles](https://github.com/facebook/react/blob/e58ecda9a2381735f2c326ee99a1ffa6486321ab/packages/react-reconciler/src/ReactFiberCommitWork.js#L351) 函数中被调用：
+该函数还会更新 [refs](https://reactjs.org/docs/refs-and-the-dom.html)，但由于我们没有任何此功能，因此不会使用。componentDidUpdate 方法在 [commitLifeCycles](https://github.com/facebook/react/blob/e58ecda9a2381735f2c326ee99a1ffa6486321ab/packages/react-reconciler/src/ReactFiberCommitWork.js#L351) 函数中被调用：
 
 ```jsx
 function commitLifeCycles(finishedRoot, current, ...) {
@@ -572,7 +573,7 @@ function commitLifeCycles(finishedRoot, current, ...) {
 }
 ```
 
-你还可以看到，这是 ReactcomponentDidMount 为第一次渲染的组件调用方法的函数
+你还可以看到，这是 React 为第一次渲染的组件调用 componentDidMount 方法的地方
 
 ### 原文链接
 
