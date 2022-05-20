@@ -101,13 +101,13 @@ class ClickCounter extends React.Component {
 
 可以看到，updateQueue.firstUpdate.next.payload 里面的函数就是我们在 ClickCounter 组件中传递给 setState 的回调。它代表了 render 阶段中需要处理的第一个更新
 
-### 处理 ClickCounter Fiber 节点的更新
+### 处理 ClickCounter Fiber 节点的更新(Processing updates for the ClickCounter Fiber node)
 
-[我之前的文章中关于工作循环的章节](https://github.com/lizuncong/mini-react/blob/master/docs/%E8%AF%91%E6%96%87/in-depth_overview_of_the_new_reconciliation_algorithm.md)解释了 nextUnitOfWork 全局变量的作用。特别是，它声明此变量持有对树中的 Fiber 节点的引用，该 workInProgress 树有一些工作要做。当 React 遍历 Fibers 树时，它使用这个变量来了解是否有任何其他 Fiber 节点未完成工作。
+[我之前的文章中关于工作循环的章节](https://github.com/lizuncong/mini-react/blob/master/docs/%E8%AF%91%E6%96%87/in-depth_overview_of_the_new_reconciliation_algorithm.md)解释了全局变量 nextUnitOfWork 的作用。特别是，它说明了这个变量保存的是 workInProgress 树中需要处理的 fiber 节点的引用。当 React 遍历 Fibers 树时，它使用这个变量来了解是否有尚未完成工作的 fiber 节点。
 
-setState 让我们从方法已被调用的假设开始。React 将回调 from 添加 setState 到 Fiber 节点 updateQueue 上 ClickCounter 并安排工作。React 进入 render 阶段。它使用 renderRoot 函数从最顶层的 HostRootFiber 节点开始遍历。但是，它会退出（跳过）已处理的 Fiber 节点，直到找到未完成工作的节点。此时只有一个 Fiber 节点有一些工作要做。它是光纤节点。ClickCounter
+假设我们已经调用了 setState 方法。React 将 setState 中的回调添加到 ClickCounter Fiber 节点的 updateQueue 中并开始调度。React 进入 render 阶段。它在 renderRoot 函数里面从最顶层的 HostRoot Fiber 节点开始遍历。但是，它会退出（跳过）已处理的 Fiber 节点，直到找到未完成工作的节点。此时只有一个 Fiber 节点需要处理。它是 ClickCounter Fiber 节点。
 
-所有工作都在这个 Fiber 节点的克隆副本上执行，并存储在该 alternate 字段中。如果尚未创建备用节点，React 在处理更新之前在函数 createWorkInProgress 中创建副本。让我们假设变量 nextUnitOfWork 持有对备用 ClickCounterFiber 节点的引用。
+所有工作都在这个 Fiber 节点的克隆副本上执行，(副本)存储在 Fiber 节点的 alternate 字段中。如果尚未创建 alternate 节点，那么在处理更新前，React 会在函数 [createWorkInProgress](https://github.com/facebook/react/blob/769b1f270e1251d9dbdce0fcbd9e92e502d059b8/packages/react-reconciler/src/ReactFiber.js#L326) 中创建副本。让我们假设变量 nextUnitOfWork 指向 ClickCounter Fiber 节点的 alternate 节点。
 
 ### 开始工作
 
