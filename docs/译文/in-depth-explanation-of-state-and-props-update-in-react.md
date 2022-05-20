@@ -1,16 +1,18 @@
-### React 中 state 和 props 更新的深入讲解
+> 这篇文章虽然写于 18 年，4 年后再看仍然经典
 
-> 本文使用具有父组件和子组件的基本设置来演示 Fiber 架构中的内部流程，React 依赖于将 props 传播到子组件。
+### 深入理解 React 中 state 和 props 的更新
 
-在我之前的文章 [Fiber 内部：React 中新的协调算法的深入概述](https://github.com/lizuncong/mini-react/blob/master/docs/%E8%AF%91%E6%96%87/in-depth_overview_of_the_new_reconciliation_algorithm.md)中，我奠定了理解我将在本文中描述的更新过程的技术细节所需的基础。
+> 本文使用具有父组件和子组件的简单案例来演示 Fiber 架构中 React 将 props 传播到子组件的内部流程。
 
-我已经概述了我将在本文中使用的主要数据结构和概念，特别是 Fiber 节点、当前和正在进行的树、副作用和效果列表。我还提供了主要算法的高级概述，并解释了 render 和 commit 阶段之间的区别。如果你还没有读过，我建议你从那里开始。
+在我之前的文章 [Fiber 内部：React 中新的协调算法的深入概述](https://github.com/lizuncong/mini-react/blob/master/docs/%E8%AF%91%E6%96%87/in-depth_overview_of_the_new_reconciliation_algorithm.md)中，我奠定了理解本文介绍的更新过程的技术细节所需要的基础知识。
 
-我还向您介绍了示例应用程序，该应用程序带有一个按钮，该按钮简单地递增屏幕上呈现的数字：
+我已经概述了我将在本文中使用的主要数据结构和概念，特别是 Fiber 节点、current tree 和 workInProgress tree、副作用和副作用列表。我还高度概述了主要的算法，并解释了 render 和 commit 阶段之间的区别。如果你还没有读过，我建议你从上一篇文章开始。
+
+我还介绍了示例应用程序，该应用程序带有一个按钮，点击按钮简单地递增屏幕上呈现的数字：
 
 ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/reconciler-04.gif)
 
-你可以在这里玩。它被实现为一个简单的组件，它从方法返回两个 button 子 span 元素 render。当您单击按钮时，组件的状态会在处理程序内更新。这会导致 span 元素的文本更新：
+这是一个简单的组件，render 方法返回 button 和 span 两个子元素。单击按钮时，组件的状态就会更新。这会导致 span 元素的文本更新：
 
 ```jsx
 class ClickCounter extends React.Component {
@@ -39,28 +41,28 @@ class ClickCounter extends React.Component {
 }
 ```
 
-在这里，我还向 componentDidUpdate 组件添加了生命周期方法。这需要演示 React 如何在阶段期间添加效果以调用此方法 commit。
+在这里，我给组件添加了 componentDidUpdate 生命周期方法。这是为了演示 React 在 commit 阶段是怎样添加副作用并调用 componentDidUpdate 方法。
 
-在本文中，我想向您展示 React 如何处理状态更新并构建效果列表。render 我们将了解和 commit 阶段的高级函数中发生了什么。
+**在本文中，我将介绍 React 如何处理状态更新并构建副作用列表**。我们将了解 render 和 commit 阶段的主要函数都做了什么事情。
 
-特别是，我们将在 [completeWork](https://github.com/facebook/react/blob/cbbc2b6c4d0d8519145560bd8183ecde55168b12/packages/react-reconciler/src/ReactFiberCompleteWork.js#L532) React 中看到它是如何实现的：
+特别是，我们将在 [completeWork](https://github.com/facebook/react/blob/cbbc2b6c4d0d8519145560bd8183ecde55168b12/packages/react-reconciler/src/ReactFiberCompleteWork.js#L532)函数中看到，React 进行：
 
-- 更新 ofcount 中的属性 stateClickCounter
-- 调用 render 方法获取子列表并进行比较
-- 更新 span 元素的道具
+- 更新 ClickCounter 组件中的 state.count 属性
+- 调用 render 方法获取子元素列表并进行比较
+- 更新 span 元素的 props 属性
 
-而且，在 [commitRoot](https://github.com/facebook/react/blob/95a313ec0b957f71798a69d8e83408f40e76765b/packages/react-reconciler/src/ReactFiberScheduler.js#L523) React 中：
+同时，在 [commitRoot](https://github.com/facebook/react/blob/95a313ec0b957f71798a69d8e83408f40e76765b/packages/react-reconciler/src/ReactFiberScheduler.js#L523) 函数中，React 会：
 
-- 更新元素的 textContent 属性 span
+- 更新 span 元素的 textContent 属性
 - 调用 componentDidUpdate 生命周期方法
 
-但在此之前，让我们快速看一下调用 setState 点击处理程序时工作是如何调度的。
+但在此之前，让我们快速看一下在 click 事件中调用 setState 时，React 是如何调度的。
 
-请注意，您无需了解任何内容即可使用 React。这篇文章是关于 React 如何在内部工作的。
+请注意，你无需了解任何内容即可使用 React。这篇文章是关于 React 工作原理的。
 
-### 安排更新
+### 调度更新(Scheduling updates)
 
-当我们点击按钮时，click 事件被触发，React 执行我们在按钮 props 中传递的回调。在我们的应用程序中，它只是增加计数器并更新状态：
+当我们点击按钮时，click 事件被触发，React 执行我们在按钮中绑定的回调。在我们的应用程序中，它只是增加计数器并更新状态：
 
 ```jsx
 class ClickCounter extends React.Component {
@@ -73,11 +75,11 @@ class ClickCounter extends React.Component {
 }
 ```
 
-每个 React 组件都有一个关联 updater，它充当组件和 React 核心之间的桥梁。这允许 setState 通过 ReactDOM、React Native、服务器端渲染和测试实用程序以不同方式实现。
+每个 React 组件都有一个关联的 updater，它充当组件和 React 内核之间的桥梁。这允许 ReactDOM、React Native、服务器端渲染和测试实用程序以不同方式实现 setState。
 
-在本文中，我们将研究 ReactDOM 中 updater 对象的实现，它使用 Fiber reconciler。对于 ClickCounter 组件，它是一个 [classComponentUpdater](https://github.com/facebook/react/blob/6938dcaacbffb901df27782b7821836961a5b68d/packages/react-reconciler/src/ReactFiberClassComponent.js#L186). 它负责检索 Fiber 实例、排队更新和安排工作。
+在本文中，我们将探讨 ReactDOM 中 updater 对象的实现，它使用 Fiber reconciler。对于 ClickCounter 组件，它是一个 [classComponentUpdater](https://github.com/facebook/react/blob/6938dcaacbffb901df27782b7821836961a5b68d/packages/react-reconciler/src/ReactFiberClassComponent.js#L186)。 它负责检索 Fiber 实例、将更新添加到队列中以及调度。
 
-当更新排队时，它们基本上只是添加到更新队列中以在 Fiber 节点上处理。在我们的例子中，组件对应的 [Fiber 节点](https://medium.com/react-in-depth/inside-fiber-in-depth-overview-of-the-new-reconciliation-algorithm-in-react-e1c04700ef6e) ClickCounter 将具有以下结构：
+当添加更新时，它们只是简单的添加到更新队列中以便在 Fiber 节点上处理。在我们的例子中，ClickCounter 组件对应的 [Fiber 节点](https://medium.com/react-in-depth/inside-fiber-in-depth-overview-of-the-new-reconciliation-algorithm-in-react-e1c04700ef6e) 的结构如下：
 
 ```jsx
 {
@@ -97,7 +99,7 @@ class ClickCounter extends React.Component {
 
 ```
 
-可以看到，里面的函数就是我们在组件中 updateQueue.firstUpdate.next.payload 传递给的回调。它代表了阶段中需要处理的第一个更新。setStateClickCounterrender
+可以看到，updateQueue.firstUpdate.next.payload 里面的函数就是我们在 ClickCounter 组件中传递给 setState 的回调。它代表了 render 阶段中需要处理的第一个更新
 
 ### 处理 ClickCounter Fiber 节点的更新
 
