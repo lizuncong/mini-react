@@ -273,17 +273,17 @@ export const Update = 0b00000000100;
 
 ### 协调 ClickCounter Fiber 的子元素(Reconciling children for the ClickCounter Fiber)
 
-一旦完成，React 就会进入 [finishClassComponent](https://github.com/facebook/react/blob/340bfd9393e8173adca5380e6587e1ea1a23cefa/packages/react-reconciler/src/ReactFiberBeginWork.js#L355)。这是 React 调用 render 组件实例上的方法并将其差异算法应用于组件返回的子项的地方。文档中描述了高级概述。这是相关部分：
+一旦完成，React 就会进入 [finishClassComponent](https://github.com/facebook/react/blob/340bfd9393e8173adca5380e6587e1ea1a23cefa/packages/react-reconciler/src/ReactFiberBeginWork.js#L355)函数。**这是 React 调用组件实例上的 render 方法**并将 dom diff 算法应用于组件返回的子元素的地方。[文档中](https://reactjs.org/docs/reconciliation.html#the-diffing-algorithm)有高度概括。这是相关部分：
 
-> 当比较两个相同类型的 React DOM 元素时，React 会查看两者的属性，保持相同的底层 DOM 节点，并且只更新更改的属性。
+> 当比较两个相同类型的 React DOM 元素时，React 会查看两者的属性，复用相同的底层 DOM 节点，并且只更新变化的属性。
 
-然而，如果我们深入挖掘，我们可以了解到它实际上将 Fiber 节点与 React 元素进行了比较。但我现在不会详细介绍，因为这个过程非常复杂。我将写一篇单独的文章，特别关注儿童和解的过程。
+然而，如果我们深入挖掘，我们可以了解到它实际上是将 Fiber 节点与 React element 进行了比较。但我现在不会详细介绍，因为这个过程非常复杂。我将写一篇单独的文章，重点介绍子元素协调的过程。
 
-> 如果您急于自己了解详细信息，请查看 [reconcileChildrenArray](https://github.com/facebook/react/blob/95a313ec0b957f71798a69d8e83408f40e76765b/packages/react-reconciler/src/ReactChildFiber.js#L732) 函数，因为在我们的应用程序中，该 render 方法返回一个 React 元素数组。
+> 如果你急于了解详细信息，请查看 [reconcileChildrenArray](https://github.com/facebook/react/blob/95a313ec0b957f71798a69d8e83408f40e76765b/packages/react-reconciler/src/ReactChildFiber.js#L732) 函数，因为在我们的应用程序中，render 方法返回的是一个 React element 数组。
 
-在这一点上，有两件事需要理解。首先，当 React 经历子协调过程时，它会为从该方法返回的子 React 元素创建或更新 Fiber 节点。render 该 finishClassComponent 函数返回对当前 Fiber 节点的第一个子节点的引用。它将分配给 nextUnitOfWork 并稍后在工作循环中处理。其次，React 更新子组件的 props 作为父组件工作的一部分。为此，它使用从 render 方法返回的 React 元素中的数据。
+在这一点上，有两件重要的事需要理解。首先，当 React 处理子元素协调过程时，它会为 render 方法返回的子 React 元素创建或更新 Fiber 节点。finishClassComponent 函数返回当前 Fiber 节点的第一个子节点的引用。它将分配给 nextUnitOfWork 并在稍后的工作循环中处理。**其次，React 将更新子元素的 props 作为父组件工作的一部分(即子元素的 props 更新是在父组件中完成的)**。为此，它使用 render 方法返回的 React 元素中的数据。
 
-例如，span 在 React 为 Fiber 协调子节点之前，与元素对应的 Fiber 节点如下所示 ClickCounter
+例如，在 React 开始协调 ClickCounter Fiber 的子元素前，span 元素对应的 Fiber 节点如下所示：
 
 ```jsx
 {
@@ -296,7 +296,7 @@ export const Update = 0b00000000100;
 }
 ```
 
-如您所见， 和 中的 children 属性是。下面是从 for 元素返回的 React 元素的结构：memoizedPropspendingProps0renderspan
+正如你所看到的，memoizedProps 以及 pendingProps 中的 children 属性都是 0。下面是 render 方法返回的 span 元素的结构：
 
 ```jsx
 {
@@ -310,9 +310,9 @@ export const Update = 0b00000000100;
 }
 ```
 
-如您所见，Fiber 节点中的 props 和返回的 React 元素之间存在差异。在 [createWorkInProgress](https://github.com/facebook/react/blob/769b1f270e1251d9dbdce0fcbd9e92e502d059b8/packages/react-reconciler/src/ReactFiber.js#L326) 用于创建备用 Fiber 节点的函数内部，React 会将更新后的属性从 React 元素复制到 Fiber 节点。
+如你所见，Fiber 节点和返回的 React element 之间的 props 存在差异。 [createWorkInProgress](https://github.com/facebook/react/blob/769b1f270e1251d9dbdce0fcbd9e92e502d059b8/packages/react-reconciler/src/ReactFiber.js#L326)函数用于创建 alternate Fiber 节点，在函数内部 React 会将更新后的属性从 React 元素复制到 Fiber 节点。
 
-ClickCounter 因此，在 React 完成为组件协调子节点之后， spanFiber 节点将 pendingProps 更新。它们将匹配 spanReact 元素中的值：
+因此，在 React 完成 ClickCounter 组件的子元素协调之后，span 的 Fiber 节点的 pendingProps 属性更新完成。它们与 span element 的值匹配。
 
 ```jsx
 {
@@ -325,9 +325,9 @@ ClickCounter 因此，在 React 完成为组件协调子节点之后， spanFibe
 }
 ```
 
-稍后，当 React 为 spanFiber 节点执行工作时，它会将它们复制到 memoizedProps 并添加效果以更新 DOM。
+稍后，当 React 为 span Fiber 节点执行工作时，它会将 pendingProps 复制到 memoizedProps 并添加 effects 以更新 DOM。
 
-好吧，这就是 ReactClickCounter 在渲染阶段为 Fiber 节点执行的所有工作。由于按钮是组件的第一个子 ClickCounter 组件，它将被分配给 nextUnitOfWork 变量。没有什么可做的，所以 React 将移动到它的兄弟节点，即 spanFiber 节点。根据[这里描述](https://medium.com/react-in-depth/inside-fiber-in-depth-overview-of-the-new-reconciliation-algorithm-in-react-e1c04700ef6e)的算法，它发生在 completeUnitOfWork 函数中
+好吧，这就是 React 在 render 阶段为 ClickCounter Fiber 节点执行的所有工作。由于按钮是 ClickCounter 组件的第一个子节点，它将被分配给 nextUnitOfWork 变量。(按钮节点)没有什么可做的，所以 React 将移动到它的兄弟节点，即 span Fiber 节点。根据[这里描述](https://medium.com/react-in-depth/inside-fiber-in-depth-overview-of-the-new-reconciliation-algorithm-in-react-e1c04700ef6e)的算法，它发生在 completeUnitOfWork 函数中
 
 ### 处理 Span 光纤的更新
 
