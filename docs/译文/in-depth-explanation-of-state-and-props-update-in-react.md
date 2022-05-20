@@ -156,21 +156,21 @@ function updateClassComponent(current, workInProgress, Component, ...) {
 }
 ```
 
-### 处理 ClickCounter Fiber 的更新
+### 处理 ClickCounter Fiber 的更新(Processing updates for the ClickCounter Fiber)
 
-我们已经有了 ClickCounter 组件的实例，所以我们进入 [updateClassInstance](https://github.com/facebook/react/blob/6938dcaacbffb901df27782b7821836961a5b68d/packages/react-reconciler/src/ReactFiberClassComponent.js#L976). 这就是 React 为类组件执行大部分工作的地方。以下是函数中按执行顺序执行的最重要的操作：
+我们已经有了 ClickCounter 组件的实例，所以我们进入 [updateClassInstance](https://github.com/facebook/react/blob/6938dcaacbffb901df27782b7821836961a5b68d/packages/react-reconciler/src/ReactFiberClassComponent.js#L976)。 **这是 React 为类组件执行大部分工作的地方**。以下是函数中按执行顺序执行的最重要的操作：
 
-- 呼叫挂钩（已弃用）UNSAFE_componentWillReceiveProps()
-- 处理更新 updateQueue 并生成新状态
-- 用这个新状态调用 getDerivedStateFromProps 并得到结果
-- 调用 shouldComponentUpdate 以确保组件想要更新；
-  if false，跳过整个渲染过程，包括调用 render 这个组件及其子组件；否则继续更新
+- 调用 UNSAFE_componentWillReceiveProps()钩子(已弃用)
+- 处理 updateQueue 中的更新并生成新状态
+- 使用新状态调用 getDerivedStateFromProps 并得到结果
+- 调用 shouldComponentUpdate 判断组件是否需要更新：
+  - 如果是 false，跳过整个渲染过程，不再继续调用这个组件及其子组件的 render 方法
 - 调用 UNSAFE_componentWillUpdate（已弃用）
-- 添加一个效果来触发 componentDidUpdate 生命周期钩子
-  > componentDidUpdate 虽然在阶段添加了调用的效果 render，但该方法将在后续 commit 阶段执行
-- 更新 state 并 props 在组件实例上
+- 添加一个 effect 以便后续触发 componentDidUpdate 生命周期钩子
+  > 虽然在 render 阶段添加了触发 componentDidUpdate 调用的 effect，但 componentDidUpdate 方法在接下来的 commit 阶段才会被执行
+- 更新组件实例上的 state 和 props
 
-state 并且 props 应该在 render 调用方法之前在组件实例上更新，因为 render 方法输出通常取决于 stateand props。如果我们不这样做，它将每次返回相同的输出。
+组件实例上的 state 和 props 必须在调用 render 方法前更新。因为 render 方法的输出依赖于 state 和 props。如果我们不这样做，它将每次返回相同的结果。
 
 这是该函数的简化版本：
 
@@ -207,7 +207,7 @@ function updateClassInstance(current, workInProgress, ctor, newProps, ...) {
 }
 ```
 
-我在上面的代码片段中删除了一些辅助代码。例如，在调用生命周期方法或添加效果来触发它们之前，React 会检查组件是否使用 typeof 操作符实现了该方法。例如，下面是 ReactcomponentDidUpdate 在添加效果之前如何检查方法：
+我在上面的代码片段中删除了一些辅助代码。例如，在调用生命周期方法或者添加触发生命周期方法执行的 effect 之前，React 会使用 typeof 操作符检查组件是否实现了对应的生命周期方法。例如，在添加 effect 之前，React 会检查组件实例是否存在 componentDidUpdate 方法。
 
 ```jsx
 if (typeof instance.componentDidUpdate === "function") {
@@ -215,7 +215,7 @@ if (typeof instance.componentDidUpdate === "function") {
 }
 ```
 
-ClickCounter 好的，现在我们知道在渲染阶段对 Fiber 节点执行了哪些操作。现在让我们看看这些操作如何改变 Fiber 节点上的值。当 React 开始工作时，ClickCounter 组件的 Fiber 节点如下所示：
+好的，现在我们知道在 render 阶段 ClickCounter Fiber 节点都执行了哪些操作。现在让我们看看这些操作如何改变 Fiber 节点上的值。当 React 开始工作时，ClickCounter 组件的 Fiber 节点看起来像这样：
 
 ```jsx
 {
@@ -259,18 +259,19 @@ ClickCounter 好的，现在我们知道在渲染阶段对 Fiber 节点执行了
 }
 ```
 
-花点时间观察属性值的差异。
-应用更新后，属性的值 count 更改为 1 inmemoizedState 和 baseStatein updateQueue。React 还更新了 ClickCounter 组件实例中的状态。
+**花点时间观察属性值的差异。**
 
-此时，队列中不再有更新，因此 firstUpdate 也是如此 null。重要的是，我们的 effectTag 属性发生了变化。它不再 0 是，它的价值是 4。在二进制中 this is 100，这意味着设置了第三位，这正是 Update [副作用标签](https://github.com/facebook/react/blob/b87aabdfe1b7461e7331abb3601d9e6bb27544bc/packages/shared/ReactSideEffectTags.js)的位：
+更新完成后，fiber.memoizedState 以及 fiber.updateQueue.baseState 中的 count 属性都变成了 1。React 还更新了 ClickCounter 组件实例中的 state。
+
+此时，队列中不再有更新，因此 firstUpdate 被设置成 null。重要的是，我们的 effectTag 属性发生了变化。它不再是 0，它变成了 4。在二进制中就是 100，这意味着第三位设置成了 1，这正是 Update [副作用标签](https://github.com/facebook/react/blob/b87aabdfe1b7461e7331abb3601d9e6bb27544bc/packages/shared/ReactSideEffectTags.js)的位：
 
 ```jsx
 export const Update = 0b00000000100;
 ```
 
-总而言之，当在父 ClickCounterFiber 节点上工作时，React 会调用 pre-mutation 生命周期方法，更新状态并定义相关的副作用。
+总而言之，当在 ClickCounter Fiber (父)节点上工作时，React 会调用 pre-mutation 生命周期方法，更新状态并定义相关的副作用。
 
-### 为 ClickCounter Fiber 协调子项
+### 协调 ClickCounter Fiber 的子元素(Reconciling children for the ClickCounter Fiber)
 
 一旦完成，React 就会进入 [finishClassComponent](https://github.com/facebook/react/blob/340bfd9393e8173adca5380e6587e1ea1a23cefa/packages/react-reconciler/src/ReactFiberBeginWork.js#L355)。这是 React 调用 render 组件实例上的方法并将其差异算法应用于组件返回的子项的地方。文档中描述了高级概述。这是相关部分：
 
