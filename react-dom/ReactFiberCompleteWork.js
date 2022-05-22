@@ -1,5 +1,6 @@
 import { HostComponent } from "./ReactWorkTags";
 import {
+  appendChild,
   createInstance,
   finalizeInitialChildren,
   prepareUpdate,
@@ -18,9 +19,11 @@ export const completeWork = (current, workInProgress) => {
           newProps
         );
       } else {
+        // 没有current说明是第一次渲染
         // 创建真实的DOM节点
         const type = workInProgress.type;
         const instance = createInstance(type, newProps); // 创建真实dom
+        appendAllChildren(instance, workInProgress);
         workInProgress.stateNode = instance;
         // 给真实dom添加属性
         finalizeInitialChildren(instance, type, newProps);
@@ -30,6 +33,16 @@ export const completeWork = (current, workInProgress) => {
       break;
   }
 };
+
+function appendAllChildren(parent, workInProgress) {
+  let node = workInProgress.child;
+  while (node) {
+    if (node.tag === HostComponent) {
+      appendChild(parent, node.stateNode);
+    }
+    node = node.sibling;
+  }
+}
 
 function updateHostComponent(current, workInProgress, tag, newProps) {
   const oldProps = current.memoizedProps;

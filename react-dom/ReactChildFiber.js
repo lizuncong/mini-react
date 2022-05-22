@@ -37,7 +37,7 @@ function childReconciler(shouldTrackSideEffects) {
   }
   function reconcileSingleElement(returnFiber, currentFirstChild, element) {
     const key = element.key;
-    const child = currentFirstChild;
+    let child = currentFirstChild;
     while (child) {
       if (child.key === key) {
         if (child.type === element.type) {
@@ -73,6 +73,34 @@ function childReconciler(shouldTrackSideEffects) {
     return newFiber;
   }
 
+  function createChild(returnFiber, newChild) {
+    const created = createFiberFromElement(newChild);
+    created.return = returnFiber;
+    return created;
+  }
+  function reconcileChildrenArray(returnFiber, currentFirstChild, newChild) {
+    let resultingFirstChild = null;
+    let previousNewFiber = null;
+    let oldFiber = currentFirstChild;
+    let newIdx = 0;
+    if (!oldFiber) {
+      // 如果没有旧的fiber节点，则遍历newChild，为每个虚拟dom创建一个新的fiber
+      for (; newIdx < newChild.length; newIdx++) {
+        const newFiber = createChild(returnFiber, newChild[newIdx]);
+        // newFiber.flags = Placement;
+        if (!previousNewFiber) {
+          resultingFirstChild = newFiber;
+        } else {
+          previousNewFiber.sibling = newFiber;
+        }
+        previousNewFiber = newFiber;
+      }
+      return resultingFirstChild;
+    }
+
+    return resultingFirstChild;
+  }
+
   // currentFirstChild 旧的fiber节点 newChild新的虚拟DOM
   function reconcileChildFibers(returnFiber, currentFirstChild, newChild) {
     // 判断newChild是不是一个对象，是的话说明新的虚拟DOM只有一个React元素节点
@@ -84,6 +112,9 @@ function childReconciler(shouldTrackSideEffects) {
             reconcileSingleElement(returnFiber, currentFirstChild, newChild)
           );
       }
+    }
+    if (Array.isArray(newChild)) {
+      return reconcileChildrenArray(returnFiber, currentFirstChild, newChild);
     }
   }
 
