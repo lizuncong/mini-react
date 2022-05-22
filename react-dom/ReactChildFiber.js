@@ -1,42 +1,95 @@
-import { REACT_ELEMENT_TYPE } from '@shared/ReactSymbols' 
-import { createFiberFromElement } from './ReactFiber'
-import { Placement } from './ReactFiberFlags'
+import { REACT_ELEMENT_TYPE } from "@shared/ReactSymbols";
+import { createFiberFromElement, createWorkInProgress } from "./ReactFiber";
+import { Placement, Deletion } from "./ReactFiberFlags";
+
+// reconcile的场景
+// 第一种场景：key相同，类型相同，数量相同。那么复用老节点，只更新属性
+// <div key="title" id="title">title</div>
+// 更改后：
+// <div key="title" id="title2">title2</div>
 
 // shouldTrackSideEffects 是否要跟踪副作用
-function childReconciler(shouldTrackSideEffects){
-
-    function reconcileSingleElement(returnFiber, currentFirstChild, element){
-        const created = createFiberFromElement(element)
-        created.return = returnFiber
-        return created
+function childReconciler(shouldTrackSideEffects) {
+  // 如果不需要跟踪副作用，直接返回
+  function deleteChild(returnFiber, child) {
+    if (!shouldTrackSideEffects) return;
+    // 把自己这个副作用添加到父effectList中
+    // 删除类型的副作用一般放在父fiber副作用链表的前面，在进行DOM
+    // 操作时先执行删除操作
+    const lastEffect = returnFiber.lastEffect;
+    if (lastEffect) {
+      lastEffect.nextEffect = child;
+      returnFiber.lastEffect = child;
+    } else {
+      returnFiber.firstEffect = returnFiber.lastEffect = child;
     }
-    function placeSingleChild(newFiber){
-        // 如果当前需要跟踪副作用，并且当前这个新的fiber的旧fiber节点不存在
-        if(shouldTrackSideEffects && !newFiber.alternate){
-            // 那就给这个新fiber添加一个副作用，表示在未来提前阶段的DOM操作中会向真实DOM树
-            // 中添加此节点
-            newFiber.flags = Placement
+    child.nextEffect = null;
+    child.flags = Deletion;
+  }
+  function deleteRemainingChildren(returnFiber, child) {
+    while (child) {
+      deleteChild(returnFiber, child);
+      child = child.sibling;
+    }
+  }
+  function useFiber(oldFiber, pendingProps) {
+    return createWorkInProgress(oldFiber, pendingProps);
+  }
+  function reconcileSingleElement(returnFiber, currentFirstChild, element) {
+    const key = element.key;
+    const child = currentFirstChild;
+    while (child) {
+      if (child.key === key) {
+        if (child.type === element.type) {
+          // key相同，并且type相同，则可以复用旧的fiber节点，并将其余的子节点删除
+          deleteRemainingChildren(returnFiber, child.sibling);
+          const existing = useFiber(child, element.props);
+          existing.return = returnFiber;
+          return existing;
+        } else {
+          // 如果key相同，说明已经找到了这个元素，但是type不同不能复用
+          // 也没有必要继续比较剩下的节点了，因此将剩下的节点删除
+          deleteRemainingChildren(returnFiber, child);
+          break;
         }
-        return newFiber
+      } else {
+        // key不同，则删除旧的fiber节点
+        deleteChild(returnFiber, child);
+      }
+      child = child.sibling;
     }
 
-    // currentFirstChild 旧的fiber节点 newChild新的虚拟DOM
-    function reconcileChildFibers(returnFiber, currentFirstChild, newChild){
-        // 判断newChild是不是一个对象，是的话说明新的虚拟DOM只有一个React元素节点
-        const isObject = typeof newChild === 'object' && newChild
-        if(isObject){
-            switch(newChild.$$typeof){
-                case REACT_ELEMENT_TYPE:
-                    return placeSingleChild(reconcileSingleElement(returnFiber, currentFirstChild, newChild))
-            }
-        }
+    const created = createFiberFromElement(element);
+    created.return = returnFiber;
+    return created;
+  }
+  function placeSingleChild(newFiber) {
+    // 如果当前需要跟踪副作用，并且当前这个新的fiber的旧fiber节点不存在
+    if (shouldTrackSideEffects && !newFiber.alternate) {
+      // 那就给这个新fiber添加一个副作用，表示在未来提前阶段的DOM操作中会向真实DOM树
+      // 中添加此节点
+      newFiber.flags = Placement;
     }
+    return newFiber;
+  }
 
-    return reconcileChildFibers
+  // currentFirstChild 旧的fiber节点 newChild新的虚拟DOM
+  function reconcileChildFibers(returnFiber, currentFirstChild, newChild) {
+    // 判断newChild是不是一个对象，是的话说明新的虚拟DOM只有一个React元素节点
+    const isObject = typeof newChild === "object" && newChild;
+    if (isObject) {
+      switch (newChild.$$typeof) {
+        case REACT_ELEMENT_TYPE:
+          return placeSingleChild(
+            reconcileSingleElement(returnFiber, currentFirstChild, newChild)
+          );
+      }
+    }
+  }
+
+  return reconcileChildFibers;
 }
 
+export const reconcileChildFibers = childReconciler(true);
 
-
-export const reconcileChildFibers = childReconciler(true)
-
-export const mountChildFibers = childReconciler(false)
+export const mountChildFibers = childReconciler(false);
