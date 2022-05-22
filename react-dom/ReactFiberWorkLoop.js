@@ -2,7 +2,11 @@ import { createWorkInProgress } from "./ReactFiber";
 import { beginWork } from "./ReactFiberBeginWork";
 import { Placement, Update, Deletion } from "./ReactFiberFlags";
 import { completeWork } from "./ReactFiberCompleteWork";
-import { commitPlacement } from "../react-reconciler/ReactFiberCommitWork";
+import {
+  commitPlacement,
+  commitWork,
+  commitDeletion,
+} from "../react-reconciler/ReactFiberCommitWork";
 let workInProgressRoot = null; // 当前正在更新的根
 let workInProgress = null; // 当前正在更新的fiber节点
 

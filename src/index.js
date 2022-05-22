@@ -1,7 +1,7 @@
 import React from "../react";
 import ReactDOM from "../react-dom";
 
-const btn1 = document.createElement("btn");
+const btn1 = document.createElement("button");
 btn1.innerText = "key相同， 类型相同，数量相同";
 btn1.onclick = function () {
   console.log("更新后。。");

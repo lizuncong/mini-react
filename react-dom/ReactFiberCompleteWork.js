@@ -34,7 +34,7 @@ export const completeWork = (current, workInProgress) => {
 function updateHostComponent(current, workInProgress, tag, newProps) {
   const oldProps = current.memoizedProps;
   const instance = workInProgress.stateNode;
-  const updatePayload = prepareUpdate(instance, type, oldProps, newProps); // [key1, value1, key2, value2]
+  const updatePayload = prepareUpdate(instance, tag, oldProps, newProps); // [key1, value1, key2, value2]
   // 这里要注意updateQueue的差别
   // 在容器节点的fiber中，即 hostRootFiber.updateQueue 是一个环状链表：{ payload: element}
   // 在原生的html标签中，比如div，span，对应的fiber节点，他们的updateQueue是一个数组：updatePayload

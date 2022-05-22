@@ -23,7 +23,7 @@ export const diffProperties = (domElement, type, oldProps, newProps) => {
   let updatePayload = null; // 存放需要更新的键值，比如[key1, key1对应的value1，key2, key2对应的value2]
   let propKey;
   for (propKey in oldProps) {
-    if (oldProps.hasOwnProperty(propKey) && newProps.hasOwnProperty(propKey)) {
+    if (oldProps.hasOwnProperty(propKey) && !newProps.hasOwnProperty(propKey)) {
       (updatePayload = updatePayload || []).push(propKey, null);
     }
   }
@@ -41,4 +41,17 @@ export const diffProperties = (domElement, type, oldProps, newProps) => {
       }
     }
   }
+  return updatePayload;
 };
+
+export function updateProperties(domElement, updatePayload) {
+  for (let i = 0; i < updatePayload.length; i += 2) {
+    const propKey = updatePayload[i];
+    const propValue = updatePayload[i + 1];
+    if (propKey === "children") {
+      domElement.textContent = propValue;
+    } else {
+      domElement.setAttribute(propKey, propValue);
+    }
+  }
+}

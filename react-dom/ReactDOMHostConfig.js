@@ -26,3 +26,7 @@ export function appendChild(parentInstance, child) {
 export function prepareUpdate(domElement, type, oldProps, newProps) {
   return diffProperties(domElement, type, oldProps, newProps);
 }
+
+export function removeChild(parentInstance, child) {
+  parentInstance.removeChild(child);
+}
