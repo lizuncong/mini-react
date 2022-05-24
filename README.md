@@ -24,6 +24,7 @@
   - [React 中 state 和 props 更新的深入讲解](https://github.com/lizuncong/mini-react/blob/master/docs/%E8%AF%91%E6%96%87/in-depth-explanation-of-state-and-props-update-in-react.md)
   - [【TODO】React 是如何防止 XSS 攻击的，论$$typeof 的作用](https://github.com/lizuncong/mini-react/blob/master/docs/%E8%AF%91%E6%96%87/how_to_prevent_xss.md)
   - [【TODO】类组件和函数组件最大的区别](https://github.com/lizuncong/mini-react/blob/master/docs/%E8%AF%91%E6%96%87/function_component_class_component_difference.md)
+  - [【TODO】时间切片](https://github.com/lizuncong/mini-react/blob/master/docs/%E8%AF%91%E6%96%87/time_slicing.md)
 
 - React 合成事件原理
 
