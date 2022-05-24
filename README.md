@@ -23,7 +23,7 @@
   - [Fiber 内部：React 中新的协调算法的深入概述](https://github.com/lizuncong/mini-react/blob/master/docs/%E8%AF%91%E6%96%87/in-depth_overview_of_the_new_reconciliation_algorithm.md)
   - [React 中 state 和 props 更新的深入讲解](https://github.com/lizuncong/mini-react/blob/master/docs/%E8%AF%91%E6%96%87/in-depth-explanation-of-state-and-props-update-in-react.md)
   - [【TODO】React 是如何防止 XSS 攻击的，论$$typeof 的作用](https://github.com/lizuncong/mini-react/blob/master/docs/%E8%AF%91%E6%96%87/how_to_prevent_xss.md)
-  - [【TODO】类组件和函数组件最大的区别]((https://github.com/lizuncong/mini-react/blob/master/docs/%E8%AF%91%E6%96%87/function_component_class_component_difference.md)
+  - [【TODO】类组件和函数组件最大的区别](https://github.com/lizuncong/mini-react/blob/master/docs/%E8%AF%91%E6%96%87/function_component_class_component_difference.md)
 
 - 第一阶段 React 合成事件原理
   - [JavaScript 事件基础](https://github.com/lizuncong/mini-react/blob/master/docs/%E5%90%88%E6%88%90%E4%BA%8B%E4%BB%B6/JavaScript%E4%BA%8B%E4%BB%B6%E5%9F%BA%E7%A1%80.md)
