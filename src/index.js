@@ -88,32 +88,86 @@ document.body.appendChild(btn1);
 
 // 第3轮遍历
 // - 处理节点移动的情况
-const element = (
-  <ul key="ul">
-    <li key="A">A</li>
-    <li key="B" id="B">
-      B
-    </li>
-    <li key="C" id="C">
-      C
-    </li>
-  </ul>
-);
+// const element = (
+//   <ul key="ul">
+//     <li key="A">A</li>
+//     <li key="B" id="B">
+//       B
+//     </li>
+//     <li key="C" id="C">
+//       C
+//     </li>
+//   </ul>
+// );
 
-ReactDOM.render(element, document.getElementById("root"));
-btn1.innerText = "多个节点的数量和key相同，有的type不同";
-btn1.onclick = function () {
-  const element = (
-    <ul key="ul">
-      <li key="A">A</li>
-      <p key="B" id="B2">
-        B2
-      </p>
-      <li key="C" id="C2">
-        C2
-      </li>
-    </ul>
-  );
+// ReactDOM.render(element, document.getElementById("root"));
+// btn1.innerText = "多个节点的数量和key相同，有的type不同";
+// btn1.onclick = function () {
+//   const element = (
+//     <ul key="ul">
+//       <li key="A">A</li>
+//       <p key="B" id="B2">
+//         B2
+//       </p>
+//       <li key="C" id="C2">
+//         C2
+//       </li>
+//     </ul>
+//   );
 
-  ReactDOM.render(element, document.getElementById("root"));
-};
+//   ReactDOM.render(element, document.getElementById("root"));
+// };
+
+// 场景6：多个节点的类型和key全部相同，有新增元素
+// const element = (
+//   <ul key="ul">
+//     <li key="A">A</li>
+//     <li key="B" id="B">
+//       B
+//     </li>
+//     <li key="C">C</li>
+//   </ul>
+// );
+
+// ReactDOM.render(element, document.getElementById("root"));
+// btn1.innerText = "多个节点的数量和key相同，有的type不同";
+// btn1.onclick = function () {
+//   const element = (
+//     <ul key="ul">
+//       <li key="A">A</li>
+//       <p key="B" id="B2">
+//         B2
+//       </p>
+//       <li key="C">C2</li>
+//       <li key="D">D</li>
+//     </ul>
+//   );
+
+//   ReactDOM.render(element, document.getElementById("root"));
+// };
+
+// 场景7：多个节点的类型和key全部相同，有删除老元素
+// const element = (
+//   <ul key="ul">
+//     <li key="A">A</li>
+//     <li key="B" id="B">
+//       B
+//     </li>
+//     <li key="C">C</li>
+//   </ul>
+// );
+
+// ReactDOM.render(element, document.getElementById("root"));
+// btn1.innerText = "多个节点的类型和key全部相同，有删除老元素";
+// btn1.onclick = function () {
+//   const element = (
+//     <ul key="ul">
+//       <li key="A">A</li>
+//       <li key="B" id="B2">
+//         B2
+//       </li>
+//     </ul>
+//   );
+
+//   ReactDOM.render(element, document.getElementById("root"));
+// };

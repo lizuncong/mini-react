@@ -139,10 +139,16 @@ function childReconciler(shouldTrackSideEffects) {
       previousNewFiber = newFiber;
       oldFiber = nextOldFiber;
     }
+    if (newIdx === newChild.length) {
+      deleteRemainingChildren(returnFiber, oldFiber);
+      return resultingFirstChild;
+    }
+
     if (!oldFiber) {
       // 如果没有旧的fiber节点，则遍历newChild，为每个虚拟dom创建一个新的fiber
       for (; newIdx < newChild.length; newIdx++) {
         const newFiber = createChild(returnFiber, newChild[newIdx]);
+        placeChild(newFiber, newIdx);
         // newFiber.flags = Placement;
         if (!previousNewFiber) {
           resultingFirstChild = newFiber;
