@@ -22,7 +22,9 @@ export function finalizeInitialChildren(domElement, type, props) {
 export function appendChild(parentInstance, child) {
   parentInstance.appendChild(child);
 }
-
+export function insertBefore(parentInstance, child, before) {
+  parentInstance.insertBefore(child, before);
+}
 export function prepareUpdate(domElement, type, oldProps, newProps) {
   return diffProperties(domElement, type, oldProps, newProps);
 }

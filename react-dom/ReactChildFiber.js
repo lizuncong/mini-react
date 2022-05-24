@@ -1,6 +1,6 @@
 import { REACT_ELEMENT_TYPE } from "@shared/ReactSymbols";
 import { createFiberFromElement, createWorkInProgress } from "./ReactFiber";
-import { Placement, Deletion } from "./ReactFiberFlags";
+import { Placement, Deletion, Update } from "./ReactFiberFlags";
 
 // reconcile的场景
 // 第一种场景：key相同，类型相同，数量相同。那么复用老节点，只更新属性
@@ -78,11 +78,67 @@ function childReconciler(shouldTrackSideEffects) {
     created.return = returnFiber;
     return created;
   }
+
+  function updateElement(returnFiber, oldFiber, newChild) {
+    if (oldFiber) {
+      if (oldFiber.type === newChild.type) {
+        const existing = useFiber(oldFiber, newChild.props);
+        existing.return = returnFiber;
+        return existing;
+      }
+    }
+    const created = createFiberFromElement(newChild);
+    created.return = returnFiber;
+    return created;
+  }
+  function updateSlot(returnFiber, oldFiber, newChild) {
+    const key = oldFiber ? oldFiber.key : null;
+    if (newChild.key === key) {
+      return updateElement(returnFiber, oldFiber, newChild);
+    } else {
+      // 如果key不一样，直接结束返回null
+      return null;
+    }
+  }
+
+  function placeChild(newFiber, newIdx) {
+    newFiber.index = newIdx;
+    if (!shouldTrackSideEffects) {
+      return;
+    }
+    const current = newFiber.alternate;
+    if (current) {
+    } else {
+      newFiber.flags = Placement;
+    }
+  }
   function reconcileChildrenArray(returnFiber, currentFirstChild, newChild) {
     let resultingFirstChild = null;
     let previousNewFiber = null;
-    let oldFiber = currentFirstChild;
-    let newIdx = 0;
+    let oldFiber = currentFirstChild; // 当前的旧的fiber
+    let nextOldFiber = null; // 下一个旧的fiber节点
+    let newIdx = 0; // 新的虚拟DOM的索引
+    // 处理更新的情况
+    for (; oldFiber && newIdx < newChild.length; newIdx++) {
+      // 先缓存下一个旧的fiber节点
+      nextOldFiber = oldFiber.sibling;
+      // 试图复用旧的fiber节点
+      const newFiber = updateSlot(returnFiber, oldFiber, newChild[newIdx]);
+      // 如果key不一样，则跳出
+      if (!newFiber) break;
+      // 旧的fiber存在，但是新的fiber并没有复用旧的fiber
+      if (oldFiber && !newFiber.alternate) {
+        deleteChild(returnFiber, oldFiber);
+      }
+      placeChild(newFiber, newIdx); //其核心是给当前的newFiber添加一个副作用flags：新增
+      if (!previousNewFiber) {
+        resultingFirstChild = newFiber;
+      } else {
+        previousNewFiber.sibling = newFiber;
+      }
+      previousNewFiber = newFiber;
+      oldFiber = nextOldFiber;
+    }
     if (!oldFiber) {
       // 如果没有旧的fiber节点，则遍历newChild，为每个虚拟dom创建一个新的fiber
       for (; newIdx < newChild.length; newIdx++) {

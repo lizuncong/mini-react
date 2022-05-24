@@ -73,7 +73,7 @@ document.body.appendChild(btn1);
 //   ReactDOM.render(element, document.getElementById("root"));
 // };
 
-// 场景5：多个节点的数量、类型和key全部相同，只更新属性
+// 场景5：多个节点的数量和key相同，有的type不同
 // 第1轮遍历
 // - 如果key不同则直接结束本轮循环
 // - newChildren或oldFiber遍历完，结束本轮循环
@@ -94,12 +94,14 @@ const element = (
     <li key="B" id="B">
       B
     </li>
-    <li key="C">C</li>
+    <li key="C" id="C">
+      C
+    </li>
   </ul>
 );
 
 ReactDOM.render(element, document.getElementById("root"));
-btn1.innerText = "多个节点的数量、类型和key全部相同，只更新属性";
+btn1.innerText = "多个节点的数量和key相同，有的type不同";
 btn1.onclick = function () {
   const element = (
     <ul key="ul">
@@ -107,6 +109,9 @@ btn1.onclick = function () {
       <p key="B" id="B2">
         B2
       </p>
+      <li key="C" id="C2">
+        C2
+      </li>
     </ul>
   );
 
