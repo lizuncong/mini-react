@@ -171,3 +171,47 @@ document.body.appendChild(btn1);
 
 //   ReactDOM.render(element, document.getElementById("root"));
 // };
+
+// 场景8：多个节点数量不同、key不同
+// 第一轮比较A和A，相同可以复用，更新，然后比较B和C，key不同直接跳出第一个循环
+// 把剩下的oldFiber都放入existingChildren这个map中
+// 然后声明一个lastPlacedIndex变量，表示不需要移动的旧节点的索引，默认为0
+// 继续循环剩下的虚拟DOM节点，从C开始
+// 如果能在map中找到相同key，相同type的节点，则可以复用旧fiber节点，并把此旧的fiber从map中删除
+// 如果在map中找不到相同key相同type的节点则创建新的fiber节点
+// 如果是复用旧的fiber，则判断旧fiber的索引是否小于lastPlaceIndex
+// 如果小于lastPlaceIndex则需要移动旧的fiber，lastPlaceIndex不变
+// 如果大于lastPlaceIndex则不需要移动旧的fiber，更新lastPlaceIndex为旧fiber的index
+// 虚拟DOM循环结束后把map中所有的剩下的fiber全部标记为删除
+// 删除 li#F，移动li#B，添加li#G，移动li#D
+const element = (
+  <ul key="ul">
+    <li key="A">A</li>
+    <li key="B" id="b">
+      B
+    </li>
+    <li key="C">C</li>
+    <li key="D">D</li>
+    <li key="E">E</li>
+    <li key="F">F</li>
+  </ul>
+);
+
+ReactDOM.render(element, document.getElementById("root"));
+btn1.innerText = "多个节点数量不同、key不同";
+btn1.onclick = function () {
+  const element = (
+    <ul key="ul">
+      <li key="A">A</li>
+      <li key="C">C</li>
+      <li key="E">E</li>
+      <li key="B" id="b2">
+        B2
+      </li>
+      <li key="G">G</li>
+      <li key="D">D</li>
+    </ul>
+  );
+
+  ReactDOM.render(element, document.getElementById("root"));
+};

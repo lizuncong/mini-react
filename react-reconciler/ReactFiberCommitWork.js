@@ -6,7 +6,7 @@ import {
 } from "../react-dom/ReactDOMHostConfig";
 import { HostRoot } from "../react-dom/ReactWorkTags";
 import { updateProperties } from "../react-dom/ReactDOMComponent";
-import { Placement } from "../react-dom";
+import { Placement } from "../react-dom/ReactFiberFlags";
 function getParentStateNode(fiber) {
   const parent = fiber.return;
   do {

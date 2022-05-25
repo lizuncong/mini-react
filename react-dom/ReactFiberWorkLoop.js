@@ -1,6 +1,11 @@
 import { createWorkInProgress } from "./ReactFiber";
 import { beginWork } from "./ReactFiberBeginWork";
-import { Placement, Update, Deletion } from "./ReactFiberFlags";
+import {
+  Placement,
+  Update,
+  Deletion,
+  PlacementAndUpdate,
+} from "./ReactFiberFlags";
 import { completeWork } from "./ReactFiberCompleteWork";
 import {
   commitPlacement,
@@ -46,6 +51,10 @@ function commitMutationEffects(root) {
     const current = nextEffect.alternate;
     if (flags === Placement) {
       commitPlacement(nextEffect);
+    } else if (flags === PlacementAndUpdate) {
+      commitPlacement(nextEffect);
+      nextEffect.flags = Update;
+      commitWork(current, nextEffect);
     } else if (flags === Update) {
       commitWork(current, nextEffect);
     } else if (flags === Deletion) {
