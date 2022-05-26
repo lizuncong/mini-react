@@ -25,6 +25,7 @@
   - [【TODO】React 是如何防止 XSS 攻击的，论$$typeof 的作用](https://github.com/lizuncong/mini-react/blob/master/docs/%E8%AF%91%E6%96%87/how_to_prevent_xss.md)
   - [【TODO】类组件和函数组件最大的区别](https://github.com/lizuncong/mini-react/blob/master/docs/%E8%AF%91%E6%96%87/function_component_class_component_difference.md)
   - [【TODO】时间切片](https://github.com/lizuncong/mini-react/blob/master/docs/%E8%AF%91%E6%96%87/time_slicing.md)
+  - [【TODO】React 组件名称首字母为啥一定要大写](https://github.com/lizuncong/mini-react/blob/master/docs/%E8%AF%91%E6%96%87/component-identifiers-must-be-capitalized-in-react.md)
 
 - React 合成事件原理
 
