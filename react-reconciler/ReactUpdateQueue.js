@@ -78,6 +78,13 @@
 // 以上注释摘抄自 react 源码源文件，需要仔细品味
 
 
+
+export const UpdateState = 0;
+export const ReplaceState = 1;
+export const ForceUpdate = 2;
+export const CaptureUpdate = 3;
+
+
 export function initializeUpdateQueue(fiber) {
     const queue = {
         baseState: fiber.memoizedState,
@@ -89,4 +96,17 @@ export function initializeUpdateQueue(fiber) {
         effects: null
     };
     fiber.updateQueue = queue;
+}
+
+
+export createUpdate(eventTime, lane) {
+    var update = {
+        eventTime: eventTime,
+        lane: lane,
+        tag: UpdateState,
+        payload: null,
+        callback: null,
+        next: null
+    };
+    return update;
 }

@@ -1,6 +1,6 @@
 
 import { createLegacyRoot } from './ReactDOMRoot'
-
+import { updateContainer } from '@react-reconciler/ReactFiberReconciler.js'
 
 function legacyCreateRootFromDOMContainer(container, forceHydrate) {
     return createLegacyRoot(container, undefined);
