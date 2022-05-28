@@ -8,3 +8,6 @@ export default function render(element, container) {
   }
   updateContainer(element, fiberRoot); // 更新根容器
 }
+
+
+// TODO: 需要删除

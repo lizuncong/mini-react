@@ -2,8 +2,8 @@
 /**
  * 初始化更新队列，更新队列其实就是一个环状列表
  * 所有的fiber都会将待更新内容放在更新队列中
- * */ 
-export function initializeUpdateQueue(fiber){
+ * */
+export function initializeUpdateQueue(fiber) {
     const queue = {
         shared: {
             pending: null
@@ -14,7 +14,7 @@ export function initializeUpdateQueue(fiber){
 }
 
 
-export function createUpdate(){
+export function createUpdate() {
     return {}
 }
 
@@ -22,13 +22,13 @@ export function createUpdate(){
  * 向当前的fiber的更新队列中添加一个更新
 */
 
-export function enqueueUpdate(fiber, update){
+export function enqueueUpdate(fiber, update) {
     const updateQueue = fiber.updateQueue
     const sharedQueue = updateQueue.shared
     // pending永远指向最新的更新，最新的更新的next又指向第一个更新，
     // 因此pending.next永远指向第一个更新
     const pending = sharedQueue.pending
-    if(!pending){
+    if (!pending) {
         update.next = update
     } else {
         update.next = pending.next
@@ -50,3 +50,5 @@ export function enqueueUpdate(fiber, update){
 // const update2 = createUpdate()
 // update2.payload = { number: 2 }
 // enqueueUpdate(fiber, update2)
+
+// TODO: 需要删除

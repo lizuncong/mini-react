@@ -6,3 +6,6 @@ export const PlacementAndUpdate = 0b000000000000000110; // 移动
 export const Deletion = 0b000000000000001000; // 删除
 
 // 当flags=6，说明既要插入新位置，又要更新，这是针对移动节点的情况
+
+
+// TODO: 需要删除

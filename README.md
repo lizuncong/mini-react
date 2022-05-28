@@ -26,7 +26,7 @@
   - [【TODO】类组件和函数组件最大的区别](https://github.com/lizuncong/mini-react/blob/master/docs/%E8%AF%91%E6%96%87/function_component_class_component_difference.md)
   - [【TODO】时间切片](https://github.com/lizuncong/mini-react/blob/master/docs/%E8%AF%91%E6%96%87/time_slicing.md)
   - [【TODO】组件名称首字母为啥一定要大写](https://github.com/lizuncong/mini-react/blob/master/docs/%E8%AF%91%E6%96%87/component-identifiers-must-be-capitalized-in-react.md)
-  - [【TODO】render 和 commit 阶段主流程涉及的主要函数](https://github.com/lizuncong/mini-react/blob/master/docs/render%E5%92%8Ccommit%E9%98%B6%E6%AE%B5%E4%B8%BB%E8%A6%81%E5%87%BD%E6%95%B0.md)
+  - [【TODO】render 和 commit 阶段主流程涉及的主要函数](https://github.com/lizuncong/mini-react/blob/master/docs/render/render%E5%92%8Ccommit%E9%98%B6%E6%AE%B5%E4%B8%BB%E8%A6%81%E5%87%BD%E6%95%B0.md)
 
 - React 合成事件原理
 
@@ -51,6 +51,8 @@
 - Reconciler
 
   - [Dom Diff 算法简介](https://github.com/lizuncong/mini-react/blob/master/docs/reconciler/dom-diff%E7%AE%97%E6%B3%95%E7%AE%80%E4%BB%8B.md)
+  - [【TODO】构建副作用链表算法](https://github.com/lizuncong/mini-react/blob/master/docs/reconciler/)
+  - [【TODO】Dom diff 所有场景介绍](https://github.com/lizuncong/mini-react/blob/master/docs/reconciler/)
 
 - Fiber
   - [【TODO】updateQueue 在不同类型的 Fiber 节点的含义](https://github.com/lizuncong/mini-react/blob/master/docs/fiber/fiber.updateQueue.md)

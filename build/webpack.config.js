@@ -18,6 +18,7 @@ module.exports = {
       '@shared': path.resolve(__dirname, '../shared'),
       '@react': path.resolve(__dirname, '../react'),
       '@react-dom': path.resolve(__dirname, '../react-dom'),
+      '@react-reconciler': path.resolve(__dirname, '../react-reconciler'),
     }
   },
   module: {
@@ -25,7 +26,7 @@ module.exports = {
       {
         test: /\.jsx?$/,
         exclude: [
-            path.resolve(__dirname, '../node_modules'),
+          path.resolve(__dirname, '../node_modules'),
         ],
         use: [
           {
@@ -38,7 +39,7 @@ module.exports = {
                   '@babel/preset-env',
                   {
                     useBuiltIns: 'usage',
-                    corejs:  3 ,
+                    corejs: 3,
                     targets: {
                       chrome: '95'
                     }
@@ -47,7 +48,7 @@ module.exports = {
                 '@babel/preset-react',
               ],
               plugins: [
-                  '@babel/plugin-proposal-class-properties'
+                '@babel/plugin-proposal-class-properties'
               ]
             },
           },

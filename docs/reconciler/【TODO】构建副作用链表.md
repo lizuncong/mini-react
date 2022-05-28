@@ -1,3 +1,4 @@
+```js
 function collectEffectList(returnFiber, completedWork) {
   if (!returnFiber.firstEffect) {
     returnFiber.firstEffect = completedWork.firstEffect;
@@ -30,3 +31,4 @@ const fiberC = { key: "C", flags: Placement };
 collectEffectList(fiberA, fiberB);
 collectEffectList(fiberA, fiberC);
 collectEffectList(rootFIber, fiberA);
+```

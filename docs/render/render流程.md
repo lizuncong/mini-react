@@ -1,0 +1,3 @@
+- render
+  - legacyRenderSubtreeIntoContainer
+    - legacyCreateRootFromDOMContainer

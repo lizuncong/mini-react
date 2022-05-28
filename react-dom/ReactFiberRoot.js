@@ -1,6 +1,6 @@
 import { createHostRootFiber } from './ReactFiber'
 import { initializeUpdateQueue } from './ReactUpdateQueue'
-export function createFiberRoot(containerInfo){
+export function createFiberRoot(containerInfo) {
     const fiberRoot = {
         containerInfo
     }
@@ -14,3 +14,5 @@ export function createFiberRoot(containerInfo){
 
     return fiberRoot
 }
+
+// TODO: 需要删除
