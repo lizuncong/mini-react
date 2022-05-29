@@ -98,6 +98,22 @@ export function initializeUpdateQueue(fiber) {
     fiber.updateQueue = queue;
 }
 
+export function cloneUpdateQueue(current, workInProgress) {
+    // Clone the update queue from current. Unless it's already a clone.
+    const queue = workInProgress.updateQueue;
+    const currentQueue = current.updateQueue;
+
+    if (queue === currentQueue) {
+        const clone = {
+            baseState: currentQueue.baseState,
+            firstBaseUpdate: currentQueue.firstBaseUpdate,
+            lastBaseUpdate: currentQueue.lastBaseUpdate,
+            shared: currentQueue.shared,
+            effects: currentQueue.effects
+        };
+        workInProgress.updateQueue = clone;
+    }
+}
 
 export function createUpdate(eventTime, lane) {
     const update = {
@@ -131,4 +147,21 @@ export function enqueueUpdate(fiber, update) {
     }
 
     sharedQueue.pending = update;
+}
+
+
+// TODO processUpdateQueue需要细品
+export function processUpdateQueue(workInProgress, props, instance, renderLanes) {
+    const queue = workInProgress.updateQueue;
+    const pendingQueue = queue.shared.pending;
+    if (pendingQueue !== null) {
+        queue.shared.pending = null; // 新旧节点的pending指针都被重置成了null
+        // The pending queue is circular. Disconnect the pointer between first
+        // and last so that it's non-circular.
+        const lastPendingUpdate = pendingQueue;
+        const firstPendingUpdate = lastPendingUpdate.next;
+        lastPendingUpdate.next = null;
+        // Append pending updates to base queue
+
+    }
 }

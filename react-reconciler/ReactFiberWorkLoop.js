@@ -9,6 +9,7 @@ const LegacyUnbatchedContext = /*       */ 0b0001000;
 const RenderContext = /*                */ 0b0010000;
 const CommitContext = /*                */ 0b0100000;
 export const RetryAfterError = /*       */ 0b1000000;
+let subtreeRenderLanes = 0;
 
 let executionContext = NoContext;
 
@@ -71,19 +72,19 @@ function renderRootSync(root, lanes) {
     prepareFreshStack(root, lanes);
     // 注意这个while循环，workLoopSync正常执行完才会退出循环。如果workLoopSync里面报错被捕获
     // 则处理错误完成还会继续执行workLoopSync
-    do {
-        try {
-            workLoopSync();
-            break;
-        } catch (thrownValue) {
-            console.log('thrownValue....', thrownValue)
-        }
-    } while (true);
+    // do {
+    try {
+        workLoopSync();
+        // break;
+    } catch (thrownValue) {
+        console.log('thrownValue....', thrownValue)
+    }
+    // } while (true);
 }
 function workLoopSync() {
-    // while (workInProgress !== null) {
-    //     performUnitOfWork(workInProgress);
-    // }
+    while (workInProgress !== null) {
+        performUnitOfWork(workInProgress);
+    }
 }
 function prepareFreshStack(root, lanes) {
     root.finishedWork = null;
@@ -93,5 +94,25 @@ function prepareFreshStack(root, lanes) {
 }
 
 function performUnitOfWork(unitOfWork) {
-
+    // The current, flushed, state of this fiber is the alternate. Ideally
+    // nothing should rely on this, but relying on it here means that we don't
+    // need an additional field on the work in progress.
+    let current = unitOfWork.alternate;
+    let next;
+    next = beginWork(current, unitOfWork, subtreeRenderLanes);
+    workInProgress = null
 }
+
+// function performUnitOfWork(unitOfWork) {
+//     const current = unitOfWork.alternate;
+//     // beginWork返回下一个工作单元
+//     const next = beginWork(current, unitOfWork);
+//     // 在beginWork后，需要把新属性同步到老属性上
+//     unitOfWork.memoizedProps = unitOfWork.pendingProps;
+//     if (next) {
+//         workInProgress = next;
+//     } else {
+//         // 如果当前fiber没有子fiber，说明当前fiber可以完成了
+//         completeUnitOfWork(unitOfWork);
+//     }
+// }
