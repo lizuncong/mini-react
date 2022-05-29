@@ -99,8 +99,8 @@ export function initializeUpdateQueue(fiber) {
 }
 
 
-export createUpdate(eventTime, lane) {
-    var update = {
+export function createUpdate(eventTime, lane) {
+    const update = {
         eventTime: eventTime,
         lane: lane,
         tag: UpdateState,
@@ -109,4 +109,26 @@ export createUpdate(eventTime, lane) {
         next: null
     };
     return update;
+}
+
+export function enqueueUpdate(fiber, update) {
+    const updateQueue = fiber.updateQueue;
+
+    if (updateQueue === null) {
+        // Only occurs if the fiber has been unmounted.
+        return;
+    }
+
+    const sharedQueue = updateQueue.shared;
+    const pending = sharedQueue.pending;
+
+    if (pending === null) {
+        // This is the first update. Create a circular list.
+        update.next = update;
+    } else {
+        update.next = pending.next;
+        pending.next = update;
+    }
+
+    sharedQueue.pending = update;
 }

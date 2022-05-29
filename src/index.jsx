@@ -1,5 +1,6 @@
 import React, { Component, PureComponent } from "react";
 import { render } from "@react-dom/client/ReactDOM";
+// import { render } from "react-dom";
 class ClickCounter extends React.Component {
   constructor(props) {
     super(props);
@@ -24,5 +25,6 @@ class ClickCounter extends React.Component {
     ];
   }
 }
+// debugger;
 
 render(<ClickCounter />, document.getElementById("root"));
