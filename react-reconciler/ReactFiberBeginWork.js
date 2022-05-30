@@ -1,6 +1,25 @@
 import { renderWithHooks } from './ReactFiberHooks'
 import { HostRoot, HostComponent } from './ReactWorkTags'
 import { cloneUpdateQueue, processUpdateQueue } from './ReactUpdateQueue'
+import {
+    mountChildFibers,
+    reconcileChildFibers,
+} from './ReactChildFiber';
+
+function reconcileChildren(current, workInProgress, nextChildren, renderLanes) {
+    if (current === null) {
+        /// 初次渲染不需要追踪副作用
+        workInProgress.child = mountChildFibers(workInProgress, null, nextChildren, renderLanes);
+    } else {
+        // If the current child is the same as the work in progress, it means that
+        // we haven't yet started any work on these children. Therefore, we use
+        // the clone algorithm to create a copy of all the current children.
+        // If we had any progressed work already, that is invalid at this point so
+        // let's throw it out.
+        workInProgress.child = reconcileChildFibers(workInProgress, current.child, nextChildren, renderLanes);
+    }
+}
+
 export function beginWork(current, workInProgress, renderLanes) {
     switch (workInProgress.tag) {
         case HostRoot:
@@ -41,12 +60,4 @@ function updateHostRoot(current, workInProgress, renderLanes) {
 //     // 根据儿子的或者说上面返回的虚拟dom，构建Fiber子树
 //     reconcileChildren(null, workInProgress, children)
 //     return workInProgress.child; // null
-// }
-
-// function reconcileChildren(current, workInProgress, children) {
-//     const childFiber = {
-//         tag: HostComponent,
-//         type: children.type
-//     }
-//     workInProgress.child = childFiber
 // }

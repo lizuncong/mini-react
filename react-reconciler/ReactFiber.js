@@ -1,6 +1,6 @@
 import { ConcurrentRoot, BlockingRoot } from './ReactRootTags'
 import { ConcurrentMode, BlockingMode, StrictMode, NoMode } from './ReactTypeOfMode'
-import { HostRoot } from './ReactWorkTags'
+import { HostRoot, HostComponent, IndeterminateComponent, ClassComponent } from './ReactWorkTags'
 import { NoFlags } from './ReactFiberFlags'
 function FiberNode(tag, pendingProps, key, mode) {
     // Instance
@@ -33,6 +33,30 @@ function FiberNode(tag, pendingProps, key, mode) {
 function createFiber(tag, pendingProps, key, mode) {
     return new FiberNode(tag, pendingProps, key, mode);
 };
+
+function shouldConstruct(Component) {
+    const prototype = Component.prototype;
+    return !!(prototype && prototype.isReactComponent);
+}
+
+function createFiberFromTypeAndProps(type, key, pendingProps, owner, mode, lanes) {
+    let fiberTag = IndeterminateComponent;
+    // 这里只判断了类组件，没有判断函数组件
+    if (typeof type === 'function') {
+        if (shouldConstruct(type)) {
+            fiberTag = ClassComponent;
+        }
+    } else if (typeof type === 'string') {
+        fiberTag = HostComponent;
+    }
+    const fiber = createFiber(fiberTag, pendingProps, key, mode);
+
+    fiber.elementType = type;
+    fiber.type = type;
+    fiber.lanes = lanes;
+
+    return fiber;
+}
 
 export function createHostRootFiber(tag) {
     let mode;
@@ -86,4 +110,13 @@ export function createWorkInProgress(current, pendingProps, debugForMe) {
 
     workInProgress.__DEBUG_RENDER_COUNT__ = debugForMe
     return workInProgress
+}
+
+
+export function createFiberFromElement(element, mode, lanes) {
+    const { key, type, props: pendingProps } = element
+    const owner = null
+    const fiber = createFiberFromTypeAndProps(type, key, pendingProps, owner, mode, lanes);
+
+    return fiber
 }
