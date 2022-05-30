@@ -73,12 +73,12 @@ function renderRootSync(root, lanes) {
     // 注意这个while循环，workLoopSync正常执行完才会退出循环。如果workLoopSync里面报错被捕获
     // 则处理错误完成还会继续执行workLoopSync
     // do {
-    try {
-        workLoopSync();
-        // break;
-    } catch (thrownValue) {
-        console.log('thrownValue....', thrownValue)
-    }
+    // try {
+    workLoopSync();
+    // break;
+    // } catch (thrownValue) {
+    //     console.log('thrownValue....', thrownValue)
+    // }
     // } while (true);
 }
 function workLoopSync() {

@@ -153,15 +153,73 @@ export function enqueueUpdate(fiber, update) {
 // TODO processUpdateQueue需要细品
 export function processUpdateQueue(workInProgress, props, instance, renderLanes) {
     const queue = workInProgress.updateQueue;
+    let firstBaseUpdate = queue.firstBaseUpdate
+    let lastBaseUpdate = queue.lastBaseUpdate
     const pendingQueue = queue.shared.pending;
     if (pendingQueue !== null) {
         queue.shared.pending = null; // 新旧节点的pending指针都被重置成了null
-        // The pending queue is circular. Disconnect the pointer between first
-        // and last so that it's non-circular.
         const lastPendingUpdate = pendingQueue;
         const firstPendingUpdate = lastPendingUpdate.next;
-        lastPendingUpdate.next = null;
-        // Append pending updates to base queue
+        lastPendingUpdate.next = null; // Append pending updates to base queue
 
+        if (lastBaseUpdate === null) {
+            firstBaseUpdate = firstPendingUpdate;
+        } else {
+            lastBaseUpdate.next = firstPendingUpdate;
+        }
+
+        lastBaseUpdate = lastPendingUpdate;
+        const current = workInProgress.alternate;
+
+        if (current !== null) {
+            // This is always non-null on a ClassComponent or HostRoot
+            const currentQueue = current.updateQueue;
+            const currentLastBaseUpdate = currentQueue.lastBaseUpdate;
+
+            if (currentLastBaseUpdate !== lastBaseUpdate) {
+                if (currentLastBaseUpdate === null) {
+                    currentQueue.firstBaseUpdate = firstPendingUpdate;
+                } else {
+                    currentLastBaseUpdate.next = firstPendingUpdate;
+                }
+
+                currentQueue.lastBaseUpdate = lastPendingUpdate;
+            }
+        }
+    }
+
+    if (firstBaseUpdate !== null) {
+        // Iterate through the list of updates to compute the result.
+        let newState = queue.baseState;
+        let newBaseState = null;
+        let newFirstBaseUpdate = null;
+        let newLastBaseUpdate = null;
+        let update = firstBaseUpdate;
+
+        do {
+            const _payload = update.payload;
+            let partialState;
+            if (typeof _payload === 'function') {
+                partialState = _payload.call(instance, prevState, nextProps);
+            } else {
+                // Partial state object
+                partialState = _payload;
+            }
+            if (partialState !== null && partialState !== undefined) {
+                // Null and undefined are treated as no-ops.
+                newState = { ...newState, ...partialState };
+            }
+
+            update = update.next;
+        } while (update);
+
+        if (newLastBaseUpdate === null) {
+            newBaseState = newState;
+        }
+
+        queue.baseState = newBaseState;
+        queue.firstBaseUpdate = newFirstBaseUpdate;
+        queue.lastBaseUpdate = newLastBaseUpdate;
+        workInProgress.memoizedState = newState;
     }
 }

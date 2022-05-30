@@ -18,9 +18,11 @@ function updateHostRoot(current, workInProgress, renderLanes) {
     const prevState = workInProgress.memoizedState;
     cloneUpdateQueue(current, workInProgress)
     processUpdateQueue(workInProgress, nextProps, null, renderLanes);
-    // const nextChildren = updateQueue.shared.pending.payload.element;
-    // reconcileChildren(current, workInProgress, nextChildren);
-    // return workInProgress.child;
+    const nextState = workInProgress.memoizedState;
+    const nextChildren = nextState.element
+    const root = workInProgress.stateNode
+    reconcileChildren(current, workInProgress, nextChildren, renderLanes);
+    return workInProgress.child;
 }
 
 // function updateFunctionComponent(current, workInProgress, Component) {
