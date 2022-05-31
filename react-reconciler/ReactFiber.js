@@ -6,9 +6,9 @@ function FiberNode(tag, pendingProps, key, mode) {
     // Instance
     this.tag = tag; // tag所有可能的取值都在 reactWorkTags.js 文件中
     this.key = key;
-    this.elementType = null;
+    this.elementType = null; // 一般情况下 elementType和type相同
     this.type = null;
-    this.stateNode = null; // Fiber
+    this.stateNode = null; // 对于类组件，stateNode保存的是类的实例
 
     this.return = null;
     this.child = null;

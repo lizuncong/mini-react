@@ -82,7 +82,10 @@ function renderRootSync(root, lanes) {
     // } while (true);
 }
 function workLoopSync() {
-    while (workInProgress !== null) {
+    // while (workInProgress !== null) {
+    //     performUnitOfWork(workInProgress);
+    // }
+    while (workInProgress) {
         performUnitOfWork(workInProgress);
     }
 }
@@ -100,8 +103,6 @@ function performUnitOfWork(unitOfWork) {
     let current = unitOfWork.alternate;
     let next;
     next = beginWork(current, unitOfWork, subtreeRenderLanes);
-    console.log('performUnitOfWork.next....', next)
-
     unitOfWork.memoizedProps = unitOfWork.pendingProps;
     if (next === null) {
         // If this doesn't spawn new work, complete the current work.

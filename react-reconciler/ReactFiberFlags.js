@@ -1,7 +1,7 @@
 
 // Don't change these two values. They're used by React Dev Tools.
 export const NoFlags = /*                      */ 0b000000000000000000; // 0
-// export const PerformedWork = /*                */ 0b000000000000000001; // 1
+export const PerformedWork = /*                */ 0b000000000000000001; // 1
 
 // // You can change the rest (and add more).
 export const Placement = /*                    */ 0b000000000000000010; // 2

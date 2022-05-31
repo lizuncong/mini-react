@@ -17,7 +17,7 @@ const classComponentUpdater = {
         scheduleUpdateOnFiber(fiber, lane, eventTime);
     },
 }
-function mountClassInstance(workInProgress, ctor, newProps, renderLanes) {
+export function mountClassInstance(workInProgress, ctor, newProps, renderLanes) {
     const instance = workInProgress.stateNode;
     instance.props = newProps;
     instance.state = workInProgress.memoizedState;

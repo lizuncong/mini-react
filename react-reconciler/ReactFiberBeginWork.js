@@ -1,20 +1,38 @@
 import { renderWithHooks } from './ReactFiberHooks'
+import { PerformedWork } from './ReactFiberFlags'
 import { HostRoot, HostComponent, ClassComponent } from './ReactWorkTags'
 import { cloneUpdateQueue, processUpdateQueue } from './ReactUpdateQueue'
 import {
     mountChildFibers,
     reconcileChildFibers,
 } from './ReactChildFiber';
-import { constructClassInstance } from './ReactFiberClassComponent'
+import ReactSharedInternals from '@shared/ReactSharedInternals';
+import { constructClassInstance, mountClassInstance } from './ReactFiberClassComponent'
+
+const ReactCurrentOwner = ReactSharedInternals.ReactCurrentOwner;
+
+
 function updateClassComponent(current, workInProgress, Component, nextProps, renderLanes) {
+    const hasContext = false
     const instance = workInProgress.stateNode;
     let shouldUpdate
-    if(instance === null){
+    if (instance === null) {
         constructClassInstance(workInProgress, Component, nextProps);
         mountClassInstance(workInProgress, Component, nextProps, renderLanes);
         shouldUpdate = true;
     }
     return finishClassComponent(current, workInProgress, Component, shouldUpdate, hasContext, renderLanes);
+}
+function finishClassComponent(current, workInProgress, Component, shouldUpdate, hasContext, renderLanes) {
+    const instance = workInProgress.stateNode; 
+    // Rerender
+    ReactCurrentOwner.current = workInProgress;
+    let nextChildren
+    nextChildren = instance.render();
+    workInProgress.flags |= PerformedWork; // PerformedWork 用于 React Dev Tools
+    reconcileChildren(current, workInProgress, nextChildren, renderLanes);
+    workInProgress.memoizedState = instance.state; 
+    return workInProgress.child;
 }
 function updateHostRoot(current, workInProgress, renderLanes) {
     const updateQueue = workInProgress.updateQueue;

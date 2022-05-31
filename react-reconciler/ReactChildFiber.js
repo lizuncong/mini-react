@@ -12,6 +12,63 @@ function ChildReconciler(shouldTrackSideEffects) {
         }
         return newFiber;
     }
+    function createChild(returnFiber, newChild, lanes) {
+        const created = createFiberFromElement(newChild, returnFiber.mode, lanes);
+        created.return = returnFiber;
+        return created;
+    }
+    function placeChild(newFiber, lastPlaceIndex, newIdx) {
+        newFiber.index = newIdx;
+        if (!shouldTrackSideEffects) {
+            return lastPlaceIndex;
+        }
+        // const current = newFiber.alternate;
+        // if (current) {
+        //     const oldIndex = current.index;
+        //     // 如果旧fiber对应的真实DOM挂载的索引比lastPlaceIndex小
+        //     if (oldIndex < lastPlaceIndex) {
+        //         // 旧fiber对应的真实dom就需要移动了
+        //         newFiber.flags |= Placement;
+        //         return lastPlaceIndex;
+        //     } else {
+        //         // 否则，不需要移动，并且把旧fiber的原来的挂载索引返回成为新的lastPlaceIndex
+        //         return oldIndex;
+        //     }
+        // } else {
+        //     newFiber.flags = Placement;
+        //     return lastPlaceIndex;
+        // }
+    }
+    function reconcileChildrenArray(returnFiber, currentFirstChild, newChildren, lanes) {
+        let resultingFirstChild = null;
+        let previousNewFiber = null;
+        let oldFiber = currentFirstChild;
+        let lastPlacedIndex = 0;
+        let newIdx = 0;
+        let nextOldFiber = null;
+        if (oldFiber === null) {
+            // If we don't have any more existing children we can choose a fast path
+            // since the rest will all be insertions.
+            for (; newIdx < newChildren.length; newIdx++) {
+                const _newFiber = createChild(returnFiber, newChildren[newIdx], lanes);
+
+                if (_newFiber === null) {
+                    continue;
+                }
+                lastPlacedIndex = placeChild(_newFiber, lastPlacedIndex, newIdx);
+
+                if (previousNewFiber === null) {
+                    // TODO: Move out of the loop. This only happens for the first run.
+                    resultingFirstChild = _newFiber;
+                } else {
+                    previousNewFiber.sibling = _newFiber;
+                }
+
+                previousNewFiber = _newFiber;
+            }
+            return resultingFirstChild;
+        }
+    }
     function reconcileSingleElement(returnFiber, currentFirstChild, element, lanes) {
         const key = element.key;
         let child = currentFirstChild;
@@ -48,19 +105,10 @@ function ChildReconciler(shouldTrackSideEffects) {
                 case REACT_ELEMENT_TYPE:
                     const child = reconcileSingleElement(returnFiber, currentFirstChild, newChild, lanes)
                     return placeSingleChild(child);
-
-                // case REACT_PORTAL_TYPE:
-                //     return placeSingleChild(reconcileSinglePortal(returnFiber, currentFirstChild, newChild, lanes));
-
-                // case REACT_LAZY_TYPE:
-                //     {
-                //         var payload = newChild._payload;
-                //         var init = newChild._init; // TODO: This function is supposed to be non-recursive.
-
-                //         return reconcileChildFibers(returnFiber, currentFirstChild, init(payload), lanes);
-                //     }
-
             }
+        }
+        if (Array.isArray(newChild)) {
+            return reconcileChildrenArray(returnFiber, currentFirstChild, newChild, lanes);
         }
     }
     return reconcileChildFibers
