@@ -9,15 +9,7 @@ import { Update } from "./ReactFiberFlags";
 
 
 
-function appendAllChildren(parent, workInProgress) {
-  let node = workInProgress.child;
-  while (node) {
-    if (node.tag === HostComponent) {
-      appendChild(parent, node.stateNode);
-    }
-    node = node.sibling;
-  }
-}
+
 
 function updateHostComponent(current, workInProgress, tag, newProps) {
   const oldProps = current.memoizedProps;

@@ -1,5 +1,6 @@
 import { beginWork } from './ReactFiberBeginWork'
 import { completeWork } from './ReactFiberCompleteWork'
+import { PerformedWork } from './ReactFiberFlags'
 import { HostRoot } from './ReactWorkTags.js'
 import { createWorkInProgress } from './ReactFiber'
 import ReactSharedInternals from '@shared/ReactSharedInternals.js'
@@ -107,15 +108,42 @@ function completeUnitOfWork(unitOfWork) {
         let next
         // 完成此fiber对应的真实DOM节点创建和属性赋值的功能
         next = completeWork(current, completedWork, subtreeRenderLanes);
-        // // 收集当前fiber的副作用到父fiber上
-        // collectEffectList(returnFiber, completedWork);
-        // // 当前fiber完成后，查找下一个要构建的fiber
-        // const siblingFiber = completedWork.sibling;
-        // if (siblingFiber) {
-        //     workInProgress = siblingFiber;
-        //     return;
-        // }
-        // completedWork = returnFiber;
-        // workInProgress = completedWork;
+        // 开始构建副作用列表。Append all the effects of the subtree and this fiber onto the effect
+        // list of the parent. The completion order of the children affects the
+        // side-effect order.
+        if (returnFiber !== null) {
+            if (returnFiber.firstEffect === null) {
+                returnFiber.firstEffect = completedWork.firstEffect;
+            }
+            if (completedWork.lastEffect !== null) {
+                if (returnFiber.lastEffect !== null) {
+                    returnFiber.lastEffect.nextEffect = completedWork.firstEffect;
+                }
+                returnFiber.lastEffect = completedWork.lastEffect;
+            }
+            const flags = completedWork.flags;
+
+            if (flags > PerformedWork) {
+                if (returnFiber.lastEffect !== null) {
+                    returnFiber.lastEffect.nextEffect = completedWork;
+                } else {
+                    returnFiber.firstEffect = completedWork;
+                }
+
+                returnFiber.lastEffect = completedWork;
+            }
+        }
+        const siblingFiber = completedWork.sibling;
+        if (siblingFiber !== null) {
+            // If there is more work to do in this returnFiber, do that next.
+            workInProgress = siblingFiber;
+            return;
+        }
+
+
+        completedWork = returnFiber;
+
+        workInProgress = completedWork;
+
     } while (completedWork !== null);
 }

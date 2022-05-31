@@ -8,7 +8,10 @@ function FiberNode(tag, pendingProps, key, mode) {
     this.key = key;
     this.elementType = null; // 一般情况下 elementType和type相同
     this.type = null;
-    this.stateNode = null; // 对于类组件，stateNode保存的是类的实例
+    // stateNode取值说明
+    // 对于类组件，stateNode保存的是类的实例，比如stateNode = new Counter()
+    // 对于原生的html标签，stateNode保存的是真实的dom节点，比如 stateNode = document.createElement('button')
+    this.stateNode = null;
 
     this.return = null;
     this.child = null;

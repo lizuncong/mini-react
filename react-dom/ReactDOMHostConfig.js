@@ -5,13 +5,9 @@ import {
 } from "./ReactDOMComponent";
 
 
-export const createInstance = (type, props) => {
-  return createElement(type);
-};
 
-export function finalizeInitialChildren(domElement, type, props) {
-  setInitialProperties(domElement, type, props);
-}
+
+
 
 export function appendChild(parentInstance, child) {
   parentInstance.appendChild(child);
