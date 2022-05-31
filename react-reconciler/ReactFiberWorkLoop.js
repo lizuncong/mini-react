@@ -55,7 +55,9 @@ function markUpdateLaneFromFiberToRoot(sourceFiber, lane) {
 function performSyncWorkOnRoot(root) {
     const lanes = 1
     renderRootSync(root, lanes); // render阶段
-    //  commitRoot();
+    const finishedWork = root.current.alternate;
+    root.finishedWork = finishedWork;
+    commitRoot(root);
 }
 
 let __DEBUG_RENDER_COUNT__ = 0
@@ -146,4 +148,20 @@ function completeUnitOfWork(unitOfWork) {
         workInProgress = completedWork;
 
     } while (completedWork !== null);
+}
+
+
+/****************************** 以下是 commit 阶段涉及的函数 ******************************/
+function commitRoot() {
+    // const finishedWork = workInProgressRoot.current.alternate;
+    // workInProgressRoot.finishedWork = finishedWork;
+    // commitMutationEffects(workInProgressRoot);
+    const renderPriorityLevel = 97
+    commitRootImpl(root, renderPriorityLevel)
+    return null
+}
+
+function commitRootImpl(root, renderPriorityLevel) {
+    const finishedWork = root.finishedWork;
+    root.finishedWork = null;
 }
