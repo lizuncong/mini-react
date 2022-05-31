@@ -50,7 +50,7 @@ function markUpdateLaneFromFiberToRoot(sourceFiber, lane) {
 // through Scheduler 这是同步任务的入口点，不通过调度器。
 function performSyncWorkOnRoot(root) {
     const lanes = 1
-    renderRootSync(root, lanes);
+    renderRootSync(root, lanes); // render阶段
 }
 
 // function performSyncWorkOnRoot(fiberRoot) {
@@ -90,7 +90,7 @@ function prepareFreshStack(root, lanes) {
     root.finishedWork = null;
     workInProgressRoot = root
     workInProgress = createWorkInProgress(root.current, null, __DEBUG_RENDER_COUNT__);
-    console.log('createWorkInProgress.........', workInProgress)
+    console.log('workLoop.prepareFreshStack ===createWorkInProgress.........', workInProgress)
 }
 
 function performUnitOfWork(unitOfWork) {
@@ -100,19 +100,13 @@ function performUnitOfWork(unitOfWork) {
     let current = unitOfWork.alternate;
     let next;
     next = beginWork(current, unitOfWork, subtreeRenderLanes);
-    workInProgress = null
-}
+    console.log('performUnitOfWork.next....', next)
 
-// function performUnitOfWork(unitOfWork) {
-//     const current = unitOfWork.alternate;
-//     // beginWork返回下一个工作单元
-//     const next = beginWork(current, unitOfWork);
-//     // 在beginWork后，需要把新属性同步到老属性上
-//     unitOfWork.memoizedProps = unitOfWork.pendingProps;
-//     if (next) {
-//         workInProgress = next;
-//     } else {
-//         // 如果当前fiber没有子fiber，说明当前fiber可以完成了
-//         completeUnitOfWork(unitOfWork);
-//     }
-// }
+    unitOfWork.memoizedProps = unitOfWork.pendingProps;
+    if (next === null) {
+        // If this doesn't spawn new work, complete the current work.
+        // completeUnitOfWork(unitOfWork);
+    } else {
+        workInProgress = next;
+    }
+}

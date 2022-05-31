@@ -2,8 +2,16 @@ import {
     REACT_ELEMENT_TYPE,
 } from '@shared/ReactSymbols';
 import { createFiberFromElement } from "./ReactFiber";
+import { Placement } from './ReactFiberFlags'
 
 function ChildReconciler(shouldTrackSideEffects) {
+    function placeSingleChild(newFiber) {
+        // 单一节点的情况，只需要插入就行，因此这里为fiber节点添加副作用
+        if (shouldTrackSideEffects && newFiber.alternate === null) {
+            newFiber.flags = Placement;
+        }
+        return newFiber;
+    }
     function reconcileSingleElement(returnFiber, currentFirstChild, element, lanes) {
         const key = element.key;
         let child = currentFirstChild;
@@ -39,7 +47,7 @@ function ChildReconciler(shouldTrackSideEffects) {
             switch (newChild.$$typeof) {
                 case REACT_ELEMENT_TYPE:
                     const child = reconcileSingleElement(returnFiber, currentFirstChild, newChild, lanes)
-                // return placeSingleChild(child);
+                    return placeSingleChild(child);
 
                 // case REACT_PORTAL_TYPE:
                 //     return placeSingleChild(reconcileSinglePortal(returnFiber, currentFirstChild, newChild, lanes));

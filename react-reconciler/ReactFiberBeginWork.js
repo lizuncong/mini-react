@@ -1,11 +1,33 @@
 import { renderWithHooks } from './ReactFiberHooks'
-import { HostRoot, HostComponent } from './ReactWorkTags'
+import { HostRoot, HostComponent, ClassComponent } from './ReactWorkTags'
 import { cloneUpdateQueue, processUpdateQueue } from './ReactUpdateQueue'
 import {
     mountChildFibers,
     reconcileChildFibers,
 } from './ReactChildFiber';
-
+import { constructClassInstance } from './ReactFiberClassComponent'
+function updateClassComponent(current, workInProgress, Component, nextProps, renderLanes) {
+    const instance = workInProgress.stateNode;
+    let shouldUpdate
+    if(instance === null){
+        constructClassInstance(workInProgress, Component, nextProps);
+        mountClassInstance(workInProgress, Component, nextProps, renderLanes);
+        shouldUpdate = true;
+    }
+    return finishClassComponent(current, workInProgress, Component, shouldUpdate, hasContext, renderLanes);
+}
+function updateHostRoot(current, workInProgress, renderLanes) {
+    const updateQueue = workInProgress.updateQueue;
+    const nextProps = workInProgress.pendingProps;
+    const prevState = workInProgress.memoizedState;
+    cloneUpdateQueue(current, workInProgress)
+    processUpdateQueue(workInProgress, nextProps, null, renderLanes);
+    const nextState = workInProgress.memoizedState;
+    const nextChildren = nextState.element
+    const root = workInProgress.stateNode
+    reconcileChildren(current, workInProgress, nextChildren, renderLanes);
+    return workInProgress.child;
+}
 function reconcileChildren(current, workInProgress, nextChildren, renderLanes) {
     if (current === null) {
         /// 初次渲染不需要追踪副作用
@@ -22,6 +44,14 @@ function reconcileChildren(current, workInProgress, nextChildren, renderLanes) {
 
 export function beginWork(current, workInProgress, renderLanes) {
     switch (workInProgress.tag) {
+        case ClassComponent:
+            {
+                const _Component2 = workInProgress.type;
+                const _unresolvedProps = workInProgress.pendingProps;
+                const _resolvedProps = _unresolvedProps
+
+                return updateClassComponent(current, workInProgress, _Component2, _resolvedProps, renderLanes);
+            }
         case HostRoot:
             return updateHostRoot(current, workInProgress, renderLanes);
         case HostComponent:
@@ -31,18 +61,7 @@ export function beginWork(current, workInProgress, renderLanes) {
 }
 
 
-function updateHostRoot(current, workInProgress, renderLanes) {
-    const updateQueue = workInProgress.updateQueue;
-    const nextProps = workInProgress.pendingProps;
-    const prevState = workInProgress.memoizedState;
-    cloneUpdateQueue(current, workInProgress)
-    processUpdateQueue(workInProgress, nextProps, null, renderLanes);
-    const nextState = workInProgress.memoizedState;
-    const nextChildren = nextState.element
-    const root = workInProgress.stateNode
-    reconcileChildren(current, workInProgress, nextChildren, renderLanes);
-    return workInProgress.child;
-}
+
 
 // function updateFunctionComponent(current, workInProgress, Component) {
 //     const newChildren = renderWithHooks(current, workInProgress, Component)

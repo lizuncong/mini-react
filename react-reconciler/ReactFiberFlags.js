@@ -4,8 +4,8 @@ export const NoFlags = /*                      */ 0b000000000000000000; // 0
 // export const PerformedWork = /*                */ 0b000000000000000001; // 1
 
 // // You can change the rest (and add more).
-// export const Placement = /*                    */ 0b000000000000000010; // 2
-// export const Update = /*                       */ 0b000000000000000100; // 4
+export const Placement = /*                    */ 0b000000000000000010; // 2
+export const Update = /*                       */ 0b000000000000000100; // 4
 // export const PlacementAndUpdate = /*           */ 0b000000000000000110; // 6
 // export const Deletion = /*                     */ 0b000000000000001000; // 8
 // export const ContentReset = /*                 */ 0b000000000000010000; // 16
