@@ -5,6 +5,22 @@ import { createFiberFromElement } from "./ReactFiber";
 import { Placement } from './ReactFiberFlags'
 
 function ChildReconciler(shouldTrackSideEffects) {
+    function deleteRemainingChildren(returnFiber, currentFirstChild) {
+        if (!shouldTrackSideEffects) {
+            // Noop.
+            return null;
+        }
+
+        // TODO: For the shouldClone case, this could be micro-optimized a bit by
+        // assuming that after the first child we've already added everything.
+        // var childToDelete = currentFirstChild;
+        // while (childToDelete !== null) {
+        //     deleteChild(returnFiber, childToDelete);
+        //     childToDelete = childToDelete.sibling;
+        // }
+
+        // return null;
+    }
     function placeSingleChild(newFiber) {
         // 单一节点的情况，只需要插入就行，因此这里为fiber节点添加副作用
         if (shouldTrackSideEffects && newFiber.alternate === null) {
@@ -110,6 +126,7 @@ function ChildReconciler(shouldTrackSideEffects) {
         if (Array.isArray(newChild)) {
             return reconcileChildrenArray(returnFiber, currentFirstChild, newChild, lanes);
         }
+        return deleteRemainingChildren(returnFiber, currentFirstChild);
     }
     return reconcileChildFibers
 }

@@ -8,6 +8,8 @@ import {
 } from './ReactChildFiber';
 import ReactSharedInternals from '@shared/ReactSharedInternals';
 import { constructClassInstance, mountClassInstance } from './ReactFiberClassComponent'
+import { shouldSetTextContent } from './ReactDOMHostConfig'
+
 
 const ReactCurrentOwner = ReactSharedInternals.ReactCurrentOwner;
 
@@ -24,14 +26,14 @@ function updateClassComponent(current, workInProgress, Component, nextProps, ren
     return finishClassComponent(current, workInProgress, Component, shouldUpdate, hasContext, renderLanes);
 }
 function finishClassComponent(current, workInProgress, Component, shouldUpdate, hasContext, renderLanes) {
-    const instance = workInProgress.stateNode; 
+    const instance = workInProgress.stateNode;
     // Rerender
     ReactCurrentOwner.current = workInProgress;
     let nextChildren
     nextChildren = instance.render();
     workInProgress.flags |= PerformedWork; // PerformedWork 用于 React Dev Tools
     reconcileChildren(current, workInProgress, nextChildren, renderLanes);
-    workInProgress.memoizedState = instance.state; 
+    workInProgress.memoizedState = instance.state;
     return workInProgress.child;
 }
 function updateHostRoot(current, workInProgress, renderLanes) {
@@ -44,6 +46,20 @@ function updateHostRoot(current, workInProgress, renderLanes) {
     const nextChildren = nextState.element
     const root = workInProgress.stateNode
     reconcileChildren(current, workInProgress, nextChildren, renderLanes);
+    return workInProgress.child;
+}
+
+function updateHostComponent(current, workInProgress, renderLanes) {
+    const type = workInProgress.type; // 原生的html标签，如 button
+    const nextProps = workInProgress.pendingProps;
+    let nextChildren = nextProps.children;
+    // 对于原生的html标签，如果只有一个子节点，并且这个自己点是一个字符串或者数字的话，则
+    // 不会对此子节点创建fiber
+    const isDirectTextChild = shouldSetTextContent(type, nextProps);
+    if (isDirectTextChild) {
+        nextChildren = null;
+    }
+    reconcileChildren(current, workInProgress, nextChildren);
     return workInProgress.child;
 }
 function reconcileChildren(current, workInProgress, nextChildren, renderLanes) {
@@ -73,7 +89,7 @@ export function beginWork(current, workInProgress, renderLanes) {
         case HostRoot:
             return updateHostRoot(current, workInProgress, renderLanes);
         case HostComponent:
-        // return updateHostComponent(current, workInProgress);
+            return updateHostComponent(current, workInProgress);
     }
     console.log('beginWork..tag不存在', workInProgress.tag)
 }

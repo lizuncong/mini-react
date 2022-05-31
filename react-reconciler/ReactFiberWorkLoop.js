@@ -1,6 +1,11 @@
 import { beginWork } from './ReactFiberBeginWork'
+import { completeWork } from './ReactFiberCompleteWork'
 import { HostRoot } from './ReactWorkTags.js'
 import { createWorkInProgress } from './ReactFiber'
+import ReactSharedInternals from '@shared/ReactSharedInternals.js'
+const ReactCurrentOwner = ReactSharedInternals.ReactCurrentOwner
+
+
 export const NoContext = /*             */ 0b0000000;
 const BatchedContext = /*               */ 0b0000001;
 const EventContext = /*                 */ 0b0000010;
@@ -31,12 +36,10 @@ export function scheduleUpdateOnFiber(fiber, lane, eventTime) {
 function markUpdateLaneFromFiberToRoot(sourceFiber, lane) {
     let node = sourceFiber;
     let parent = sourceFiber.return;
-
     while (parent !== null) {
         node = parent;
         parent = parent.return;
     }
-
     if (node.tag === HostRoot) {
         const root = node.stateNode;
         return root;
@@ -51,17 +54,8 @@ function markUpdateLaneFromFiberToRoot(sourceFiber, lane) {
 function performSyncWorkOnRoot(root) {
     const lanes = 1
     renderRootSync(root, lanes); // render阶段
+    //  commitRoot();
 }
-
-// function performSyncWorkOnRoot(fiberRoot) {
-//     workInProgressRoot = fiberRoot;
-//     // 根据老的fiber树和更新对象创建新的fiber树，然后根据新的fiber树更新真实DOM
-//     workInProgress = createWorkInProgress(workInProgressRoot.current);
-
-//     workLoopSync(); // 开启工作循环
-
-//     commitRoot();
-// }
 
 let __DEBUG_RENDER_COUNT__ = 0
 
@@ -70,16 +64,7 @@ function renderRootSync(root, lanes) {
     executionContext |= RenderContext;
     __DEBUG_RENDER_COUNT__++
     prepareFreshStack(root, lanes);
-    // 注意这个while循环，workLoopSync正常执行完才会退出循环。如果workLoopSync里面报错被捕获
-    // 则处理错误完成还会继续执行workLoopSync
-    // do {
-    // try {
     workLoopSync();
-    // break;
-    // } catch (thrownValue) {
-    //     console.log('thrownValue....', thrownValue)
-    // }
-    // } while (true);
 }
 function workLoopSync() {
     // while (workInProgress !== null) {
@@ -97,17 +82,40 @@ function prepareFreshStack(root, lanes) {
 }
 
 function performUnitOfWork(unitOfWork) {
+    console.log('performUnitOfWork====', unitOfWork)
     // The current, flushed, state of this fiber is the alternate. Ideally
     // nothing should rely on this, but relying on it here means that we don't
     // need an additional field on the work in progress.
     let current = unitOfWork.alternate;
-    let next;
-    next = beginWork(current, unitOfWork, subtreeRenderLanes);
+    const next = beginWork(current, unitOfWork, subtreeRenderLanes);
     unitOfWork.memoizedProps = unitOfWork.pendingProps;
     if (next === null) {
         // If this doesn't spawn new work, complete the current work.
-        // completeUnitOfWork(unitOfWork);
+        completeUnitOfWork(unitOfWork);
     } else {
         workInProgress = next;
     }
+
+    ReactCurrentOwner.current = null; // fiber.owner 有什么作用？
+}
+
+function completeUnitOfWork(unitOfWork) {
+    let completedWork = unitOfWork;
+    do {
+        const current = completedWork.alternate;
+        const returnFiber = completedWork.return;
+        let next
+        // 完成此fiber对应的真实DOM节点创建和属性赋值的功能
+        next = completeWork(current, completedWork, subtreeRenderLanes);
+        // // 收集当前fiber的副作用到父fiber上
+        // collectEffectList(returnFiber, completedWork);
+        // // 当前fiber完成后，查找下一个要构建的fiber
+        // const siblingFiber = completedWork.sibling;
+        // if (siblingFiber) {
+        //     workInProgress = siblingFiber;
+        //     return;
+        // }
+        // completedWork = returnFiber;
+        // workInProgress = completedWork;
+    } while (completedWork !== null);
 }

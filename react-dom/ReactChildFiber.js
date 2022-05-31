@@ -26,12 +26,6 @@ function childReconciler(shouldTrackSideEffects) {
     child.nextEffect = null;
     child.flags = Deletion;
   }
-  function deleteRemainingChildren(returnFiber, child) {
-    while (child) {
-      deleteChild(returnFiber, child);
-      child = child.sibling;
-    }
-  }
   function useFiber(oldFiber, pendingProps) {
     return createWorkInProgress(oldFiber, pendingProps);
   }
