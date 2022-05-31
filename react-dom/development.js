@@ -18168,10 +18168,12 @@
    // so those are false.
    return workInProgressRootExitStatus === RootIncomplete;
  }
- 
+ var __DEBUG_RENDER_COUNT__ = 0
+
  function renderRootSync(root, lanes) {
    var prevExecutionContext = executionContext;
    executionContext |= RenderContext;
+   __DEBUG_RENDER_COUNT__++
    var prevDispatcher = pushDispatcher(); // If the root or lanes have changed, throw out the existing stack
    // and prepare a fresh one. Otherwise we'll continue where we left off.
  
@@ -19683,7 +19685,7 @@
 	 workInProgress.selfBaseDuration = current.selfBaseDuration;
 	 workInProgress.treeBaseDuration = current.treeBaseDuration;
    }
- 
+   workInProgress.AAA__DEBUG_RENDER_COUNT__ = __DEBUG_RENDER_COUNT__
    return workInProgress;
  } // Used to reuse a Fiber for a second pass.
  
