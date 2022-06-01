@@ -9,6 +9,7 @@ class ClickCounter extends React.Component {
   }
 
   handleClick() {
+    console.log('click....')
     this.setState((state) => {
       return { count: state.count + 1 };
     });

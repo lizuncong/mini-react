@@ -1,6 +1,6 @@
 import { beginWork } from './ReactFiberBeginWork'
 import { completeWork } from './ReactFiberCompleteWork'
-import { PerformedWork, PlacementAndUpdate, Snapshot, NoFlags, Placement, Update, Deletion, Hydrating } from './ReactFiberFlags'
+import { PerformedWork, Callback, PlacementAndUpdate, Snapshot, NoFlags, Placement, Update, Deletion, Hydrating } from './ReactFiberFlags'
 import { HostRoot } from './ReactWorkTags.js'
 import { createWorkInProgress } from './ReactFiber'
 import { commitBeforeMutationLifeCycles, commitPlacement } from './ReactFiberCommitWork'
@@ -157,11 +157,6 @@ function completeUnitOfWork(unitOfWork) {
 
 /****************************** 以下是 commit 阶段涉及的函数 ******************************/
 function commitRoot(root) {
-
-    // commitMutationEffects(workInProgressRoot);
-    // commitAllHostEffects();
-    // root.current = finishedWork;
-    // commitAllLifeCycles();
     const renderPriorityLevel = 97
     commitRootImpl(root, renderPriorityLevel)
     return null
@@ -169,6 +164,7 @@ function commitRoot(root) {
 
 function commitRootImpl(root, renderPriorityLevel) {
     const finishedWork = root.finishedWork;
+    const lanes = root.finishedLanes;
     root.finishedWork = null;
     let firstEffect
     if (finishedWork.flags > PerformedWork) {
@@ -210,8 +206,26 @@ function commitRootImpl(root, renderPriorityLevel) {
         // The next phase is the layout phase, where we call effects that read
         // the host tree after it's been mutated. The idiomatic use case for this is
         // layout, but class component lifecycles also fire here for legacy reasons.
+        nextEffect = firstEffect // 重置 nextEffect，从头开始
+        commitLayoutEffects(root, lanes);
+        // We are done with the effect chain at this point so let's clear the
+        // nextEffect pointers to assist with GC. If we have passive effects, we'll
+        // clear this in flushPassiveEffects.
+        nextEffect = firstEffect;
 
+        while (nextEffect !== null) {
+            const nextNextEffect = nextEffect.nextEffect;
+            nextEffect.nextEffect = null;
+
+            if (nextEffect.flags & Deletion) {
+                detachFiberAfterEffects(nextEffect);
+            }
+
+            nextEffect = nextNextEffect;
+        }
     }
+
+
 }
 
 
@@ -261,6 +275,18 @@ function commitMutationEffects(root, renderPriorityLevel) {
             case Deletion:
                 // commitDeletion(root, nextEffect);
                 break;
+        }
+        nextEffect = nextEffect.nextEffect;
+    }
+}
+
+function commitLayoutEffects(root, committedLanes) {
+    while (nextEffect !== null) {
+        const flags = nextEffect.flags;
+
+        if (flags & (Update | Callback)) {
+            // var current = nextEffect.alternate;
+            // commitLifeCycles(root, current, nextEffect);
         }
         nextEffect = nextEffect.nextEffect;
     }
