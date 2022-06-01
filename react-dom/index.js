@@ -1,4 +1,4 @@
-import render from './react-dom'
+import { render } from './client/ReactDOM'
 
 export default {
     render

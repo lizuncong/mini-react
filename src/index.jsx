@@ -1,5 +1,5 @@
 import React, { Component, PureComponent } from "react";
-import { render } from "@react-dom/client/ReactDOM";
+import ReactDOM from "@react-dom";
 // import { render } from "react-dom";
 class ClickCounter extends React.Component {
   constructor(props) {
@@ -27,4 +27,4 @@ class ClickCounter extends React.Component {
 }
 // debugger;
 
-render(<ClickCounter />, document.getElementById("root"));
+ReactDOM.render(<ClickCounter />, document.getElementById("root"));

@@ -1,8 +1,13 @@
 以下是根据 react16 整理的 render 阶段和 commit 阶段涉及的主要函数。在阅读源码的过程中，可以在这些函数的入口处打断点调试。
 接下来会根据 react17 整理 render 阶段和 commit 阶段主流程的主要函数
 
+
+react-dom/client/ReactDOMHostConfig.js是react-dom和react-reconciler的桥梁。react-reconciler中
+使用的很多dom相关的api都是从ReactDOMHostConfig.js文件中暴露出来。
 ```js
 // render阶段总是从 renderRoot 函数开始
+// render阶段的目标是根据新的 react element tree 和当前页面对应的旧的fiber tree进行dom diff，找出
+// 有副作用的节点，并构建副作用链表
 function workLoop(isYieldy) {
   if (!isYieldy) {
     while (nextUnitOfWork !== null) {

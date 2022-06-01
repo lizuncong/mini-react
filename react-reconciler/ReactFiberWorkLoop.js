@@ -1,9 +1,12 @@
 import { beginWork } from './ReactFiberBeginWork'
 import { completeWork } from './ReactFiberCompleteWork'
-import { PerformedWork } from './ReactFiberFlags'
+import { PerformedWork, Snapshot, NoFlags, Placement, Update, Deletion, Hydrating } from './ReactFiberFlags'
 import { HostRoot } from './ReactWorkTags.js'
 import { createWorkInProgress } from './ReactFiber'
+import { commitBeforeMutationLifeCycles } from './ReactFiberCommitWork'
 import ReactSharedInternals from '@shared/ReactSharedInternals.js'
+
+
 const ReactCurrentOwner = ReactSharedInternals.ReactCurrentOwner
 
 
@@ -21,6 +24,7 @@ let executionContext = NoContext;
 
 let workInProgressRoot = null; // The root we're working on
 let workInProgress = null; // The fiber we're working on
+let nextEffect = null;
 
 // 从当前调度的fiber开始，向上找到根节点，从根节点开始更新
 // 任何触发更新的方法，都需要调用 scheduleUpdateOnFiber 开始调度更新，比如 setState
@@ -152,10 +156,12 @@ function completeUnitOfWork(unitOfWork) {
 
 
 /****************************** 以下是 commit 阶段涉及的函数 ******************************/
-function commitRoot() {
-    // const finishedWork = workInProgressRoot.current.alternate;
-    // workInProgressRoot.finishedWork = finishedWork;
+function commitRoot(root) {
+
     // commitMutationEffects(workInProgressRoot);
+    // commitAllHostEffects();
+    // root.current = finishedWork;
+    // commitAllLifeCycles();
     const renderPriorityLevel = 97
     commitRootImpl(root, renderPriorityLevel)
     return null
@@ -164,4 +170,89 @@ function commitRoot() {
 function commitRootImpl(root, renderPriorityLevel) {
     const finishedWork = root.finishedWork;
     root.finishedWork = null;
+    let firstEffect
+    if (finishedWork.flags > PerformedWork) {
+        // A fiber's effect list consists only of its children, not itself. So if
+        // the root has an effect, we need to add it to the end of the list. The
+        // resulting list is the set that would belong to the root's parent, if it
+        // had one; that is, all the effects in the tree including the root.
+        if (finishedWork.lastEffect !== null) {
+            finishedWork.lastEffect.nextEffect = finishedWork;
+            firstEffect = finishedWork.firstEffect;
+        } else {
+            firstEffect = finishedWork;
+        }
+    } else {
+        // There is no effect on the root.
+        firstEffect = finishedWork.firstEffect;
+    }
+    // firstEffect不为空，说明存在副作用链表，此时firstEffect指向链表的表头
+    if (firstEffect !== null) {
+        // The commit phase is broken into several sub-phases. We do a separate pass
+        // of the effect list for each phase: all mutation effects come before all
+        // layout effects, and so on.
+        // The first phase a "before mutation" phase. We use this phase to read the
+        // state of the host tree right before we mutate it. This is where
+        // getSnapshotBeforeUpdate is called.
+        // commie阶段被划分成多个小阶段。每个阶段都从头开始遍历整个副作用链表
+        nextEffect = firstEffect;
+        // 第一个阶段，调用getSnapshotBeforeUpdate等生命周期方法
+        commitBeforeMutationEffects();
+
+        // The next phase is the mutation phase, where we mutate the host tree.
+        nextEffect = firstEffect // 重置 nextEffect，从头开始
+        commitMutationEffects(root, renderPriorityLevel);
+    }
+}
+
+
+// 一次性遍历完整个副作用链表，并执行commitBeforeMutationLifeCycles
+function commitBeforeMutationEffects() {
+    while (nextEffect !== null) {
+        const current = nextEffect.alternate;
+        const flags = nextEffect.flags;
+        if ((flags & Snapshot) !== NoFlags) {
+            commitBeforeMutationLifeCycles(current, nextEffect);
+        }
+
+        nextEffect = nextEffect.nextEffect;
+    }
+}
+
+function commitMutationEffects(root, renderPriorityLevel) {
+    while (nextEffect !== null) {
+        const flags = nextEffect.flags
+        // The following switch statement is only concerned about placement,
+        // updates, and deletions. To avoid needing to add a case for every possible
+        // bitmap value, we remove the secondary effects from the effect tag and
+        // switch on that value.
+        const primaryFlags = flags & (Placement | Update | Deletion | Hydrating);
+        switch (primaryFlags) {
+            case Placement:
+                commitPlacement(nextEffect); 
+                // Clear the "placement" from effect tag so that we know that this is
+                // inserted, before any life-cycles like componentDidMount gets called.
+                // TODO: findDOMNode doesn't rely on this any more but isMounted does
+                // and isMounted is deprecated anyway so we should be able to kill this.
+                nextEffect.flags &= ~Placement;
+                break;
+            case PlacementAndUpdate:
+                // Placement
+                // commitPlacement(nextEffect);
+                // Clear the "placement" from effect tag so that we know that this is
+                // inserted, before any life-cycles like componentDidMount gets called.
+                nextEffect.flags &= ~Placement; // Update
+                var _current = nextEffect.alternate;
+                // commitWork(_current, nextEffect);
+                break;
+            case Update:
+                var _current3 = nextEffect.alternate;
+                // commitWork(_current3, nextEffect);
+                break;
+            case Deletion:
+                // commitDeletion(root, nextEffect);
+                break;
+        }
+        nextEffect = nextEffect.nextEffect;
+    }
 }

@@ -59,10 +59,7 @@
 
 ### 参考链接
 
-- [react-in-depth](https://medium.com/react-in-depth)
-- [inside-fiber-in-depth-overview-of-the-new-reconciliation-algorithm-in-react](https://indepth.dev/posts/1008/inside-fiber-in-depth-overview-of-the-new-reconciliation-algorithm-in-react) 介绍 react reconciliation 算法的好文章
+- [React作者 Dan Abramov 的博客](https://overreacted.io/)
+- [Fiber 内部：深入概述 React 中新的协调算法](https://indepth.dev/posts/1008/inside-fiber-in-depth-overview-of-the-new-reconciliation-algorithm-in-react)
+- [medium.com](https://medium.com/react-in-depth)
 - [scheduling-in-react](https://philippspiess.com/scheduling-in-react/)
-- [react.jokcy.me](https://react.jokcy.me/book/api/react-children.html)
-- [react 源码](https://xiaochen1024.com/courseware/60b1b2f6cf10a4003b634718/60b1b55ccf10a4003b634728)
-- [react 源码环境](https://github.com/Terry-Su/debug-react-source-code)
-- [https://overreacted.io/](https://overreacted.io/)

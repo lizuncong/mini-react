@@ -8,7 +8,7 @@ import {
 } from './ReactChildFiber';
 import ReactSharedInternals from '@shared/ReactSharedInternals';
 import { constructClassInstance, mountClassInstance } from './ReactFiberClassComponent'
-import { shouldSetTextContent } from './ReactDOMHostConfig'
+import { shouldSetTextContent } from '@react-dom/client/ReactDOMHostConfig'
 
 
 const ReactCurrentOwner = ReactSharedInternals.ReactCurrentOwner;

@@ -1,6 +1,6 @@
 import { HostComponent, ClassComponent, HostRoot } from './ReactWorkTags'
 import { Snapshot } from './ReactFiberFlags'
-import { createInstance, finalizeInitialChildren } from './ReactDOMHostConfig'
+import { createInstance, finalizeInitialChildren } from '@react-dom/client/ReactDOMHostConfig'
 
 
 function updateHostContainer(workInProgress) {// Noop
