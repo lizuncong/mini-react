@@ -1,9 +1,9 @@
 import { beginWork } from './ReactFiberBeginWork'
 import { completeWork } from './ReactFiberCompleteWork'
-import { PerformedWork, Snapshot, NoFlags, Placement, Update, Deletion, Hydrating } from './ReactFiberFlags'
+import { PerformedWork, PlacementAndUpdate, Snapshot, NoFlags, Placement, Update, Deletion, Hydrating } from './ReactFiberFlags'
 import { HostRoot } from './ReactWorkTags.js'
 import { createWorkInProgress } from './ReactFiber'
-import { commitBeforeMutationLifeCycles } from './ReactFiberCommitWork'
+import { commitBeforeMutationLifeCycles, commitPlacement } from './ReactFiberCommitWork'
 import ReactSharedInternals from '@shared/ReactSharedInternals.js'
 
 
@@ -202,6 +202,15 @@ function commitRootImpl(root, renderPriorityLevel) {
         // The next phase is the mutation phase, where we mutate the host tree.
         nextEffect = firstEffect // 重置 nextEffect，从头开始
         commitMutationEffects(root, renderPriorityLevel);
+        // The work-in-progress tree is now the current tree. This must come after
+        // the mutation phase, so that the previous tree is still current during
+        // componentWillUnmount, but before the layout phase, so that the finished
+        // work is current during componentDidMount/Update.
+        root.current = finishedWork;
+        // The next phase is the layout phase, where we call effects that read
+        // the host tree after it's been mutated. The idiomatic use case for this is
+        // layout, but class component lifecycles also fire here for legacy reasons.
+
     }
 }
 
@@ -229,7 +238,7 @@ function commitMutationEffects(root, renderPriorityLevel) {
         const primaryFlags = flags & (Placement | Update | Deletion | Hydrating);
         switch (primaryFlags) {
             case Placement:
-                commitPlacement(nextEffect); 
+                commitPlacement(nextEffect);
                 // Clear the "placement" from effect tag so that we know that this is
                 // inserted, before any life-cycles like componentDidMount gets called.
                 // TODO: findDOMNode doesn't rely on this any more but isMounted does

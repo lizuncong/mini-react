@@ -1,5 +1,5 @@
 import { createElement, setInitialProperties } from './ReactDOMComponent'
-import { ELEMENT_NODE, DOCUMENT_NODE } from '../shared/HTMLNodeType'
+import { ELEMENT_NODE, DOCUMENT_NODE, COMMENT_NODE } from '../shared/HTMLNodeType'
 
 export function shouldSetTextContent(type, props) {
     return type === 'textarea' || type === 'option' || type === 'noscript' || typeof props.children === 'string' || typeof props.children === 'number' || typeof props.dangerouslySetInnerHTML === 'object' && props.dangerouslySetInnerHTML !== null && props.dangerouslySetInnerHTML.__html != null;
@@ -27,3 +27,28 @@ export function clearContainer(container) {
         }
     }
 }
+
+export function appendChildToContainer(container, child) {
+    let parentNode;
+    if (container.nodeType === COMMENT_NODE) {
+        parentNode = container.parentNode;
+        parentNode.insertBefore(child, container);
+    } else {
+        parentNode = container;
+        parentNode.appendChild(child);
+    }
+}
+
+// export function appendChild(parentInstance, child) {
+//     parentInstance.appendChild(child);
+// }
+// export function insertBefore(parentInstance, child, before) {
+//     parentInstance.insertBefore(child, before);
+// }
+// export function prepareUpdate(domElement, type, oldProps, newProps) {
+//     return diffProperties(domElement, type, oldProps, newProps);
+// }
+
+// export function removeChild(parentInstance, child) {
+//     parentInstance.removeChild(child);
+// }

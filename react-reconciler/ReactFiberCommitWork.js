@@ -1,5 +1,6 @@
 import { Snapshot } from './ReactFiberFlags'
-import { HostRoot, HostComponent, FundamentalComponent } from './ReactWorkTags'
+import { HostRoot, HostComponent, HostPortal, HostText, FundamentalComponent } from './ReactWorkTags'
+import { appendChildToContainer } from '@react-dom/client/ReactDOMHostConfig'
 import { clearContainer } from '@react-dom/client/ReactDOMHostConfig'
 export function commitBeforeMutationLifeCycles(current, finishedWork) {
     switch (finishedWork.tag) {
@@ -30,14 +31,6 @@ function getHostSibling(fiber) {
     // node. Unfortunately, if multiple insertions are done in a row we have to
     // search past them. This leads to exponential search for the next sibling.
     // TODO: Find a more efficient way to do this.
-    // let node = fiber.sibling;
-    // while (node) {
-    //     if (!(node.flags & Placement)) {
-    //         return node.stateNode;
-    //     }
-    //     node = node.sibling;
-    // }
-    // return null;
 
     // 查找兄弟节点，找到最近一个，不是插入的节点，返回
     let node = fiber;
@@ -102,6 +95,13 @@ export function commitPlacement(finishedWork) {
             console.log('commitPlacement..容器节点不匹配')
     }
     const before = getHostSibling(finishedWork);
+    // We only have the top Fiber that was inserted but we need to recurse down its
+    // children to find all the terminal nodes.
+    if (isContainer) {
+        insertOrAppendPlacementNodeIntoContainer(finishedWork, before, parent);
+    } else {
+        // insertOrAppendPlacementNode(finishedWork, before, parent);
+    }
     //   const stateNode = nextEffect.stateNode;
     //   let before = getHostSibling(nextEffect);
     //   if (before) {
@@ -109,6 +109,36 @@ export function commitPlacement(finishedWork) {
     //   } else {
     //     appendChild(parentStateNode, stateNode);
     //   }
+}
+
+function insertOrAppendPlacementNodeIntoContainer(node, before, parent) {
+    const tag = node.tag;
+    const isHost = tag === HostComponent || tag === HostText;
+    let child = node.child;
+
+
+    if (isHost) {
+        const stateNode = isHost ? node.stateNode : node.stateNode.instance;
+        if (before) {
+            // insertInContainerBefore(parent, stateNode, before);
+        } else {
+            appendChildToContainer(parent, stateNode);
+        }
+    } else if (tag === HostPortal) {
+
+    } else {
+        const child = node.child;
+
+        if (child !== null) {
+            insertOrAppendPlacementNodeIntoContainer(child, before, parent);
+            let sibling = child.sibling;
+
+            while (sibling !== null) {
+                insertOrAppendPlacementNodeIntoContainer(sibling, before, parent);
+                sibling = sibling.sibling;
+            }
+        }
+    }
 }
 // import {
 //   appendChild,
