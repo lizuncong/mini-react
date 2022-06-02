@@ -111,7 +111,7 @@ export function createWorkInProgress(current, pendingProps, debugForMe) {
     workInProgress.sibling = current.sibling;
     workInProgress.index = current.index;
 
-    workInProgress.__DEBUG_RENDER_COUNT__ = debugForMe
+    workInProgress.AAA__DEBUG_RENDER_COUNT__ = debugForMe
     return workInProgress
 }
 

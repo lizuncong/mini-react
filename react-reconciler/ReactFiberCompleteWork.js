@@ -51,7 +51,7 @@ export function completeWork(current, workInProgress, renderLanes) {
                 // );
             } else {
                 // 第一次渲染，创建真实的DOM节点
-                const instance = createInstance(type, newProps);
+                const instance = createInstance(type, newProps, null, null, workInProgress);
                 appendAllChildren(instance, workInProgress, false, false);
                 workInProgress.stateNode = instance;
                 // 给真实dom添加属性

@@ -1,6 +1,6 @@
 import { createElement, setInitialProperties } from './ReactDOMComponent'
 import { ELEMENT_NODE, DOCUMENT_NODE, COMMENT_NODE } from '../shared/HTMLNodeType'
-
+import { precacheFiberNode, updateFiberProps } from './ReactDOMComponentTree'
 export function shouldSetTextContent(type, props) {
     return type === 'textarea' || type === 'option' || type === 'noscript' || typeof props.children === 'string' || typeof props.children === 'number' || typeof props.dangerouslySetInnerHTML === 'object' && props.dangerouslySetInnerHTML !== null && props.dangerouslySetInnerHTML.__html != null;
 }
@@ -8,6 +8,8 @@ export function shouldSetTextContent(type, props) {
 
 export const createInstance = (type, props, rootContainerInstance, hostContext, internalInstanceHandle) => {
     const domElement = createElement(type, props, rootContainerInstance, hostContext);
+    precacheFiberNode(internalInstanceHandle, domElement);
+    updateFiberProps(domElement, props);
     return domElement;
 };
 

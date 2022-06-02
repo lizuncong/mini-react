@@ -1,3 +1,4 @@
+import { registrationNameDependencies } from '../events/EventRegistry'
 const STYLE = 'style';
 
 
@@ -12,6 +13,7 @@ function setInitialDOMProperties(tag, domElement, props) {
             for (let stylePropKey in nextProp) {
                 domElement.style[stylePropKey] = nextProp[stylePropKey];
             }
+        } else if (registrationNameDependencies.hasOwnProperty(propKey)) {
         } else {
             domElement[propKey] = nextProp;
         }

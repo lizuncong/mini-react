@@ -22,6 +22,10 @@ function updateClassComponent(current, workInProgress, Component, nextProps, ren
         constructClassInstance(workInProgress, Component, nextProps);
         mountClassInstance(workInProgress, Component, nextProps, renderLanes);
         shouldUpdate = true;
+    } else if(current === null){
+
+    } else {
+        shouldUpdate = updateClassInstance(current, workInProgress, Component, nextProps, renderLanes);
     }
     return finishClassComponent(current, workInProgress, Component, shouldUpdate, hasContext, renderLanes);
 }
