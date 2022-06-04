@@ -1,7 +1,7 @@
 import {
     REACT_ELEMENT_TYPE,
 } from '@shared/ReactSymbols';
-import { createFiberFromElement } from "./ReactFiber";
+import { createFiberFromElement, createWorkInProgress } from "./ReactFiber";
 import { Placement } from './ReactFiberFlags'
 
 function ChildReconciler(shouldTrackSideEffects) {
@@ -133,3 +133,11 @@ function ChildReconciler(shouldTrackSideEffects) {
 
 export const reconcileChildFibers = ChildReconciler(true);
 export const mountChildFibers = ChildReconciler(false);
+
+export function cloneChildFibers(current, workInProgress) {
+    const currentChild = workInProgress.child;
+    const newChild = createWorkInProgress(currentChild, currentChild.pendingProps);
+    workInProgress.child = newChild;
+    newChild.return = workInProgress;
+    newChild.sibling = null;
+}

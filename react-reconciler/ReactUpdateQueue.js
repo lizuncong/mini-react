@@ -200,7 +200,7 @@ export function processUpdateQueue(workInProgress, props, instance, renderLanes)
             const _payload = update.payload;
             let partialState;
             if (typeof _payload === 'function') {
-                partialState = _payload.call(instance, prevState, nextProps);
+                partialState = _payload.call(instance, newState, props);
             } else {
                 // Partial state object
                 partialState = _payload;

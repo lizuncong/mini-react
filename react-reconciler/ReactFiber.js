@@ -2,6 +2,7 @@ import { ConcurrentRoot, BlockingRoot } from './ReactRootTags'
 import { ConcurrentMode, BlockingMode, StrictMode, NoMode } from './ReactTypeOfMode'
 import { HostRoot, HostComponent, IndeterminateComponent, ClassComponent } from './ReactWorkTags'
 import { NoFlags } from './ReactFiberFlags'
+import { __DEBUG_RENDER_COUNT__ } from './ReactFiberWorkLoop'
 function FiberNode(tag, pendingProps, key, mode) {
     // Instance
     this.tag = tag; // tag所有可能的取值都在 reactWorkTags.js 文件中
@@ -111,7 +112,7 @@ export function createWorkInProgress(current, pendingProps, debugForMe) {
     workInProgress.sibling = current.sibling;
     workInProgress.index = current.index;
 
-    workInProgress.AAA__DEBUG_RENDER_COUNT__ = debugForMe
+    workInProgress.AAA__DEBUG_RENDER_COUNT__ = __DEBUG_RENDER_COUNT__
     return workInProgress
 }
 

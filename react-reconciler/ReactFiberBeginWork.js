@@ -5,9 +5,10 @@ import { cloneUpdateQueue, processUpdateQueue } from './ReactUpdateQueue'
 import {
     mountChildFibers,
     reconcileChildFibers,
+    cloneChildFibers
 } from './ReactChildFiber';
 import ReactSharedInternals from '@shared/ReactSharedInternals';
-import { constructClassInstance, mountClassInstance } from './ReactFiberClassComponent'
+import { constructClassInstance, mountClassInstance, updateClassInstance } from './ReactFiberClassComponent'
 import { shouldSetTextContent } from '@react-dom/client/ReactDOMHostConfig'
 
 
@@ -83,7 +84,7 @@ function reconcileChildren(current, workInProgress, nextChildren, renderLanes) {
 export function beginWork(current, workInProgress, renderLanes) {
     const updateLanes = workInProgress.lanes;
 
-    if (current !== null && current.memoizedState) {
+    if (current !== null && current.memoizedState && current.memoizedState.element) {
         // 源码这里是使用 lane 判断的，这里先暂时使用 memoizedState 判断
         return bailoutOnAlreadyFinishedWork(current, workInProgress, renderLanes);
     }
@@ -128,27 +129,8 @@ export function beginWork(current, workInProgress, renderLanes) {
 
 
 function bailoutOnAlreadyFinishedWork(current, workInProgress, renderLanes) {
-    if (current !== null) {
-        // Reuse previous dependencies
-        workInProgress.dependencies = current.dependencies;
-    }
-
-    {
-        // Don't update "base" render times for bailouts.
-        stopProfilerTimerIfRunning();
-    }
-
-    markSkippedUpdateLanes(workInProgress.lanes); // Check if the children have any pending work.
-
-    if (!includesSomeLane(renderLanes, workInProgress.childLanes)) {
-        // The children don't have any work either. We can skip them.
-        // TODO: Once we add back resuming, we should check if the children are
-        // a work-in-progress set. If so, we need to transfer their effects.
-        return null;
-    } else {
-        // This fiber doesn't have work, but its subtree does. Clone the child
-        // fibers and continue.
-        cloneChildFibers(current, workInProgress);
-        return workInProgress.child;
-    }
+    // This fiber doesn't have work, but its subtree does. Clone the child
+    // fibers and continue.
+    cloneChildFibers(current, workInProgress);
+    return workInProgress.child;
 }

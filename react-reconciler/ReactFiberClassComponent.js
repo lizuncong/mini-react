@@ -1,5 +1,5 @@
 import { get, set } from '@shared/REactInstanceMap'
-import { createUpdate, enqueueUpdate, initializeUpdateQueue, processUpdateQueue } from './ReactUpdateQueue'
+import { createUpdate, enqueueUpdate, cloneUpdateQueue, initializeUpdateQueue, processUpdateQueue } from './ReactUpdateQueue'
 import { scheduleUpdateOnFiber } from './ReactFiberWorkLoop'
 import { Update } from './ReactFiberFlags'
 const classComponentUpdater = {
@@ -29,8 +29,8 @@ export function mountClassInstance(workInProgress, ctor, newProps, renderLanes) 
     if (typeof getDerivedStateFromProps === 'function') {
         // applyDerivedStateFromProps(workInProgress, ctor, getDerivedStateFromProps, newProps);
         // instance.state = workInProgress.memoizedState;
-    } 
-    
+    }
+
     // In order to support react-lifecycles-compat polyfilled components,
     // Unsafe lifecycles should not be invoked for components using the new APIs.
     if (typeof ctor.getDerivedStateFromProps !== 'function' && typeof instance.getSnapshotBeforeUpdate !== 'function' && (typeof instance.UNSAFE_componentWillMount === 'function' || typeof instance.componentWillMount === 'function')) {
@@ -58,4 +58,21 @@ export function constructClassInstance(workInProgress, ctor, props) {
     const state = workInProgress.memoizedState = instance.state !== null && instance.state !== undefined ? instance.state : null;
     adoptClassInstance(workInProgress, instance)
     return instance
+}
+
+export function updateClassInstance(current, workInProgress, ctor, newProps, renderLanes) {
+    const instance = workInProgress.stateNode
+    cloneUpdateQueue(current, workInProgress)
+    const oldProps = workInProgress.memoizedProps
+    instance.props = oldProps
+    let oldState = workInProgress.memoizedState;
+    let newState = instance.state = oldState;
+    processUpdateQueue(workInProgress, newProps, instance, renderLanes);
+    newState = workInProgress.memoizedState;
+    if (typeof instance.componentDidUpdate === 'function') {
+        workInProgress.flags |= Update;
+    }
+    instance.props = newProps;
+    instance.state = newState;
+    return true;
 }

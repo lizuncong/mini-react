@@ -64,7 +64,7 @@ function performSyncWorkOnRoot(root) {
     commitRoot(root);
 }
 
-let __DEBUG_RENDER_COUNT__ = 0
+export let __DEBUG_RENDER_COUNT__ = 0
 
 function renderRootSync(root, lanes) {
     const prevExecutionContext = executionContext;
