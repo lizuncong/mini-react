@@ -8,7 +8,7 @@ const Counter = () => {
   useLayoutEffect(() => {
     console.log("use layout effect ==============");
   });
-  return <button onClick={() => setCount(count + 1)}>{count}</button>;
+  return <button onClick={() => setCount(count + 1)}>function：{count}</button>;
 };
 
 export default Counter;
