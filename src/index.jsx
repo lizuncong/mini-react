@@ -1,28 +1,38 @@
 import React, { Component, PureComponent } from "react";
-import ReactDOM from "@react-dom";
-// import { render } from "react-dom";
+// import ReactDOM from "@react-dom";
+import ReactDOM from "react-dom";
+import Counter from "./Counter";
 class ClickCounter extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { count: 0 };
+    this.state = { step: 0 };
     this.handleClick = this.handleClick.bind(this);
   }
 
   handleClick() {
-    console.log('click....')
     this.setState((state) => {
-      return { count: state.count + 1 };
+      return { step: state.step + 2 };
     });
   }
 
-  componentDidUpdate() {}
+  componentDidUpdate() {
+    console.log("component did update....");
+  }
+
+  componentDidMount() {
+    console.log("component did mount......");
+  }
+  shouldComponentUpdate() {
+    console.log("should component update");
+    return true;
+  }
 
   render() {
     return [
-      <button key="1" onClick={this.handleClick}>
-        Update counter
+      <Counter />,
+      <button key="2" onClick={this.handleClick}>
+        {this.state.step}
       </button>,
-      <span key="2">{this.state.count}</span>,
     ];
   }
 }
