@@ -43,12 +43,12 @@ export function completeWork(current, workInProgress, renderLanes) {
         case HostComponent:
             const type = workInProgress.type;
             if (current && workInProgress.stateNode) {
-                // updateHostComponent(
-                //     current,
-                //     workInProgress,
-                //     workInProgress.tag,
-                //     newProps
-                // );
+                updateHostComponent(
+                    current,
+                    workInProgress,
+                    workInProgress.tag,
+                    newProps
+                );
             } else {
                 // 第一次渲染，创建真实的DOM节点
                 const instance = createInstance(type, newProps, null, null, workInProgress);
@@ -61,3 +61,18 @@ export function completeWork(current, workInProgress, renderLanes) {
     }
     console.log('ReactFiberCompleteWork.js tag不存在  completeWork：', workInProgress.tag)
 };
+
+
+function updateHostComponent(current, workInProgress, tag, newProps) {
+    const oldProps = current.memoizedProps;
+    const instance = workInProgress.stateNode;
+    const updatePayload = prepareUpdate(instance, tag, oldProps, newProps); // [key1, value1, key2, value2]
+    // 这里要注意updateQueue的差别
+    // 在容器节点的fiber中，即 hostRootFiber.updateQueue 是一个环状链表：{ payload: element}
+    // 在原生的html标签中，比如div，span，对应的fiber节点，他们的updateQueue是一个数组：updatePayload
+    // 在类组件中，类组件对应的fiber节点，updateQueue保存的是更新队列，也是一个环状链表
+    workInProgress.updateQueue = updatePayload;
+    if (updatePayload) {
+        workInProgress.flags |= Update;
+    }
+}
