@@ -1,6 +1,6 @@
 import React, { Component, PureComponent } from "react";
-// import ReactDOM from "@react-dom";
-import ReactDOM from "react-dom";
+import ReactDOM from "@react-dom";
+// import ReactDOM from "react-dom";
 import Counter from "./Counter";
 class ClickCounter extends React.Component {
   constructor(props) {
