@@ -14,7 +14,15 @@ const Counter = () => {
       console.log("use layout effect 清除 ===========");
     };
   });
-  return <button onClick={() => setCount(count + 1)}>function：{count}</button>;
+  return (
+    <div>
+      counter wrap
+      <div>
+        hello counter
+      </div>
+      <button onClick={() => setCount(count + 1)}>function：{count}</button>;
+    </div>
+  )
 };
 
 export default Counter;

@@ -9,7 +9,10 @@ commit 阶段，遍历副作用链表并执行真实的 DOM 操作，对真实�
 ### 主流程源码
 
 ```js
-// ReactDOM.render入口
+/************************************ ReactDOM.render入口 ************************************/
+// 1.创建 fiber tree 的容器，即 #root._reactRootContainer._internalRoot，FiberRootNode类型。
+// 2.在 #root 上绑定所有支持的原生事件，这也是合成事件的入口
+// 3. 调用scheduleUpdateOnFiber开始调度更新。
 function render(element, container, callback) {
   return legacyRenderSubtreeIntoContainer(
     null,
@@ -83,6 +86,8 @@ function performSyncWorkOnRoot(root) {
   // commit阶段开始
   commitRoot(root);
 }
+
+/************************************ render phase(render阶段) ************************************/
 function renderRootSync(root, lanes) {
   prepareFreshStack(root, lanes);
   workLoopSync();
@@ -151,5 +156,11 @@ function updateClassComponent(
     hasContext,
     renderLanes
   );
+}
+function updateHostRoot(current, workInProgress, renderLanes) {
+  cloneUpdateQueue(current, workInProgress)
+  processUpdateQueue(workInProgress, nextProps, null, renderLanes);
+  reconcileChildren(current, workInProgress, nextChildren, renderLanes);
+  return workInProgress.child;
 }
 ```
