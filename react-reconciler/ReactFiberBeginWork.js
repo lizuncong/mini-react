@@ -1,6 +1,6 @@
 import { renderWithHooks } from './ReactFiberHooks'
 import { PerformedWork } from './ReactFiberFlags'
-import { HostRoot, HostComponent, ClassComponent } from './ReactWorkTags'
+import { HostRoot, HostComponent, FunctionComponent, ClassComponent, IndeterminateComponent } from './ReactWorkTags'
 import { cloneUpdateQueue, processUpdateQueue } from './ReactUpdateQueue'
 import {
     mountChildFibers,
@@ -89,14 +89,14 @@ export function beginWork(current, workInProgress, renderLanes) {
         return bailoutOnAlreadyFinishedWork(current, workInProgress, renderLanes);
     }
     switch (workInProgress.tag) {
+        case IndeterminateComponent:
+            return mountIndeterminateComponent(current, workInProgress, workInProgress.type, renderLanes);
         case ClassComponent:
-            {
-                const _Component2 = workInProgress.type;
-                const _unresolvedProps = workInProgress.pendingProps;
-                const _resolvedProps = _unresolvedProps
+            const _Component2 = workInProgress.type;
+            const _unresolvedProps = workInProgress.pendingProps;
+            const _resolvedProps = _unresolvedProps
+            return updateClassComponent(current, workInProgress, _Component2, _resolvedProps, renderLanes);
 
-                return updateClassComponent(current, workInProgress, _Component2, _resolvedProps, renderLanes);
-            }
         case HostRoot:
             return updateHostRoot(current, workInProgress, renderLanes);
         case HostComponent:
@@ -117,14 +117,17 @@ export function beginWork(current, workInProgress, renderLanes) {
 // }
 
 
-// function mountIndeterminateComponent(current, workInProgress, Component) {
-//     const children = renderWithHooks(current, workInProgress, Component) // children就是Counter组件函数的返回值
-//     workInProgress.tag = FunctionComponent // 初次渲染后，此时组件类型已经明确，因此需要修改tag
+function mountIndeterminateComponent(_current, workInProgress, Component, renderLanes) {
+    const props = workInProgress.pendingProps;
+    const context = {}
+    let value;
+    value = renderWithHooks(null, workInProgress, Component, props, context, renderLanes);
+    workInProgress.tag = FunctionComponent // 初次渲染后，此时组件类型已经明确，因此需要修改tag
 
-//     // 根据儿子的或者说上面返回的虚拟dom，构建Fiber子树
-//     reconcileChildren(null, workInProgress, children)
-//     return workInProgress.child; // null
-// }
+    // 根据儿子的或者说上面返回的虚拟dom，构建Fiber子树
+    // reconcileChildren(null, workInProgress, children)
+    return workInProgress.child; // null
+}
 
 
 

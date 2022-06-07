@@ -22,6 +22,8 @@ function FiberNode(tag, pendingProps, key, mode) {
     this.pendingProps = pendingProps;
     this.memoizedProps = null;
     this.updateQueue = null;
+    // memoizedState取值说明：
+    // 对于类组件，memoizedState存的是状态值，即类组件的this.state
     this.memoizedState = null;
     this.dependencies = null;
     this.mode = mode; // Effects

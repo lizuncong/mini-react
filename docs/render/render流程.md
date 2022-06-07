@@ -136,7 +136,15 @@ function updateClassComponent(
 ) {
   const instance = workInProgress.stateNode;
   if (instance === null) {
+    // 1.初始化类组件实例instance
+    // 2.初始化实例的instance.updater = classComponentUpdater，包含enqueueSetState等更新方法
+    // 3.关联fiber和实例：workInprogress.stateNode = instance。instances._reactInternals = workInprogress
     constructClassInstance(workInProgress, Component, nextProps);
+    // 1.initializeUpdateQueue初始化更新队列updateQueue
+    // 2.processUpdateQueue计算更新队列，获取最新的state
+    // 3.根据最新的state调用getDerivedStateFromProps静态生命周期方法
+    // 4.调用componentWillMount生命周期方法
+    // 5.如果类组件实现了 componentDidMount 生命周期方法，则更新flags： workInProgress.flags |= Update = 6
     mountClassInstance(workInProgress, Component, nextProps);
   } else if (current === null) {
   } else {
@@ -148,6 +156,9 @@ function updateClassComponent(
       renderLanes
     );
   }
+  // 1.调用类组件实例的render方法获取子元素：instance.render()
+  // 2.更新flags：workInProgress.flags |= PerformedWork = 7
+  // 3. 协调子元素reconcileChildren
   return finishClassComponent(
     current,
     workInProgress,
@@ -157,8 +168,21 @@ function updateClassComponent(
     renderLanes
   );
 }
+function finishClassComponent(
+  current,
+  workInProgress,
+  Component,
+  shouldUpdate,
+  hasContext,
+  renderLanes
+) {
+  nextChildren = instance.render();
+  reconcileChildren(current, workInProgress, nextChildren, renderLanes);
+  workInProgress.memoizedState = instance.state;
+  return workInProgress.child;
+}
 function updateHostRoot(current, workInProgress, renderLanes) {
-  cloneUpdateQueue(current, workInProgress)
+  cloneUpdateQueue(current, workInProgress);
   processUpdateQueue(workInProgress, nextProps, null, renderLanes);
   reconcileChildren(current, workInProgress, nextChildren, renderLanes);
   return workInProgress.child;
