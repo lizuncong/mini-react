@@ -1,5 +1,6 @@
 import { createElement } from './ReactElement'
 import ReactSharedInternals from './ReactSharedInternals'
+import { Component, PureComponent } from './ReactBaseClasses'
 import {
     useEffect,
     useLayoutEffect,
@@ -9,11 +10,15 @@ import {
 
 export default {
     createElement,
-    ReactSharedInternals
+    ReactSharedInternals,
+    Component,
+    PureComponent
 }
 
 export {
     useEffect,
     useLayoutEffect,
     useState,
+    Component,
+    PureComponent
 }
