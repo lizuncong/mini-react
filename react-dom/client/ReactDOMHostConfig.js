@@ -1,4 +1,4 @@
-import { createElement, setInitialProperties } from './ReactDOMComponent'
+import { createElement, createTextNode, setInitialProperties } from './ReactDOMComponent'
 import { ELEMENT_NODE, DOCUMENT_NODE, COMMENT_NODE } from '../shared/HTMLNodeType'
 import { precacheFiberNode, updateFiberProps } from './ReactDOMComponentTree'
 export function shouldSetTextContent(type, props) {
@@ -41,6 +41,11 @@ export function appendChildToContainer(container, child) {
     }
 }
 
+export function createTextInstance(text, rootContainerInstance, hostContext, internalInstanceHandle) {
+    const textNode = createTextNode(text, rootContainerInstance);
+    precacheFiberNode(internalInstanceHandle, textNode);
+    return textNode
+}
 // export function appendChild(parentInstance, child) {
 //     parentInstance.appendChild(child);
 // }

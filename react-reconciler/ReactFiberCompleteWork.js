@@ -1,13 +1,13 @@
-import { HostComponent, ClassComponent, HostRoot } from './ReactWorkTags'
+import { HostComponent, ClassComponent, HostText, HostRoot } from './ReactWorkTags'
 import { Snapshot } from './ReactFiberFlags'
-import { createInstance, finalizeInitialChildren } from '@react-dom/client/ReactDOMHostConfig'
+import { createInstance, finalizeInitialChildren, createTextInstance } from '@react-dom/client/ReactDOMHostConfig'
 
 
 function updateHostContainer(workInProgress) {// Noop
 };
 function appendAllChildren(parent, workInProgress, needsVisibilityToggle, isHidden) {
     let node = workInProgress.child;
-    while (node) {
+    while (node! == null) {
         // if (node.tag === HostComponent) {
         //     appendChild(parent, node.stateNode);
         // }
@@ -57,6 +57,10 @@ export function completeWork(current, workInProgress, renderLanes) {
                 // 给真实dom添加属性
                 finalizeInitialChildren(instance, type, newProps);
             }
+            return null
+        case HostText:
+            const newText = newProps;
+            workInProgress.stateNode = createTextInstance(newText, null, null, workInProgress);
             return null
     }
     console.log('ReactFiberCompleteWork.js tag不存在  completeWork：', workInProgress.tag)

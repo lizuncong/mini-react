@@ -1,6 +1,6 @@
 import { ConcurrentRoot, BlockingRoot } from './ReactRootTags'
 import { ConcurrentMode, BlockingMode, StrictMode, NoMode } from './ReactTypeOfMode'
-import { HostRoot, HostComponent, IndeterminateComponent, ClassComponent } from './ReactWorkTags'
+import { HostRoot, HostText, HostComponent, IndeterminateComponent, ClassComponent } from './ReactWorkTags'
 import { NoFlags } from './ReactFiberFlags'
 import { __DEBUG_RENDER_COUNT__ } from './ReactFiberWorkLoop'
 function FiberNode(tag, pendingProps, key, mode) {
@@ -129,4 +129,11 @@ export function createFiberFromElement(element, mode, lanes) {
     const fiber = createFiberFromTypeAndProps(type, key, pendingProps, owner, mode, lanes);
 
     return fiber
+}
+
+
+export function createFiberFromText(content, mode, lanes) {
+    const fiber = createFiber(HostText, content, null, mode);
+    fiber.lanes = lanes;
+    return fiber;
 }

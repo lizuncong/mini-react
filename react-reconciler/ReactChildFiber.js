@@ -1,7 +1,7 @@
 import {
     REACT_ELEMENT_TYPE,
 } from '@shared/ReactSymbols';
-import { createFiberFromElement, createWorkInProgress } from "./ReactFiber";
+import { createFiberFromElement, createFiberFromText, createWorkInProgress } from "./ReactFiber";
 import { Placement } from './ReactFiberFlags'
 
 function ChildReconciler(shouldTrackSideEffects) {
@@ -63,6 +63,14 @@ function ChildReconciler(shouldTrackSideEffects) {
         return created;
     }
     function createChild(returnFiber, newChild, lanes) {
+        if (typeof newChild === 'string' || typeof newChild === 'number') {
+            // Text nodes don't have keys. If the previous node is implicitly keyed
+            // we can continue to replace it without aborting even if it is not a text
+            // node.
+            const created = createFiberFromText('' + newChild, returnFiber.mode, lanes);
+            created.return = returnFiber;
+            return created;
+        }
         const created = createFiberFromElement(newChild, returnFiber.mode, lanes);
         created.return = returnFiber;
         return created;

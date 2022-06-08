@@ -29,7 +29,9 @@ export const setInitialProperties = (domElement, tag, props) => {
     setInitialDOMProperties(tag, domElement, props);
 };
 
-
+export function createTextNode(text, rootContainerElement) {
+    return document.createTextNode(text)
+}
 
 
 

@@ -1,6 +1,6 @@
 import { renderWithHooks } from './ReactFiberHooks'
 import { PerformedWork } from './ReactFiberFlags'
-import { HostRoot, HostComponent, FunctionComponent, ClassComponent, IndeterminateComponent } from './ReactWorkTags'
+import { HostRoot, HostText, HostComponent, FunctionComponent, ClassComponent, IndeterminateComponent } from './ReactWorkTags'
 import { cloneUpdateQueue, processUpdateQueue } from './ReactUpdateQueue'
 import {
     mountChildFibers,
@@ -96,16 +96,19 @@ export function beginWork(current, workInProgress, renderLanes) {
             const _unresolvedProps = workInProgress.pendingProps;
             const _resolvedProps = _unresolvedProps
             return updateClassComponent(current, workInProgress, _Component2, _resolvedProps, renderLanes);
-
         case HostRoot:
             return updateHostRoot(current, workInProgress, renderLanes);
         case HostComponent:
             return updateHostComponent(current, workInProgress);
+        case HostText:
+            return updateHostText(current, workInProgress);
     }
     console.log('beginWork..tag不存在', workInProgress.tag)
 }
 
-
+function updateHostText() {
+    return null
+}
 // function updateFunctionComponent(current, workInProgress, Component) {
 //     const newChildren = renderWithHooks(current, workInProgress, Component)
 
@@ -120,7 +123,7 @@ function mountIndeterminateComponent(_current, workInProgress, Component, render
     const context = {}
     let value;
     value = renderWithHooks(null, workInProgress, Component, props, context, renderLanes);
-    
+
     workInProgress.flags |= PerformedWork;
 
     workInProgress.tag = FunctionComponent
