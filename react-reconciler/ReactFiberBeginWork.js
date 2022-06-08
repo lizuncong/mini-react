@@ -106,8 +106,6 @@ export function beginWork(current, workInProgress, renderLanes) {
 }
 
 
-
-
 // function updateFunctionComponent(current, workInProgress, Component) {
 //     const newChildren = renderWithHooks(current, workInProgress, Component)
 
@@ -122,11 +120,11 @@ function mountIndeterminateComponent(_current, workInProgress, Component, render
     const context = {}
     let value;
     value = renderWithHooks(null, workInProgress, Component, props, context, renderLanes);
-    workInProgress.tag = FunctionComponent // 初次渲染后，此时组件类型已经明确，因此需要修改tag
+    // workInProgress.tag = FunctionComponent // 初次渲染后，此时组件类型已经明确，因此需要修改tag
 
     // 根据儿子的或者说上面返回的虚拟dom，构建Fiber子树
     // reconcileChildren(null, workInProgress, children)
-    return workInProgress.child; // null
+    return workInProgress.child;
 }
 
 

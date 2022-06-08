@@ -13,7 +13,7 @@ export const Callback = /*                     */ 0b000000000000100000; // 32
 // export const DidCapture = /*                   */ 0b000000000001000000; // 64
 // export const Ref = /*                          */ 0b000000000010000000; // 128
 export const Snapshot = /*                     */ 0b000000000100000000; // 256
-// export const Passive = /*                      */ 0b000000001000000000; // 512
+export const Passive = /*                      */ 0b000000001000000000; // 512
 export const Hydrating = /*                    */ 0b000000010000000000; // 1024
 // export const HydratingAndUpdate = /*           */ 0b000000010000000100; // 1028
 
