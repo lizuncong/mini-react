@@ -120,10 +120,12 @@ function mountIndeterminateComponent(_current, workInProgress, Component, render
     const context = {}
     let value;
     value = renderWithHooks(null, workInProgress, Component, props, context, renderLanes);
-    // workInProgress.tag = FunctionComponent // 初次渲染后，此时组件类型已经明确，因此需要修改tag
+    
+    workInProgress.flags |= PerformedWork;
 
-    // 根据儿子的或者说上面返回的虚拟dom，构建Fiber子树
-    // reconcileChildren(null, workInProgress, children)
+    workInProgress.tag = FunctionComponent
+
+    reconcileChildren(null, workInProgress, value, renderLanes);
     return workInProgress.child;
 }
 

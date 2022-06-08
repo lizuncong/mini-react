@@ -11,7 +11,7 @@ import {
 // import { scheduleUpdateOnFiber } from "./ReactFiberWorkLoop";
 
 let workInProgressHook = null; // 当前工作中的新的hook指针
-// let currentHook = null; // 当前的旧的hook指针
+let currentHook = null; // 当前的旧的hook指针
 let currentlyRenderingFiber; // workInProgress的别名
 const { ReactCurrentDispatcher } = ReactSharedInternals;
 
@@ -156,9 +156,9 @@ export function renderWithHooks(
       ? HooksDispatcherOnMount
       : HooksDispatcherOnUpdate;
   const children = Component(props, secondArg);
-  // currentlyRenderingFiber = null;
-  // workInProgressHook = null;
-  // currentHook = null;
+  currentlyRenderingFiber = null;
+  workInProgressHook = null;
+  currentHook = null;
   return children;
 }
 
