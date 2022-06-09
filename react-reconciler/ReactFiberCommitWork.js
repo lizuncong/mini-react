@@ -209,6 +209,7 @@ export function commitLifeCycles(finishedRoot, current, finishedWork, committedL
             // by a create function in another component during the same commit.
             // 执行函数组件的 useLayoutEffect 回调
             commitHookEffectListMount(HookLayout | HookHasEffect, finishedWork);
+            // 将 useEffect 放入异步更新队列
             schedulePassiveEffects(finishedWork);
             return;
         case ClassComponent:
