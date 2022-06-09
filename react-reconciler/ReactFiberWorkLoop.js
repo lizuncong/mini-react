@@ -1,9 +1,14 @@
 import { beginWork } from './ReactFiberBeginWork'
 import { completeWork } from './ReactFiberCompleteWork'
-import { PerformedWork, Callback, PlacementAndUpdate, Snapshot, NoFlags, Placement, Update, Deletion, Hydrating } from './ReactFiberFlags'
+import { PerformedWork, Passive, Callback, PlacementAndUpdate, Snapshot, NoFlags, Placement, Update, Deletion, Hydrating } from './ReactFiberFlags'
 import { HostRoot } from './ReactWorkTags.js'
 import { createWorkInProgress } from './ReactFiber'
-import { commitBeforeMutationLifeCycles, commitPlacement } from './ReactFiberCommitWork'
+import {
+    commitBeforeMutationLifeCycles,
+    commitWork,
+    commitPlacement,
+    commitLifeCycles as commitLayoutEffectOnFiber,
+} from './ReactFiberCommitWork'
 import ReactSharedInternals from '@shared/ReactSharedInternals.js'
 
 
@@ -25,6 +30,9 @@ let executionContext = NoContext;
 let workInProgressRoot = null; // The root we're working on
 let workInProgress = null; // The fiber we're working on
 let nextEffect = null;
+let pendingPassiveHookEffectsUnmount = [];
+let pendingPassiveHookEffectsMount = [];
+
 
 // 从当前调度的fiber开始，向上找到根节点，从根节点开始更新
 // 任何触发更新的方法，都需要调用 scheduleUpdateOnFiber 开始调度更新，比如 setState
@@ -237,7 +245,20 @@ function commitBeforeMutationEffects() {
         if ((flags & Snapshot) !== NoFlags) {
             commitBeforeMutationLifeCycles(current, nextEffect);
         }
-
+        if ((flags & Passive) !== NoFlags) {
+            // If there are passive effects, schedule a callback to flush at
+            // the earliest opportunity.
+            setTimeout(() => {
+                flushPassiveEffects();
+            }, 0);
+            // if (!rootDoesHavePassiveEffects) {
+            // rootDoesHavePassiveEffects = true;
+            // scheduleCallback(NormalPriority$1, function () {
+            //     flushPassiveEffects();
+            //     return null;
+            // });
+            // }
+        }
         nextEffect = nextEffect.nextEffect;
     }
 }
@@ -261,16 +282,16 @@ function commitMutationEffects(root, renderPriorityLevel) {
                 break;
             case PlacementAndUpdate:
                 // Placement
-                // commitPlacement(nextEffect);
+                commitPlacement(nextEffect);
                 // Clear the "placement" from effect tag so that we know that this is
                 // inserted, before any life-cycles like componentDidMount gets called.
                 nextEffect.flags &= ~Placement; // Update
                 var _current = nextEffect.alternate;
-                // commitWork(_current, nextEffect);
+                commitWork(_current, nextEffect);
                 break;
             case Update:
                 var _current3 = nextEffect.alternate;
-                // commitWork(_current3, nextEffect);
+                commitWork(_current3, nextEffect);
                 break;
             case Deletion:
                 // commitDeletion(root, nextEffect);
@@ -285,9 +306,58 @@ function commitLayoutEffects(root, committedLanes) {
         const flags = nextEffect.flags;
 
         if (flags & (Update | Callback)) {
-            // var current = nextEffect.alternate;
-            // commitLifeCycles(root, current, nextEffect);
+            var current = nextEffect.alternate;
+            commitLayoutEffectOnFiber(root, current, nextEffect);
         }
         nextEffect = nextEffect.nextEffect;
+    }
+}
+
+export function enqueuePendingPassiveHookEffectUnmount(fiber, effect) {
+    pendingPassiveHookEffectsUnmount.push(effect, fiber);
+
+}
+
+export function enqueuePendingPassiveHookEffectMount(fiber, effect) {
+    pendingPassiveHookEffectsMount.push(effect, fiber);
+}
+
+function flushPassiveEffects() {
+    // Returns whether passive effects were flushed.
+    flushPassiveEffectsImpl()
+
+    return false;
+}
+function flushPassiveEffectsImpl() {
+    // It's important that ALL pending passive effect destroy functions are called
+    // before ANY passive effect create functions are called.
+    // Otherwise effects in sibling components might interfere with each other.
+    // e.g. a destroy function in one component may unintentionally override a ref
+    // value set by a create function in another component.
+    // Layout effects have the same constraint.
+
+    // First pass: Destroy stale passive effects.
+    const unmountEffects = pendingPassiveHookEffectsUnmount;
+    pendingPassiveHookEffectsUnmount = [];
+
+    for (let i = 0; i < unmountEffects.length; i += 2) {
+        const effect = unmountEffects[i];
+        const fiber = unmountEffects[i + 1];
+        const destroy = effect.destroy;
+        effect.destroy = undefined;
+
+        if (typeof destroy === 'function') {
+            destroy();
+        }
+    }
+    // Second pass: Create new passive effects.
+    const mountEffects = pendingPassiveHookEffectsMount;
+    pendingPassiveHookEffectsMount = [];
+
+    for (let i = 0; i < mountEffects.length; i += 2) {
+        const effect = mountEffects[i];
+        const fiber = mountEffects[i + 1]
+        const create = effect.create;
+        effect.destroy = create();
     }
 }

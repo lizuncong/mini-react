@@ -1,45 +1,54 @@
-import { HostComponent, ClassComponent, HostText, HostRoot } from './ReactWorkTags'
+import { HostComponent, FunctionComponent, ClassComponent, HostText, HostRoot } from './ReactWorkTags'
 import { Snapshot } from './ReactFiberFlags'
-import { createInstance, finalizeInitialChildren, createTextInstance } from '@react-dom/client/ReactDOMHostConfig'
+import { createInstance, appendInitialChild, finalizeInitialChildren, createTextInstance } from '@react-dom/client/ReactDOMHostConfig'
 
 
 function updateHostContainer(workInProgress) {// Noop
 };
 function appendAllChildren(parent, workInProgress, needsVisibilityToggle, isHidden) {
     let node = workInProgress.child;
-    while (node! == null) {
-        // if (node.tag === HostComponent) {
-        //     appendChild(parent, node.stateNode);
-        // }
-        // node = node.sibling;
+    while (node !== null) {
+        if (node.tag === HostComponent || node.tag === HostText) {
+            // 这一步有dom操作，将文本节点添加到父节点中
+            appendInitialChild(parent, node.stateNode);
+        }
+        if (node === workInProgress) {
+            return
+        }
+        while (node.sibling === null) {
+            if (node.return === null || node.return === workInProgress) {
+                return;
+            }
+            node = node.return;
+        }
+        // 每个fiber节点都有一个return指针指向父节点，这里为啥还多此一举？？
+        node.sibling.return = node.return;
+        node = node.sibling;
     }
 }
 
 export function completeWork(current, workInProgress, renderLanes) {
     const newProps = workInProgress.pendingProps;
     switch (workInProgress.tag) {
+        case FunctionComponent:
+            return null
         case ClassComponent:
-            {
-                const Component = workInProgress.type;
-                // if (isContextProvider(Component)) {
-                //     popContext();
-                // }
-                return null;
+            const Component = workInProgress.type;
+            // if (isContextProvider(Component)) {
+            //     popContext();
+            // }
+            return null;
+        case HostRoot: 
+            const fiberRoot = workInProgress.stateNode;
+            if (current === null || current.child === null) {
+                // Schedule an effect to clear this container at the start of the next commit.
+                // This handles the case of React rendering into a container with previous children.
+                // It's also safe to do for updates too, because current.child would only be null
+                // if the previous render was null (so the the container would already be empty).
+                workInProgress.flags |= Snapshot;
             }
-        case HostRoot:
-            {
-                const fiberRoot = workInProgress.stateNode;
-                if (current === null || current.child === null) {
-                    // Schedule an effect to clear this container at the start of the next commit.
-                    // This handles the case of React rendering into a container with previous children.
-                    // It's also safe to do for updates too, because current.child would only be null
-                    // if the previous render was null (so the the container would already be empty).
-                    workInProgress.flags |= Snapshot;
-                }
-
-                updateHostContainer(workInProgress);
-                return null;
-            }
+            updateHostContainer(workInProgress);
+            return null;
         case HostComponent:
             const type = workInProgress.type;
             if (current && workInProgress.stateNode) {
@@ -52,9 +61,10 @@ export function completeWork(current, workInProgress, renderLanes) {
             } else {
                 // 第一次渲染，创建真实的DOM节点
                 const instance = createInstance(type, newProps, null, null, workInProgress);
+                // 将子元素对应的dom节点添加到instance中，即instance.appendChild(chid)
                 appendAllChildren(instance, workInProgress, false, false);
                 workInProgress.stateNode = instance;
-                // 给真实dom添加属性
+                // 给真实dom实例添加属性，比如style等
                 finalizeInitialChildren(instance, type, newProps);
             }
             return null

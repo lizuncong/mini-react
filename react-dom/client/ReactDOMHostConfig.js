@@ -46,6 +46,10 @@ export function createTextInstance(text, rootContainerInstance, hostContext, int
     precacheFiberNode(internalInstanceHandle, textNode);
     return textNode
 }
+
+export function appendInitialChild(parentInstance, child) {
+    parentInstance.appendChild(child);
+}
 // export function appendChild(parentInstance, child) {
 //     parentInstance.appendChild(child);
 // }

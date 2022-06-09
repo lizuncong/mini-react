@@ -1,7 +1,21 @@
-import { Snapshot } from './ReactFiberFlags'
-import { HostRoot, HostComponent, HostPortal, HostText, FundamentalComponent } from './ReactWorkTags'
+import { Snapshot, Update } from './ReactFiberFlags'
+import { HostRoot, FunctionComponent, HostComponent, HostPortal, HostText, FundamentalComponent, ClassComponent } from './ReactWorkTags'
 import { appendChildToContainer } from '@react-dom/client/ReactDOMHostConfig'
+import {
+    Layout as HookLayout,
+    NoFlags as NoHookEffect,
+    HasEffect as HookHasEffect,
+    Passive as HookPassive,
+} from './ReactHookEffectTags'
 import { clearContainer } from '@react-dom/client/ReactDOMHostConfig'
+import {
+    enqueuePendingPassiveHookEffectUnmount,
+    enqueuePendingPassiveHookEffectMount
+} from './ReactFiberWorkLoop'
+import { commitUpdateQueue } from './ReactUpdateQueue';
+
+
+
 export function commitBeforeMutationLifeCycles(current, finishedWork) {
     switch (finishedWork.tag) {
         case HostRoot:
@@ -140,25 +154,126 @@ function insertOrAppendPlacementNodeIntoContainer(node, before, parent) {
         }
     }
 }
-// import {
-//   appendChild,
-//   removeChild,
-//   insertBefore,
-// } from "../react-dom/ReactDOMHostConfig";
-// import { updateProperties } from "../react-dom/ReactDOMComponent";
 
 
+// DOM更新
+export function commitWork(current, finishedWork) {
+    //   const updatePayload = finishedWork.updateQueue;
+    //   finishedWork.updateQueue = null;
+    //   if (updatePayload) {
+    //     updateProperties(finishedWork.stateNode, updatePayload);
+    //   }
+    switch (finishedWork.tag) {
+        case FunctionComponent:
+            // Layout effects are destroyed during the mutation phase so that all
+            // destroy functions for all fibers are called before any create functions.
+            // This prevents sibling component effects from interfering with each other,
+            // e.g. a destroy function in one component should never override a ref set
+            // by a create function in another component during the same commit.
+            // 执行函数组件的 useEffect 以及 useLayoutEffect 的清除回调，注意是清除回调，即 effect 的返回函数
+            commitHookEffectListUnmount(HookLayout | HookHasEffect, finishedWork);
+            return;
+        case ClassComponent:
+            return
+    }
+}
+function commitHookEffectListUnmount(tag, finishedWork) {
+    let updateQueue = finishedWork.updateQueue;
+    let lastEffect = updateQueue !== null ? updateQueue.lastEffect : null;
 
+    if (lastEffect !== null) {
+        let firstEffect = lastEffect.next;
+        let effect = firstEffect;
+        do {
+            if ((effect.tag & tag) === tag) {
+                // Unmount
+                const destroy = effect.destroy;
+                effect.destroy = undefined;
 
-// // DOM更新
-// export function commitWork(current, finishedWork) {
-//   const updatePayload = finishedWork.updateQueue;
-//   finishedWork.updateQueue = null;
-//   if (updatePayload) {
-//     updateProperties(finishedWork.stateNode, updatePayload);
-//   }
-// }
+                if (destroy !== undefined) {
+                    destroy();
+                }
+            }
 
+            effect = effect.next;
+        } while (effect !== firstEffect);
+    }
+}
+
+export function commitLifeCycles(finishedRoot, current, finishedWork, committedLanes) {
+    switch (finishedWork.tag) {
+        case FunctionComponent:
+            // At this point layout effects have already been destroyed (during mutation phase).
+            // This is done to prevent sibling component effects from interfering with each other,
+            // e.g. a destroy function in one component should never override a ref set
+            // by a create function in another component during the same commit.
+            // 执行函数组件的 useLayoutEffect 回调
+            commitHookEffectListMount(HookLayout | HookHasEffect, finishedWork);
+            schedulePassiveEffects(finishedWork);
+            return;
+        case ClassComponent:
+            const instance = finishedWork.stateNode;
+            if (finishedWork.flags & Update) {
+                if (current === null) {
+                    instance.componentDidMount();
+                } else {
+                    // var prevProps = finishedWork.elementType === finishedWork.type ? current.memoizedProps : resolveDefaultProps(finishedWork.type, current.memoizedProps);
+                    // var prevState = current.memoizedState; 
+                    // // We could update instance props and state here,
+                    // instance.componentDidUpdate(prevProps, prevState, instance.__reactInternalSnapshotBeforeUpdate);
+                }
+            }
+            // TODO: I think this is now always non-null by the time it reaches the
+            // commit phase. Consider removing the type check.
+            const updateQueue = finishedWork.updateQueue;
+            if (updateQueue !== null) {
+                // but instead we rely on them being set during last render.
+                // TODO: revisit this when we implement resuming.
+                commitUpdateQueue(finishedWork, updateQueue, instance);
+            }
+            return;
+    }
+}
+function commitHookEffectListMount(tag, finishedWork) {
+    const updateQueue = finishedWork.updateQueue;
+    const lastEffect = updateQueue !== null ? updateQueue.lastEffect : null;
+
+    if (lastEffect !== null) {
+        const firstEffect = lastEffect.next;
+        let effect = firstEffect;
+
+        do {
+            if ((effect.tag & tag) === tag) {
+                // Mount
+                const create = effect.create;
+                effect.destroy = create();
+            }
+
+            effect = effect.next;
+        } while (effect !== firstEffect);
+    }
+}
+
+function schedulePassiveEffects(finishedWork) {
+    const updateQueue = finishedWork.updateQueue;
+    const lastEffect = updateQueue !== null ? updateQueue.lastEffect : null;
+
+    if (lastEffect !== null) {
+        const firstEffect = lastEffect.next;
+        let effect = firstEffect;
+
+        do {
+            const { next, tag } = effect
+
+            if ((tag & HookPassive) !== NoHookEffect && (tag & HookHasEffect) !== NoHookEffect) {
+                enqueuePendingPassiveHookEffectUnmount(finishedWork, effect);
+                enqueuePendingPassiveHookEffectMount(finishedWork, effect);
+            }
+
+            effect = next;
+        } while (effect !== firstEffect);
+    }
+}
 // export function commitDeletion(fiber) {
 //   if (!fiber) return;
 //   const parentStateNode = getParentStateNode(fiber);

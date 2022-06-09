@@ -223,3 +223,22 @@ export function processUpdateQueue(workInProgress, props, instance, renderLanes)
         workInProgress.memoizedState = newState;
     }
 }
+
+
+export function commitUpdateQueue(finishedWork, finishedQueue, instance) {
+    // Commit the effects
+    const effects = finishedQueue.effects;
+    finishedQueue.effects = null;
+
+    if (effects !== null) {
+        for (var i = 0; i < effects.length; i++) {
+            var effect = effects[i];
+            var callback = effect.callback;
+
+            if (callback !== null) {
+                effect.callback = null;
+                // callCallback(callback, instance);
+            }
+        }
+    }
+}
