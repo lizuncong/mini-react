@@ -40,7 +40,7 @@
 - Hooks
 
   - [React.useReducer 原理及源码主流程](https://github.com/lizuncong/mini-react/blob/master/docs/hooks/how_useReducer_work.md)
-  - [【TODO】从源码的角度分析 useLayoutEffect 及 useEffect 的区别](https://github.com/lizuncong/mini-react/blob/master/docs/hooks/useLayoutEffect_useEffect.md)
+  - [从源码的角度分析 useLayoutEffect 及 useEffect 的区别](https://github.com/lizuncong/mini-react/blob/master/docs/hooks/%E4%BB%8E%E6%BA%90%E7%A0%81%E7%9A%84%E8%A7%92%E5%BA%A6%E7%90%86%E8%A7%A3useEffect%E4%BB%A5%E5%8F%8AuseLayoutEffect%E7%9A%84%E5%8C%BA%E5%88%AB.md)
 
 - Class Component
 
@@ -59,7 +59,7 @@
 
 ### 参考链接
 
-- [React作者 Dan Abramov 的博客](https://overreacted.io/)
+- [React 作者 Dan Abramov 的博客](https://overreacted.io/)
 - [Fiber 内部：深入概述 React 中新的协调算法](https://indepth.dev/posts/1008/inside-fiber-in-depth-overview-of-the-new-reconciliation-algorithm-in-react)
 - [medium.com](https://medium.com/react-in-depth)
 - [scheduling-in-react](https://philippspiess.com/scheduling-in-react/)
