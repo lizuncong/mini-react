@@ -1,38 +1,16 @@
 import React from "react";
-import { useEffect, useState, useLayoutEffect } from 'react'
-// import { useEffect, useState, useLayoutEffect } from '@react'
-
-const Counter = () => {
+// import { useState } from "react";
+import { useState } from "@react";
+const Counter = ({ step }) => {
   const [count, setCount] = useState(0);
-  useEffect(() => {
-    console.log("use effect ==============");
-    document.getElementById('useEffect').innerText = 'useEffect：' + count
-    return () => {
-      console.log("use effect 清除 =============");
-    };
-  });
-  useLayoutEffect(() => {
-    console.log("use layout effect ==============");
-    if(count === 1){
-      debugger
-      console.log('在useLayoutEffect里面调度')
-      setCount(count + 1)
-    }
-    document.getElementById('useLayoutEffect').innerText = 'useLayoutEffect：' + count
-    return () => {
-      console.log("use layout effect 清除 ===========");
-    };
-  });
   const onBtnClick = () => {
-    debugger
-    console.log('按钮点击...')
-    setCount(count + 1)
-  }
+    setCount(count + 1);
+  };
   return (
-    <div>
-      counter wrap
-      <div>hello counter</div>
-      <button onClick={onBtnClick}>function：{count}</button>;
+    <div style={{ marginBottom: "50px" }}>
+      {!(count % 2) && <div>复数显示，单数隐藏</div>}
+      <button onClick={onBtnClick}>{count}</button>
+      <div>函数组件接收的props：{step}</div>
     </div>
   );
 };
