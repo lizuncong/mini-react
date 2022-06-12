@@ -100,9 +100,11 @@ export function createWorkInProgress(current, pendingProps, debugForMe) {
         workInProgress.alternate = current;
         current.alternate = workInProgress;
     } else {
-        workInProgress.pendingProps = pendingProps; // Needed because Blocks store data on type.
+        workInProgress.pendingProps = pendingProps;
+        // Needed because Blocks store data on type.
 
-        workInProgress.type = current.type; // We already have an alternate.
+        workInProgress.type = current.type;
+        // We already have an alternate.
         // Reset the effect tag.
 
         workInProgress.flags = NoFlags; // The effect list is no longer valid.

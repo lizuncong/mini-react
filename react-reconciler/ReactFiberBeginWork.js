@@ -26,10 +26,13 @@ function updateClassComponent(current, workInProgress, Component, nextProps, ren
     } else if (current === null) {
 
     } else {
+        // 主要是调用processUpdateQueue计算最新的state
         shouldUpdate = updateClassInstance(current, workInProgress, Component, nextProps, renderLanes);
     }
     return finishClassComponent(current, workInProgress, Component, shouldUpdate, hasContext, renderLanes);
 }
+// 调用 类组件的render方法获取最新的 react element子元素：nextChildren。用于和旧的fiber节点比较
+// 调用 reconcileChildren 开始协调子元素
 function finishClassComponent(current, workInProgress, Component, shouldUpdate, hasContext, renderLanes) {
     const instance = workInProgress.stateNode;
     // Rerender

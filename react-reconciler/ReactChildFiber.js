@@ -3,7 +3,8 @@ import {
 } from '@shared/ReactSymbols';
 import { createFiberFromElement, createFiberFromText, createWorkInProgress } from "./ReactFiber";
 import { Placement } from './ReactFiberFlags'
-
+// 在协调子节点的过程中：
+// 如果重用旧的fiber，重用的节点的兄弟节点需要重置为null，并且重新生成，旧的子节点保留
 function ChildReconciler(shouldTrackSideEffects) {
     function deleteChild(returnFiber, childToDelete) {
         if (!shouldTrackSideEffects) {
