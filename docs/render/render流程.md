@@ -4,6 +4,14 @@
 
 render 阶段，通过 setState 或者 ReactDOM.render 触发，主要是调用类组件实例的 render 方法或者执行函数组件获取子元素并进行协调(reconcile or dom diff)，然后找出有副作用的节点，构建副作用链表。render 阶段的结果是一个副作用链表以及一棵 finishedWork 树。这个阶段可以是异步的
 
+render 阶段主要分为 beginWork 和 completeUnitOfWork 两个子阶段。
+
+beginWork 主要是根据新的react element子元素和旧的fiber树进行比较，创建新的fiber节点或者复用旧的fiber节点的过程。
+
+completeUnitOfWork 主要是构建副作用链表。除了构建副作用链表以外，对于不同类型的fiber节点，还执行了以下工作：
+- 对于原生HTML节点，比较newProps和oldProps，收集发生变更的属性键值对，并存储在fiber.updateQueue中
+
+
 commit 阶段，遍历副作用链表并执行真实的 DOM 操作，对真实的 DOM 节点进行增删改移。这个阶段是同步的，一旦开始就不能再中断。
 
 ### 主流程源码

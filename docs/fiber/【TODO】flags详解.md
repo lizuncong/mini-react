@@ -60,3 +60,24 @@ workInProgress.flags |= PerformedWork; // PerformedWork对应的值为1
 ```
 
 此时 `workInProgress.flags = 1`
+
+
+### 原生的HTML标签
+
+#### prepareUpdate
+在 completeUnitOfWork 阶段，调用 prepareUpdate 方法比较fiber节点的oldProps和newProps，收集变更的属性的 `键值对` 存储在 fiber.updateQueue 中。如果 fiber.updateQueue 不为 null，则需要更新 fiber.flags：
+
+```js
+	workInProgress.flags |= Update; // Update对应的值是4
+```
+
+此时 `workInProgress.flags = 4`
+
+
+
+### 文本节点
+在 completeUnitOfWork 阶段，调用 updateHostText，比较新旧文本是否相同，如果不同，则更新 fiber.flags：
+```js
+	workInProgress.flags |= Update; // Update对应的值是4
+```
+此时 `workInProgress.flags = 4`

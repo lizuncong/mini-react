@@ -22,8 +22,9 @@ function FiberNode(tag, pendingProps, key, mode) {
     this.pendingProps = pendingProps;
     this.memoizedProps = null;
     // updateQueue取值说明
-    // 对于类组件，updateQueue存的是更新队列，即this.setState的队列
-    // 对于函数组件，updateQueue存的是 useEffect的回调，并且是一个换装链表
+    // 对于类组件，updateQueue存的是更新队列，即this.setState的队列，是一个环状链表
+    // 对于函数组件，updateQueue存的是 useEffect的回调，并且是一个环状链表
+    // 对于原生HTML标签，对应的fiber.updateQueue存的是diffProperties后需要更新的属性键值对，此时updateQueue就是一个数组
     this.updateQueue = null;
     // memoizedState取值说明：
     // 对于类组件，memoizedState存的是状态值，即类组件的this.state
