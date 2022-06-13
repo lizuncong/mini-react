@@ -6,13 +6,32 @@ render 阶段，通过 setState 或者 ReactDOM.render 触发，主要是调用�
 
 render 阶段主要分为 beginWork 和 completeUnitOfWork 两个子阶段。
 
-beginWork 主要是根据新的react element子元素和旧的fiber树进行比较，创建新的fiber节点或者复用旧的fiber节点的过程。
+beginWork 主要是根据新的 react element 子元素和旧的 fiber 树进行比较，创建新的 fiber 节点或者复用旧的 fiber 节点的过程。
 
-completeUnitOfWork 主要是构建副作用链表。除了构建副作用链表以外，对于不同类型的fiber节点，还执行了以下工作：
-- 对于原生HTML节点，比较newProps和oldProps，收集发生变更的属性键值对，并存储在fiber.updateQueue中
+completeUnitOfWork 主要是构建副作用链表。除了构建副作用链表以外，对于不同类型的 fiber 节点，还执行了以下工作：
 
+- 对于原生 HTML 节点，比较 newProps 和 oldProps，收集发生变更的属性键值对，并存储在 fiber.updateQueue 中
 
 commit 阶段，遍历副作用链表并执行真实的 DOM 操作，对真实的 DOM 节点进行增删改移。这个阶段是同步的，一旦开始就不能再中断。
+commit 阶段分为三个子阶段：
+
+- commitBeforeMutationEffects。DOM 变更前。这个阶段除了类组件以外，其他类型的 fiber 节点几乎没有任何处理
+
+  - 调用类组件实例上的 getSnapshotBeforeUpdate 方法
+
+- commitMutationEffects。操作真实的 DOM
+  - 对于 HostComponent
+    - 更新 dom 节点上的 `__reactProps$md9gs3r7129` 属性，这个属性存的是 fiber 节点的 props 值。这个属性很重要，主要是更新 dom 上的 onClick 等合成事件。由于事件委托在容器 root 上，因此在事件委托时，需要通过 dom 节点获取最新的 onClick 等事件
+    - 更新发生了变更的属性，比如 style 等
+  - 对于 HostText，直接更新文本节点的 nodeValue 为最新的文本值
+  - 对于类组件，则什么都不做。
+- commitLayoutEffects。DOM 变更后。
+  - 对于 HostComponent，判断是否需要聚焦
+  - 对于 HostText，什么都没做
+  - 对于类组件
+    - 初次渲染，则调用 componentDidMount
+    - 更新则调用 componentDidUpdate
+    - 调用 this.setState 的 callback
 
 ### 主流程源码
 
