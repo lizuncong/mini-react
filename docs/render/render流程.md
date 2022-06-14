@@ -1,4 +1,4 @@
-> 本章主要介绍 `ReactDOM.render` 初次渲染以及 `setState` 手动触发更新的主流程。学习 `React` 渲染的两个阶段：`render` 和 `commit` 阶段。了解 `React` 合成事件注册时机、类组件生命周期方法、函数组件 `hook` 调用时机等。
+> 本章主要介绍 `ReactDOM.render` 初次渲染以及 `setState` 手动触发更新的主流程。学习 `React` 渲染的两个阶段：`render` 和 `commit` 阶段。了解 `React` 合成事件注册时机、类组件生命周期方法、函数组件 `hook` 调用时机、reconcile(dom diff)算法等。
 
 ## 深入概述 ReactDOM.render 初次渲染 以及 setState 手动触发状态更新主流程
 
@@ -69,7 +69,7 @@ commit 阶段是同步的，一旦开始就不能再中断。这个阶段遍历�
     - 更新则调用 componentDidUpdate
     - 调用 this.setState 的 callback
 
-### ReactDOM.render
+### ReactDOM.render 初次渲染
 
 初次渲染的入口。初次渲染主要逻辑在 `createRootImpl` 以及 `updateContainer` 这两个函数中，主要工作：
 
@@ -182,10 +182,13 @@ function performSyncWorkOnRoot(root) {
 }
 ```
 
+### render 阶段
 
-### stash
+#### renderRootSync
+
+render 阶段从 `renderRootSync` 函数开始。主要逻辑在 `prepareFreshStack` 以及 `workLoopSync` 方法。
+
 ```js
-/************************************ render phase(render阶段) ************************************/
 function renderRootSync(root, lanes) {
   prepareFreshStack(root, lanes);
   workLoopSync();
@@ -200,20 +203,32 @@ function workLoopSync() {
     performUnitOfWork(workInProgress);
   }
 }
+```
+
+workInProgress 代表正在工作的 fiber 节点。对于每一个 fiber 节点，都会执行 performUnitOfWork。
+
+#### performUnitOfWork
+
+对于每一个 fiber 节点，首先调用 `beginWork` 协调子节点，如果 `beginWork` 返回 `null`，说明当前 fiber 节点已经没有子节点，工作可以完成了，调用 `completeUnitOfWork` 完成工作。
+
+```js
 function performUnitOfWork(unitOfWork) {
-  // The current, flushed, state of this fiber is the alternate. Ideally
-  // nothing should rely on this, but relying on it here means that we don't
-  // need an additional field on the work in progress.
   let current = unitOfWork.alternate;
   const next = beginWork(current, unitOfWork, subtreeRenderLanes);
   unitOfWork.memoizedProps = unitOfWork.pendingProps;
   if (next === null) {
-    // If this doesn't spawn new work, complete the current work.
     completeUnitOfWork(unitOfWork);
   } else {
     workInProgress = next;
   }
 }
+```
+
+#### beginWork
+
+`beginWork` 就是一个简单的基于 `fiber.tag` 的 switch 语句
+
+```js
 function beginWork(current, workInProgress, renderLanes) {
   switch (workInProgress.tag) {
     case ClassComponent: {
@@ -225,6 +240,22 @@ function beginWork(current, workInProgress, renderLanes) {
       return updateHostComponent(current, workInProgress);
   }
 }
+```
+
+##### updateHostRoot
+
+```js
+function updateHostRoot(current, workInProgress, renderLanes) {
+  cloneUpdateQueue(current, workInProgress);
+  processUpdateQueue(workInProgress, nextProps, null, renderLanes);
+  reconcileChildren(current, workInProgress, nextChildren, renderLanes);
+  return workInProgress.child;
+}
+```
+
+### stash
+
+```js
 function updateClassComponent(
   current,
   workInProgress,
@@ -277,12 +308,6 @@ function finishClassComponent(
   nextChildren = instance.render();
   reconcileChildren(current, workInProgress, nextChildren, renderLanes);
   workInProgress.memoizedState = instance.state;
-  return workInProgress.child;
-}
-function updateHostRoot(current, workInProgress, renderLanes) {
-  cloneUpdateQueue(current, workInProgress);
-  processUpdateQueue(workInProgress, nextProps, null, renderLanes);
-  reconcileChildren(current, workInProgress, nextChildren, renderLanes);
   return workInProgress.child;
 }
 ```
