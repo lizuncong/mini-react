@@ -226,11 +226,21 @@ function performUnitOfWork(unitOfWork) {
 
 #### beginWork
 
-`beginWork` 就是一个简单的基于 `fiber.tag` 的 switch 语句
+`beginWork` 就是一个简单的基于 `fiber.tag` 的 switch 语句。`beginWork` 最主要的工作：
+
+- 协调。根据最新的 react element 子元素和旧的 fiber 子节点 对比，生成新的 fiber 子节点
+- 标记副作用。在协调子元素的过程中，会根据子元素是否增删改，从而将新的 newFiber 子节点的 flags 更新为对应的值。
+- 返回新的子 fiber 节点作为下一个工作的 fiber 节点
 
 ```js
 function beginWork(current, workInProgress, renderLanes) {
   switch (workInProgress.tag) {
+    case IndeterminateComponent:
+      // 函数组件在第一次渲染时会走 IndeterminateComponent 分支
+      return mountIndeterminateComponent(current, workInProgress);
+    case FunctionComponent:
+      // 函数组件在更新阶段会走FunctionComponent分支
+      return updateFunctionComponent(current, workInProgress);
     case ClassComponent: {
       return updateClassComponent(current, workInProgress);
     }
@@ -242,7 +252,35 @@ function beginWork(current, workInProgress, renderLanes) {
 }
 ```
 
-##### updateHostRoot
+TODO：需要更新 flags 的场景：
+
+- `processUpdateQueue` 根据 `fiber.updateQueue` 计算最新的状态 `newState`，并赋值给 `fiber.memoizedState`。在 `processUpdateQueue` 方法中，会判断 `update` 对象是否有 callback，如果有 callback，则改变 fiber.flags：
+
+```js
+workInProgress.flags |= Callback; // Callback对应的值是32
+```
+
+- HostRoot。如果新的 fiber 子节点需要插入，则更新 fiber.flags：
+
+```js
+newFiber.flags = Placement; // Placement对应的值是2
+```
+
+- ClassComponent。如果类组件实例实现了 componentDidMount 生命周期方法，则更新 flags：
+
+```js
+workInProgress.flags |= Update; // Update对应的值是4
+```
+
+同时，在 finishClassComponent 中，更新 flags：
+
+```js
+workInProgress.flags |= PerformedWork; // PerformedWork对应的值为1，提供给 React DevTools读取的
+```
+
+##### HostRootFiber：updateHostRoot
+
+`updateHostRoot` 函数执行完，由于 HostRootFiber 没有副作用，因此 HostRootFiber.flags 依然是 0
 
 ```js
 function updateHostRoot(current, workInProgress, renderLanes) {
@@ -253,61 +291,80 @@ function updateHostRoot(current, workInProgress, renderLanes) {
 }
 ```
 
-### stash
+##### 类组件： updateClassComponent
+
+类组件的更新分为初次渲染以及更新两种情况。
+
+- 初次渲染。逻辑主要在 `constructClassInstance` 以及 `mountClassInstance` 两个函数中
+  - constructClassInstance 方法主要逻辑：
+    - 初始化类组件实例 instance = new ctor(props, context)。
+    - 初始化实例的 updater：instance.updater = classComponentUpdater，这是类组件 `this.setState` 方法的更新器
+    - 关联 fiber 和实例：workInprogress.stateNode = instance。instance.\_reactInternals = workInprogress。这个关联很有必要，比如当我们点击按钮时，能够通过 `instance._reactInternals` 找到当前的 `fiber` 节点，并开始调度更新。
+  - mountClassInstance 方法主要逻辑：
+    - initializeUpdateQueue 初始化更新队列 updateQueue
+    - 调用 processUpdateQueue 计算更新队列，获取最新的 state
+    - 根据最新的 state 调用 `getDerivedStateFromProps` 静态生命周期方法
+    - 调用 `componentWillMount` 生命周期方法
+    - 如果类组件实现了 componentDidMount 生命周期方法，则更新 flags： workInProgress.flags |= Update
+- 更新阶段。逻辑主要在 `updateClassInstance` 函数中
+  - TODO
+
+最后，调用 `finishClassComponent` 开始协调子元素
 
 ```js
-function updateClassComponent(
-  current,
-  workInProgress,
-  Component,
-  nextProps,
-  renderLanes
-) {
+function updateClassComponent(current, workInProgress, Component) {
   const instance = workInProgress.stateNode;
+  // instance为null，说明是初次渲染
   if (instance === null) {
-    // 1.初始化类组件实例instance
-    // 2.初始化实例的instance.updater = classComponentUpdater，包含enqueueSetState等更新方法
-    // 3.关联fiber和实例：workInprogress.stateNode = instance。instances._reactInternals = workInprogress
+    // 初始化类组件实例 instance。
+    // 初始化实例的 updater：instance.updater = classComponentUpdater，这是类组件 `this.setState` 方法的更新器
+    // 关联 fiber 和实例：workInprogress.stateNode = instance。instances._reactInternals = workInprogress
     constructClassInstance(workInProgress, Component, nextProps);
-    // 1.initializeUpdateQueue初始化更新队列updateQueue
-    // 2.processUpdateQueue计算更新队列，获取最新的state
-    // 3.根据最新的state调用getDerivedStateFromProps静态生命周期方法
-    // 4.调用componentWillMount生命周期方法
-    // 5.如果类组件实现了 componentDidMount 生命周期方法，则更新flags： workInProgress.flags |= Update = 6
+    // initializeUpdateQueue 初始化更新队列 updateQueue
+    // processUpdateQueue 计算更新队列，获取最新的 state
+    // 根据最新的 state 调用 getDerivedStateFromProps 静态生命周期方法
+    // 调用 componentWillMount 生命周期方法
+    // 如果类组件实现了 componentDidMount 生命周期方法，则更新 flags： workInProgress.flags |= Update
     mountClassInstance(workInProgress, Component, nextProps);
   } else if (current === null) {
   } else {
-    shouldUpdate = updateClassInstance(
-      current,
-      workInProgress,
-      Component,
-      nextProps,
-      renderLanes
-    );
+    // 更新阶段
+    shouldUpdate = updateClassInstance(current, workInProgress, Component);
   }
-  // 1.调用类组件实例的render方法获取子元素：instance.render()
-  // 2.更新flags：workInProgress.flags |= PerformedWork = 7
-  // 3. 协调子元素reconcileChildren
-  return finishClassComponent(
-    current,
-    workInProgress,
-    Component,
-    shouldUpdate,
-    hasContext,
-    renderLanes
-  );
+  return finishClassComponent(current, workInProgress, Component);
 }
-function finishClassComponent(
-  current,
-  workInProgress,
-  Component,
-  shouldUpdate,
-  hasContext,
-  renderLanes
-) {
+function finishClassComponent(current, workInProgress, Component) {
   nextChildren = instance.render();
+  workInProgress.flags |= PerformedWork;
   reconcileChildren(current, workInProgress, nextChildren, renderLanes);
   workInProgress.memoizedState = instance.state;
+  return workInProgress.child;
+}
+```
+
+##### 函数组件：mountIndeterminateComponent
+
+函数组件在第一次渲染时，会走 `IndeterminateComponent` 分支，执行 `mountIndeterminateComponent` 方法
+
+```js
+function mountIndeterminateComponent(_current, workInProgress) {
+  const props = workInProgress.pendingProps;
+  const context = {};
+  let value;
+  value = renderWithHooks(
+    null,
+    workInProgress,
+    Component,
+    props,
+    context,
+    renderLanes
+  );
+
+  workInProgress.flags |= PerformedWork;
+
+  workInProgress.tag = FunctionComponent;
+
+  reconcileChildren(null, workInProgress, value, renderLanes);
   return workInProgress.child;
 }
 ```
