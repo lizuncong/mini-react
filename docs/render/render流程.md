@@ -1,24 +1,60 @@
-## ReactDOM.render 以及 setState 触发状态更新主流程
+> 本章主要介绍 `ReactDOM.render` 初次渲染以及 `setState` 手动触发更新的主流程。学习 `React` 渲染的两个阶段：`render` 和 `commit` 阶段。了解 `React` 合成事件注册时机、类组件生命周期方法、函数组件 `hook` 调用时机等。
 
-本节主要介绍 react 渲染过程中最主要的两个阶段，即：render 阶段(render phase) 以及 commit 阶段 (commit phase)，这两个阶段的主流程。
+## 深入概述 ReactDOM.render 初次渲染 以及 setState 手动触发状态更新主流程
 
-render 阶段，通过 setState 或者 ReactDOM.render 触发，主要是调用类组件实例的 render 方法或者执行函数组件获取子元素并进行协调(reconcile or dom diff)，然后找出有副作用的节点，构建副作用链表。render 阶段的结果是一个副作用链表以及一棵 finishedWork 树。这个阶段可以是异步的
+### 前置知识
 
-render 阶段主要分为 beginWork 和 completeUnitOfWork 两个子阶段。
+在阅读本文时，假设你已经有一些 fiber 的基础知识。
 
-beginWork 主要是根据新的 react element 子元素和旧的 fiber 树进行比较，创建新的 fiber 节点或者复用旧的 fiber 节点的过程。
+#### 容器 root 节点
 
-completeUnitOfWork 主要是构建副作用链表。除了构建副作用链表以外，对于不同类型的 fiber 节点，还执行了以下工作：
+我们传递给 `ReactDOM.render(element, root)` 的第二个参数 `root`
 
-- 对于原生 HTML 节点，比较 newProps 和 oldProps，收集发生变更的属性键值对，并存储在 fiber.updateQueue 中
+#### fiber 类型
 
-commit 阶段，遍历副作用链表并执行真实的 DOM 操作，对真实的 DOM 节点进行增删改移。这个阶段是同步的，一旦开始就不能再中断。
-commit 阶段分为三个子阶段：
+`fiber` 节点的类型通过 `fiber.tag` 标识，称为 `React work tag`。我们重点关注以下几个类型：
+
+- HostRoot。容器 root 节点对应的 fiber 类型。一般来说，一个 React 应用程序只会有一个 HostRoot 类型的 fiber 节点。
+- ClassComponent。类组件对应的 fiber 类型。
+- FunctionComponent。函数组件对应的 fiber 类型。
+- IndeterminateComponen。函数组件第一次渲染时对应的 fiber 类型
+- HostComponent。原生的 HTML 标签(比如 <div>)对应的 fiber 类型
+
+记住这几个 fiber 类型，会贯穿整篇文章。在整个 react 渲染阶段，react 基于 fiber.tag 执行不同的操作。因此你会看到大量的基于 fiber.tag 的 switch 语句。
+
+#### 副作用
+
+副作用通过 `fiber.flags` 标记。对于不同的 fiber 类型，副作用含义不同
+
+- HostRoot。
+- ClassComponent。类组件如果实现了 componentDidMount 等生命周期方法，则对应的 fiber 节点包含副作用
+- FunctionComponent。函数组件如果调用了 useEffect、useLayoutEffect，则对应的 fiber 节点包含副作用
+- HostComponent。原生的 HTML 标签如果属性，比如 style 等发生了变更，则对应的 fiber 节点包含副作用。
+
+在 render 阶段，react 会找出有副作用的 fiber 节点，并构建单向的`副作用链表`
+
+#### React 渲染流程
+
+React 渲染主要分为两个阶段：`render` 阶段 和 `commit` 阶段。
+
+##### render 阶段
+
+`render` 阶段支持异步并发渲染，可中断。分为 beginWork 以及 completeUnitOfWork 两个子阶段：
+
+- beginWork。
+  - reconcileChildren。根据当前工作的 fiber 节点最新的 react element 子元素和旧的 fiber 子元素进行比较以决定是否复用旧的 fiber 节点，并标记 fiber 节点是否有副作用。注意这里如果是类组件或者函数组件，则需要调用类组件实例的 render 方法或者执行函数组件获取最新的 react element 子元素
+- completeUnitOfWork。
+  - 对于 HostComponent。比较 newProps 和 oldProps，收集发生变更的属性键值对，并存储在 fiber.updateQueue 中
+  - 构建副作用链表。自底向上找出有副作用的 fiber 节点，并构建单向链表
+
+render 阶段的结果是一个副作用链表以及一棵 finishedWork 树。
+
+##### commit 阶段
+
+commit 阶段是同步的，一旦开始就不能再中断。这个阶段遍历副作用链表并执行真实的 DOM 操作。commit 阶段分为 `commitBeforeMutationEffects`、`commitMutationEffects` 以及 `commitLayoutEffects` 三个子阶段。每个子阶段都是一个 while 循环。同时，**每个子阶段都是从头开始遍历副作用链表！！！**
 
 - commitBeforeMutationEffects。DOM 变更前。这个阶段除了类组件以外，其他类型的 fiber 节点几乎没有任何处理
-
   - 调用类组件实例上的 getSnapshotBeforeUpdate 方法
-
 - commitMutationEffects。操作真实的 DOM
   - 对于 HostComponent
     - 更新 dom 节点上的 `__reactProps$md9gs3r7129` 属性，这个属性存的是 fiber 节点的 props 值。这个属性很重要，主要是更新 dom 上的 onClick 等合成事件。由于事件委托在容器 root 上，因此在事件委托时，需要通过 dom 节点获取最新的 onClick 等事件
@@ -33,36 +69,26 @@ commit 阶段分为三个子阶段：
     - 更新则调用 componentDidUpdate
     - 调用 this.setState 的 callback
 
-### 主流程源码
+### ReactDOM.render
+
+初次渲染的入口。初次渲染主要逻辑在 `createRootImpl` 以及 `updateContainer` 这两个函数中，主要工作：
+
+- 创建 FiberRootNode 类型节点。**这是用于保存 fiber 树的容器**。可以通过 `root._reactRootContainer._internalRoot` 属性访问。
+- 创建 HostRoot Fiber。即容器 root 节点对应的 fiber 节点，这也是 fiber 树的根节点
+- 将 HostRootFiber 挂载到 FiberRootNode 的 current 属性
+- 往容器 root 上注册浏览器支持的所有原生事件。这也是合成事件的入口
+- 调用 scheduleUpdateOnFiber 开始调度更新。
+
+本篇文章中我们重点关注 `_internalRoot` 中的两个属性：`current` 和 `finishedWork`。`current` 保存的是当前页面对应的 fiber 树。`finishedWork` 保存的是 render 阶段完成，commit 阶段开始前，构建完成但是还没更新到页面的 fiber 树。等 `commit` 阶段完成后，`finishedWork` 树就变成了 `current` 树
 
 ```js
-/************************************ ReactDOM.render入口 ************************************/
-// 1.创建 fiber tree 的容器，即 #root._reactRootContainer._internalRoot，FiberRootNode类型。
-// 2.在 #root 上绑定所有支持的原生事件，这也是合成事件的入口
-// 3. 调用scheduleUpdateOnFiber开始调度更新。
 function render(element, container, callback) {
-  return legacyRenderSubtreeIntoContainer(
-    null,
-    element,
-    container,
-    false,
-    callback
-  );
+  return legacyRenderSubtreeIntoContainer(...);
 }
 // container = document.getElementById('root')
-function legacyRenderSubtreeIntoContainer(
-  parentComponent,
-  children,
-  container,
-  forceHydrate,
-  callback
-) {
-  let root = (container._reactRootContainer = legacyCreateRootFromDOMContainer(
-    container,
-    forceHydrate
-  ));
-  // container._reactRootContainer._internalRoot 就是整个fiber tree的容器。里面包含
-  // current和finishedWork属性
+function legacyRenderSubtreeIntoContainer(...,container, ...) {
+  // container._reactRootContainer只包含_internalRoot属性
+  let root = container._reactRootContainer = legacyCreateRootFromDOMContainer(container);
   let fiberRoot = root._internalRoot;
   updateContainer(children, fiberRoot, parentComponent, callback);
 }
@@ -78,32 +104,73 @@ function ReactDOMBlockingRoot(container, tag, options) {
 }
 
 function createRootImpl(container, tag, options) {
-  // 创建FiberRootNode节点，注意这并不是一个fiber
+  // createContainer主要逻辑：
+  // 1.创建FiberRootNode节点，注意这并不是一个fiber
+  // 2.创建 HostRoot Fiber。即容器root节点对应的fiber节点，这也是fiber树的根
+  // 3.将 HostRootFiber挂载到FiberRootNode的current属性
   const root = createContainer(container, tag, hydrate);
   // 在根容器上注册所有支持的事件监听器，合成事件的入口
   listenToAllSupportedEvents(container);
   return root;
 }
 
-// ReactFiberReconciler的入口
-function updateContainer(element, container, parentComponent, callback) {
+// element就是 react element tree
+// container 就是 fiber 树的容器，即 FiberRootNode
+function updateContainer(element, container) {
+  const current = container.current; // fiber 树的根节点，即 HostRootFiber
   const update = createUpdate(eventTime, lane);
-  update.payload = {
-    element: element, // 根节点的 update.payload存的是整棵 virtual dom 树
-  };
+  // 根节点的 update.payload存的是整棵 virtual dom 树
+  update.payload = { element: element };
   enqueueUpdate(current, update);
   scheduleUpdateOnFiber(current, lane, eventTime);
 }
+```
 
-// ReactFiberWorkLoop的入口
-// 从当前调度的fiber开始，向上找到根节点，从根节点开始更新
-// 任何触发更新的方法，都需要调用 scheduleUpdateOnFiber 开始调度更新，比如 setState
+### 调度更新
+
+#### scheduleUpdateOnFiber
+
+更新的入口。不管是初次渲染，还是后续我们通过 this.setState 或者 useState 等手动触发状态更新，都会走 `scheduleUpdateOnFiber` 方法开始调度更新。`scheduleUpdateOnFiber` 会从当前 fiber 开始往上找到 HostRootFiber，然后从 HostRootFiber 开始更新。
+
+这里又分为同步更新以及批量更新。同步更新直接走 `performSyncWorkOnRoot` 方法。批量更新走 `ensureRootIsScheduled` 方法调度。`ensureRootIsScheduled` 方法里面会根据环境判断是该走同步更新，即 `performSyncWorkOnRoot` 还是批量更新，即 `performConcurrentWorkOnRoot`
+
+本篇文章中，我们只需要关注同步更新，即 `performSyncWorkOnRoot` 的流程。
+
+```js
 function scheduleUpdateOnFiber(fiber, lane, eventTime) {
-  // 找到容器，从根节点开始更新
-  const root = markUpdateLaneFromFiberToRoot(fiber, lane); //返回的是FiberRootNode，即 fiber 树的容器
-  performSyncWorkOnRoot(root);
+  //返回的是FiberRootNode，即 fiber 树的容器
+  const root = markUpdateLaneFromFiberToRoot(fiber, lane);
+  if (同步更新) {
+    performSyncWorkOnRoot(root);
+  } else {
+    ensureRootIsScheduled(root);
+  }
 }
+function ensureRootIsScheduled(root) {
+  if (newCallbackPriority === SyncLanePriority) {
+    scheduleSyncCallback(performSyncWorkOnRoot.bind(null, root));
+  } else if (newCallbackPriority === SyncBatchedLanePriority) {
+    scheduleCallback(
+      ImmediatePriority$1,
+      performSyncWorkOnRoot.bind(null, root)
+    );
+  } else {
+    scheduleCallback(
+      schedulerPriorityLevel,
+      performConcurrentWorkOnRoot.bind(null, root)
+    );
+  }
+}
+```
 
+#### performSyncWorkOnRoot
+
+`performSyncWorkOnRoot` 的 render 阶段是同步的。在这里，React 将渲染过程拆分成了两个子阶段：
+
+- renderRootSync。render 阶段
+- commitRoot。commit 阶段
+
+```js
 function performSyncWorkOnRoot(root) {
   // render阶段的入口
   renderRootSync(root, lanes);
@@ -113,7 +180,11 @@ function performSyncWorkOnRoot(root) {
   // commit阶段开始
   commitRoot(root);
 }
+```
 
+
+### stash
+```js
 /************************************ render phase(render阶段) ************************************/
 function renderRootSync(root, lanes) {
   prepareFreshStack(root, lanes);

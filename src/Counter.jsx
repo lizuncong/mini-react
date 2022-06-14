@@ -7,10 +7,10 @@ const Counter = ({ step }) => {
     setCount(count + 1);
   };
   return (
-    <div style={{ marginBottom: "50px" }}>
-      {!(count % 2) && <div>复数显示，单数隐藏</div>}
+    <div style={{ margin: "50px" }}>
       <button onClick={onBtnClick}>{count}</button>
-      <div>函数组件接收的props：{step}</div>
+      <div>props：{step}</div>
+      {!(count % 2) && <div>函数组件，复数显示，单数隐藏</div>}
     </div>
   );
 };
