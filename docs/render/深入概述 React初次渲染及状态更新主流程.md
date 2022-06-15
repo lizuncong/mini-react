@@ -2,6 +2,107 @@
 
 ## 深入概述 ReactDOM.render 初次渲染 以及 setState 手动触发状态更新主流程
 
+### 调试 DEMO
+
+新建 index.jsx 文件：
+
+```jsx
+import React from "react";
+import ReactDOM from "react-dom";
+import Counter from "./Counter";
+
+class Home extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { step: 0 };
+    this.handleClick = this.handleClick.bind(this);
+  }
+
+  handleClick() {
+    this.setState(
+      (state) => {
+        return { step: state.step + 1 };
+      },
+      () => {
+        console.log("this.setState callback");
+      }
+    );
+  }
+  static getDerivedStateFromProps(props, state) {
+    console.log("getDerivedStateFromProps======");
+    return null;
+  }
+  getSnapshotBeforeUpdate(prevProps, prevState) {
+    const btn = document.getElementById("btn");
+    const scrollHeight = btn.scrollHeight;
+    console.log("get snapshot before update...", scrollHeight);
+    return scrollHeight;
+  }
+  componentDidUpdate(prevProps, prevState, snapshot) {
+    console.log("component did update...", snapshot);
+  }
+  componentDidMount() {
+    console.log("component did mount......");
+  }
+  componentWillUnmount() {
+    console.log("component will unmount...");
+  }
+  UNSAFE_componentWillMount() {
+    console.log("component will mount...");
+  }
+  UNSAFE_componentWillReceiveProps(nextProps) {
+    console.log("component will receive props...", nextProps);
+  }
+  UNSAFE_componentWillUpdate(nextProps, nextState) {
+    console.log("component will update....", nextProps, nextState);
+  }
+  shouldComponentUpdate() {
+    console.log("should component update");
+    return true;
+  }
+
+  render() {
+    return [
+      (!this.state.step || this.state.step % 3) && (
+        <Counter step={this.state.step} />
+      ),
+      <button id="btn" key="2" onClick={this.handleClick}>
+        类组件按钮：{this.state.step}
+      </button>,
+    ];
+  }
+}
+
+ReactDOM.render(<Home />, document.getElementById("root"));
+```
+
+新建 Counter.jsx 文件：
+
+```jsx
+import React, { useState, useEffect, useLayoutEffect } from "react";
+const Counter = ({ step }) => {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    console.log("useEffect====");
+  });
+  useLayoutEffect(() => {
+    console.log("useLayoutEffect====");
+  });
+  const onBtnClick = () => {
+    setCount(count + 1);
+  };
+  return (
+    <div style={{ margin: "50px" }}>
+      <button onClick={onBtnClick}>{count}</button>
+      <div>props：{step}</div>
+      {!(count % 2) && <div>函数组件，复数显示，单数隐藏</div>}
+    </div>
+  );
+};
+
+export default Counter;
+```
+
 ### 一、前置知识
 
 在阅读本文时，假设你已经有一些 fiber 的基础知识。并假设你是一个有耐心的人，能够在本篇文章介绍的各个函数入口处打断点，边调试边阅读
