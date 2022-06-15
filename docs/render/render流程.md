@@ -18,7 +18,20 @@
 - ClassComponent。类组件对应的 fiber 类型。
 - FunctionComponent。函数组件对应的 fiber 类型。
 - IndeterminateComponen。函数组件第一次渲染时对应的 fiber 类型
-- HostComponent。原生的 HTML 标签(比如 <div>)对应的 fiber 类型
+- HostComponent。原生的 HTML 标签(比如 div)对应的 fiber 类型
+- HostText。文本节点类型。
+
+React 对于文本节点的处理分两种场景：单一节点和多节点。比如：
+
+```jsx
+// 单一节点情况。React在render阶段，不会为div的子节点创建新的fiber节点，而是将 "单一节点情况" 这个字符串当作 div 的 textContent或者nodeValue处理
+<div>单一节点情况</div>
+```
+
+```jsx
+// 多节点情况。假设props.count等于0。React 在 render 阶段将子节点视为两个节点："多节点情况：" 以及 "0"。然后为这两个子节点都创建对应的fiber节点，节点类型就是 HostText
+<div>多节点情况：{props.count}</div>
+```
 
 记住这几个 fiber 类型，会贯穿整篇文章。在整个 react 渲染阶段，react 基于 fiber.tag 执行不同的操作。因此你会看到大量的基于 fiber.tag 的 switch 语句。
 
@@ -31,7 +44,7 @@
 - FunctionComponent。函数组件如果调用了 useEffect、useLayoutEffect，则对应的 fiber 节点包含副作用
 - HostComponent。原生的 HTML 标签如果属性，比如 style 等发生了变更，则对应的 fiber 节点包含副作用。
 
-在 render 阶段，react 会找出有副作用的 fiber 节点，并构建单向的`副作用链表`
+在 render 阶段，react 会找出有副作用的 fiber 节点，并自底向上构建单向的`副作用链表`
 
 #### 1.4 React 渲染流程
 
@@ -538,17 +551,275 @@ export function completeWork(current, workInProgress, renderLanes) {
 `HostComponent` 第一次渲染的逻辑主要集中在 `createInstance`、`appendAllChildren`、`finalizeInitialChildren` 三个函数中。从这个过程也可以看出，是有对真实的 dom 进行操作的。
 
 ##### 4.4.2 HostText completeUnitOfWork
+
 类似于 `HostComponent`，`HostText` 也需要区分第一次渲染以及更新阶段。
 
-在第一次渲染阶段，只需要直接调用 `document.createTextNode(text)` 创建文本DOM节点，初次之外没有其他操作。
+在第一次渲染阶段，只需要直接调用 `document.createTextNode(text)` 创建文本 DOM 节点，初次之外没有其他操作。
 
 在更新阶段，判断是否需要更新 fiber.flags，除此之外没有其他操作。
 
 ##### 4.4.3 HostRoot completeUnitOfWork
- `updateHostContainer` 方法其实就是一个空函数，`HostRoot` 在这个过程几乎没有操作。当执行到这里的时候，`render` 阶段已经完成，进入 `commit` 阶段。
 
-**注意，在初次渲染的过程中，React不需要追踪副作用，同时在 render 阶段就操作真实的DOM！！！！！！。当 `HostRoot` 的 `completeUnitOfWork` 执行完成时，我们实际上已经得到一棵真实的DOM树，存储在内存中，还没挂载到容器root上**
+`updateHostContainer` 方法其实就是一个空函数，`HostRoot` 在这个过程几乎没有操作。当执行到这里的时候，`render` 阶段已经完成，进入 `commit` 阶段。
 
-
+**注意，在初次渲染的过程中，React 不需要追踪副作用，同时在 render 阶段就操作真实的 DOM！！！！！！。当 `HostRoot` 的 `completeUnitOfWork` 执行完成时，我们实际上已经得到一棵真实的 DOM 树，存储在内存中，还没挂载到容器 root 上**
 
 ### 五、commit 阶段
+
+`render` 阶段完成后，我们得到一个副作用链表，以及一棵 finishedWork 树。
+
+`commit` 阶段从 `commitRoot` 函数开始。主要逻辑在 `commitRootImpl` 函数中
+
+#### 5.1 commitRootImpl
+
+commit 阶段分成三个子阶段：
+
+- 第一阶段：commitBeforeMutationEffects。DOM 变更前
+  - 调用 类组件的 getSnapshotBeforeUpdate 生命周期方法
+  - 启动一个微任务以刷新 passive effects 异步队列。passive effects 异步队列存的是 useEffect 的清除函数以及监听函数
+- 第二阶段：commitMutationEffects。DOM 变更，操作真实的 DOM 节点。注意这个阶段是 `卸载` 相关的生命周期方法执行时机
+
+  - 操作真实的 DOM 节点：增删改查
+  - 同步调用函数组件 `useLayoutEffect` 的 `清除函数`
+  - 同步调用类组件的 `componentWillUnmount` 生命周期方法
+  - 将函数组件的 `useEffect` 的 `清除函数` 添加进异步队列，异步执行。
+  - **所有的函数组件的 useLayoutEffect 的清除函数都在这个阶段执行完成**
+
+- 第三阶段：commitLayoutEffects。DOM 变更后
+  - 调用函数组件的 `useLayoutEffect` 监听函数，同步执行
+  - 将函数组件的 `useEffect` 监听函数放入异步队列，异步执行
+  - 执行类组件的 `componentDidMount` 生命周期方法，同步执行
+  - 执行类组件的 `componentDidUpdate` 生命周期方法，同步执行
+  - 执行类组件 `this.setState(arg, callback)` 中的 `callback` 回调，同步执行
+
+每一个子阶段都是一个 while 循环，**从头开始**遍历副作用链表。
+
+```js
+function commitRootImpl(root, renderPriorityLevel) {
+  const finishedWork = root.finishedWork;
+  root.finishedWork = null;
+  let firstEffect;
+  // 在开始前，需要将 HostRootFiber 的副作用追加在副作用链表末尾。
+  if (finishedWork.flags > PerformedWork) {
+    if (finishedWork.lastEffect !== null) {
+      finishedWork.lastEffect.nextEffect = finishedWork;
+      firstEffect = finishedWork.firstEffect;
+    } else {
+      firstEffect = finishedWork;
+    }
+  } else {
+    firstEffect = finishedWork.firstEffect;
+  }
+  // firstEffect不为空，说明存在副作用链表，此时firstEffect指向链表的表头
+  if (firstEffect !== null) {
+    // commie阶段被划分成多个小阶段。每个阶段都从头开始遍历整个副作用链表
+    nextEffect = firstEffect;
+    // 第一个阶段，调用getSnapshotBeforeUpdate等生命周期方法
+    commitBeforeMutationEffects();
+    nextEffect = firstEffect; // 重置 nextEffect，从头开始
+    commitMutationEffects(root, renderPriorityLevel);
+    root.current = finishedWork;
+    nextEffect = firstEffect; // 重置 nextEffect，从头开始
+    commitLayoutEffects(root, lanes);
+  }
+}
+```
+
+#### 5.2 commitBeforeMutationEffects
+
+这个函数主要是在 DOM 变更前执行，主要逻辑如下：
+
+- 调用 类组件的 getSnapshotBeforeUpdate 生命周期方法
+- 启动一个微任务以刷新 passive effects。passive effects 指的是 useEffect 的清除函数以及监听函数
+
+```js
+function commitBeforeMutationEffects() {
+  while (nextEffect !== null) {
+    const current = nextEffect.alternate;
+    const flags = nextEffect.flags;
+    if ((flags & Snapshot) !== NoFlags) {
+      commitBeforeMutationLifeCycles(current, nextEffect);
+    }
+    if ((flags & Passive) !== NoFlags) {
+      setTimeout(() => {
+        flushPassiveEffects();
+      }, 0);
+    }
+    nextEffect = nextEffect.nextEffect;
+  }
+}
+function commitBeforeMutationLifeCycles(current, finishedWork) {
+  switch (finishedWork.tag) {
+    case FunctionComponent: {
+      return;
+    }
+    case ClassComponent: {
+      instance.getSnapshotBeforeUpdate(prevProps, prevState);
+      return;
+    }
+    case HostRoot:
+      if (finishedWork.flags & Snapshot) {
+        var root = finishedWork.stateNode;
+        clearContainer(root.containerInfo); // TODO看上去是将root的textContent清空？？？root.textContent = '';但是清空textContent不就整个页面都是空白了吗？？？
+      }
+      return;
+    case HostComponent:
+    case HostText:
+      return;
+  }
+}
+```
+
+#### 5.3 commitMutationEffects
+
+这个函数操作 DOM，主要有三个方法：
+
+- commitPlacement。调用 `parentNode.appendChild(child);` 或者 `container.insertBefore(child, beforeChild)` 插入 DOM 节点
+- commitWork。同步调用函数组件 `useLayoutEffect` 的`清除函数`，这个函数对于类组件没有任何操作
+- commitDeletion。主要是删除 DOM 节点，以及调用当前节点以及子节点所有的 `卸载` 相关的生命周期方法
+  - 同步调用函数组件的 `useLayoutEffect` 的 `清除函数`，这是同步执行的
+  - 将函数组件的 `useEffect` 的 `清除函数` 添加进异步刷新队列，这是异步执行的
+  - 同步调用类组件的 `componentWillUnmount` 生命周期方法
+
+```js
+function commitMutationEffects(root, renderPriorityLevel) {
+  while (nextEffect !== null) {
+    // 插入，更新，删除 DOM 节点
+    switch (primaryFlags) {
+      case PlacementAndUpdate: {
+        // 插入
+        commitPlacement(nextEffect);
+        commitWork(_current, nextEffect);
+        break;
+      }
+      case Deletion: {
+        // 删除
+        commitDeletion(root, nextEffect);
+        break;
+      }
+    }
+    nextEffect = nextEffect.nextEffect;
+  }
+}
+function commitPlacement(finishedWork) {
+  if (isContainer) {
+    insertOrAppendPlacementNodeIntoContainer(finishedWork, before, parent);
+  } else {
+    insertOrAppendPlacementNode(finishedWork, before, parent);
+  }
+}
+
+function insertOrAppendPlacementNodeIntoContainer(node, before, parent) {
+  if (before) {
+    insertInContainerBefore(parent, stateNode, before);
+  } else {
+    appendChildToContainer(parent, stateNode);
+  }
+}
+function commitWork(current, finishedWork) {
+  switch (finishedWork.tag) {
+    case FunctionComponent: {
+      // 调用函数组件的清除函数
+      commitHookEffectListUnmount(Layout | HasEffect, finishedWork);
+      return;
+    }
+    case ClassComponent:
+      // 可以看到 类组件 在这里是不执行任何操作的
+      return;
+  }
+}
+// 执行函数组件的 useLayoutEffect 监听函数的回调，即清除函数
+function commitHookEffectListUnmount(tag, finishedWork) {
+  do {
+    // Unmount
+    var destroy = effect.destroy;
+    effect.destroy = undefined;
+    destroy(); // 执行 useLayoutEffect 的清除函数
+    effect = effect.next;
+  } while (effect !== firstEffect);
+}
+function commitDeletion(finishedRoot, current, renderPriorityLevel) {
+  // 调用所有子节点的 componentWillUnmount() 方法
+  unmountHostComponents(finishedRoot, current);
+}
+function unmountHostComponents(finishedRoot, current, renderPriorityLevel) {
+  while (true) {
+    commitUnmount(finishedRoot, node);
+  }
+}
+function commitUnmount(finishedRoot, current, renderPriorityLevel) {
+  switch (current.tag) {
+    case FunctionComponent: {
+      do {
+        if (effect 是 useEffect) {
+          // 将 useEffect 的清除函数添加进异步刷新队列，useEffect 的清除函数是异步执行的
+          enqueuePendingPassiveHookEffectUnmount(current, effect);
+        } else {
+          // 调用 useLayoutEffect 的清除函数，同步执行的
+          // 其实就是直接调用destroy();
+          safelyCallDestroy(current, destroy);
+        }
+        effect = effect.next;
+      } while (effect !== firstEffect);
+      return;
+    }
+    case ClassComponent: {
+      // 直接调用类组件的 componentWillUnmount() 生命周期方法，同步执行
+      safelyCallComponentWillUnmount(current, instance);
+      return;
+    }
+  }
+}
+```
+
+#### 5.4 commitLayoutEffects
+
+当执行到这个函数，此时 `useLayoutEffect` 的清除函数已经全部执行完成。
+
+- 调用函数组件的 `useLayoutEffect` 监听函数，同步执行
+- 将函数组件的 `useEffect` 监听函数放入异步队列，异步执行
+- 执行类组件的 `componentDidMount` 生命周期方法，同步执行
+- 执行类组件的 `componentDidUpdate` 生命周期方法，同步执行
+- 执行类组件 `this.setState(arg, callback)` 中的 `callback` 回调，同步执行
+
+```js
+function commitLayoutEffects(root, committedLanes) {
+  // 此时所有的 `useLayoutEffect` 的清除函数已经执行完成，在commitMutationEffects阶段执行的
+  while (nextEffect !== null) {
+    commitLifeCycles(root, current, nextEffect);
+    nextEffect = nextEffect.nextEffect;
+  }
+}
+function commitLifeCycles(finishedRoot, current, finishedWork, committedLanes) {
+  switch (finishedWork.tag) {
+    case FunctionComponent: {
+      // 同步执行 useLayoutEffect 的监听函数
+      commitHookEffectListMount(Layout | HasEffect, finishedWork);
+      // 将 useEffect 的监听函数放入异步队列等待执行
+      schedulePassiveEffects(finishedWork);
+      return;
+    }
+    case ClassComponent: {
+      // 第一次挂载的时候执行类组件的componentDidMount生命周期方法
+      instance.componentDidMount();
+      // 组件更新的时候执行类组件的 componentDidUpdate 生命周期方法
+      instance.componentDidUpdate(prevProps, prevState, snapshotBeforeUpdate);
+      // 调用类组件 this.setState(arg, callback) 的callback回调
+      commitUpdateQueue(finishedWork, updateQueue, instance);
+      return;
+    }
+  }
+}
+
+// 执行useLayoutEffect监听函数
+function commitHookEffectListMount(tag, finishedWork) {
+  do {
+    if ((effect.tag & tag) === tag) {
+      // Mount
+      var create = effect.create;
+      effect.destroy = create();
+    }
+    effect = effect.next;
+  } while (effect !== firstEffect);
+}
+```
