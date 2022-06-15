@@ -26,7 +26,7 @@
   - [【TODO】类组件和函数组件最大的区别](https://github.com/lizuncong/mini-react/blob/master/docs/%E8%AF%91%E6%96%87/function_component_class_component_difference.md)
   - [【TODO】时间切片](https://github.com/lizuncong/mini-react/blob/master/docs/%E8%AF%91%E6%96%87/time_slicing.md)
   - [【TODO】组件名称首字母为啥一定要大写](https://github.com/lizuncong/mini-react/blob/master/docs/%E8%AF%91%E6%96%87/component-identifiers-must-be-capitalized-in-react.md)
-  - [【TODO】render 和 commit 阶段主流程涉及的主要函数](https://github.com/lizuncong/mini-react/blob/master/docs/render/render%E5%92%8Ccommit%E9%98%B6%E6%AE%B5%E4%B8%BB%E8%A6%81%E5%87%BD%E6%95%B0.md)
+  - [【TODO】render 和 commit 阶段主流程涉及的主要函数](https://github.com/lizuncong/mini-react/blob/master/docs/render/%E6%B7%B1%E5%85%A5%E6%A6%82%E8%BF%B0%20React%E5%88%9D%E6%AC%A1%E6%B8%B2%E6%9F%93%E5%8F%8A%E7%8A%B6%E6%80%81%E6%9B%B4%E6%96%B0%E4%B8%BB%E6%B5%81%E7%A8%8B.md)
 
 - React 合成事件原理
 
