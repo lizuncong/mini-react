@@ -464,7 +464,21 @@ function completeUnitOfWork(unitOfWork) {
 ```
 
 `completeWork` 函数也是一个基于 `fiber.tag` 的 switch 语句，主要工作如下：
+
 - 对于函数组件和类组件，这个阶段几乎没有工作。
+- 对于 HostComponent，则需要区分第一次渲染以及更新阶段。注意这里的第一次渲染是指这个 DOM 元素第一次渲染。而不是我们的页面第一次渲染。
+
+  - 第一次渲染
+
+    - 创建真实的 DOM 元素。并将 fiber 节点挂载到 DOM 上的 `__reactFiber$uqibbgdk1tp` 属性， 同时将 newProps 挂载到 DOM 上的 `__reactProps$uqibbgdk1tp` 属性。所以我们可以看到，浏览器上的每个 DOM 都会有至少两个自定义的属性：`__reactProps$uqibbgdk1tp` 和 `__reactFiber$uqibbgdk1tp`。这两个属性名称 `$` 后面的是一串随机字符串
+    - 将 fiber 的 child(对应的真实 dom) 添加到当前的 DOM 上。这里有一点需要注意，当我们的 DOM 只有一个子元素并且是字符串或者数字时，在这个阶段是不会添加到 DOM 的。比如：
+
+    ```js
+    // 以下情况在 completeWork 时，只会创建 div 的真实DOM，并不会将
+    // "只有一个子元素并且是字符串或者数字" 添加到DOM上
+    <div>只有一个子元素并且是字符串或者数字</div>
+    ```
+
 ```js
 export function completeWork(current, workInProgress, renderLanes) {
   const newProps = workInProgress.pendingProps;
@@ -503,4 +517,6 @@ export function completeWork(current, workInProgress, renderLanes) {
 }
 ```
 
-##### 4.4.1 原生的 HTML 标签 completeUnitOfWork：updateHostComponent
+##### 4.4.1 原生的 HTML 标签 completeUnitOfWork
+
+对于 HostComponent，即原生的 HTML 标签，需要区分第一次渲染和更新阶段。
