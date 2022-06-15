@@ -248,34 +248,10 @@ function beginWork(current, workInProgress, renderLanes) {
       return updateHostRoot(current, workInProgress);
     case HostComponent:
       return updateHostComponent(current, workInProgress);
+    case HostText:
+      return updateHostText(current, workInProgress);
   }
 }
-```
-
-TODO：需要更新 flags 的场景：
-
-- `processUpdateQueue` 根据 `fiber.updateQueue` 计算最新的状态 `newState`，并赋值给 `fiber.memoizedState`。在 `processUpdateQueue` 方法中，会判断 `update` 对象是否有 callback，如果有 callback，则改变 fiber.flags：
-
-```js
-workInProgress.flags |= Callback; // Callback对应的值是32
-```
-
-- HostRoot。如果新的 fiber 子节点需要插入，则更新 fiber.flags：
-
-```js
-newFiber.flags = Placement; // Placement对应的值是2
-```
-
-- ClassComponent。如果类组件实例实现了 componentDidMount 生命周期方法，则更新 flags：
-
-```js
-workInProgress.flags |= Update; // Update对应的值是4
-```
-
-同时，在 finishClassComponent 中，更新 flags：
-
-```js
-workInProgress.flags |= PerformedWork; // PerformedWork对应的值为1，提供给 React DevTools读取的
 ```
 
 ##### 4.3.1 HostRootFiber beginWork：updateHostRoot
@@ -389,7 +365,21 @@ function renderWithHooks(current, workInProgress, Component) {
 
 ##### 4.3.4 原生的 HTML 标签 beginWork：updateHostComponent
 
-调用 `shouldSetTextContent` 判断是否需要为新的 react element 子节点创建 fiber 节点。如果新的 react element，即 nextChildren 是一个字符串或者数字，则说明 nextChildren 不需要创建 fiber 节点
+调用 `shouldSetTextContent` 判断是否需要为新的 react element 子节点创建 fiber 节点。如果新的 react element，即 nextChildren 是一个字符串或者数字，则说明 nextChildren 不需要创建 fiber 节点。比如：
+
+```js
+// 对于 div 这个fiber节点，由于它只有一个新的子元素，并且是一个字符串，因此不需要为这个 div fiber节点创建新的fiber节点
+<div>只有一个子元素并且是字符串或者数字</div>
+```
+
+如果是多节点的情况，比如：
+
+```jsx
+// 假设此时的 count 为数字0，那么对于 div 这个fiber节点，在 reconcile 阶段，会认为它有两个新的子节点：
+// 一个是 "接收父组件的props："，一个是 0。React 会为这两个文本节点创建对应的 fiber 节点，fiber.tag 都是
+// HostText
+<div>接收父组件的props：{props.count}</div>
+```
 
 ```js
 function updateHostComponent(current, workInProgress, renderLanes) {
@@ -404,6 +394,16 @@ function updateHostComponent(current, workInProgress, renderLanes) {
   }
   reconcileChildren(current, workInProgress, nextChildren);
   return workInProgress.child;
+}
+```
+
+##### 4.3.5 HostText 文本节点 beginWork：updateHostText
+
+`HostText` 节点在 `beginWork` 阶段几乎不做任何处理，因此这个节点可以直接完成了。
+
+```js
+function updateHostText() {
+  return null;
 }
 ```
 
@@ -463,21 +463,9 @@ function completeUnitOfWork(unitOfWork) {
 }
 ```
 
-`completeWork` 函数也是一个基于 `fiber.tag` 的 switch 语句，主要工作如下：
+`completeWork` 函数也是一个基于 `fiber.tag` 的 switch 语句
 
-- 对于函数组件和类组件，这个阶段几乎没有工作。
-- 对于 HostComponent，则需要区分第一次渲染以及更新阶段。注意这里的第一次渲染是指这个 DOM 元素第一次渲染。而不是我们的页面第一次渲染。
-
-  - 第一次渲染
-
-    - 创建真实的 DOM 元素。并将 fiber 节点挂载到 DOM 上的 `__reactFiber$uqibbgdk1tp` 属性， 同时将 newProps 挂载到 DOM 上的 `__reactProps$uqibbgdk1tp` 属性。所以我们可以看到，浏览器上的每个 DOM 都会有至少两个自定义的属性：`__reactProps$uqibbgdk1tp` 和 `__reactFiber$uqibbgdk1tp`。这两个属性名称 `$` 后面的是一串随机字符串
-    - 将 fiber 的 child(对应的真实 dom) 添加到当前的 DOM 上。这里有一点需要注意，当我们的 DOM 只有一个子元素并且是字符串或者数字时，在这个阶段是不会添加到 DOM 的。比如：
-
-    ```js
-    // 以下情况在 completeWork 时，只会创建 div 的真实DOM，并不会将
-    // "只有一个子元素并且是字符串或者数字" 添加到DOM上
-    <div>只有一个子元素并且是字符串或者数字</div>
-    ```
+可以看出，对于函数组件和类组件，`completeWork` 几乎没有工作。主要的工作集中在 `HostRoot`、`HostComponent`、`HostText`
 
 ```js
 export function completeWork(current, workInProgress, renderLanes) {
@@ -493,7 +481,7 @@ export function completeWork(current, workInProgress, renderLanes) {
         // 添加一个副作用，在下次commit开始前清空容器？？？
         workInProgress.flags |= Snapshot;
       }
-      updateHostContainer(workInProgress);
+      updateHostContainer(workInProgress); // 空函数
       return null;
     case HostComponent:
       const type = workInProgress.type;
@@ -511,12 +499,56 @@ export function completeWork(current, workInProgress, renderLanes) {
       return null;
     case HostText:
       const newText = newProps;
-      workInProgress.stateNode = createTextInstance(newText, workInProgress);
+      if (current && workInProgress.stateNode != null) {
+        updateHostText(current, workInProgress, oldText, newText);
+      } else {
+        workInProgress.stateNode = createTextInstance(newText, workInProgress);
+      }
       return null;
   }
 }
 ```
 
-##### 4.4.1 原生的 HTML 标签 completeUnitOfWork
+##### 4.4.1 原生的 HTML 标签初次渲染 completeUnitOfWork
 
-对于 HostComponent，即原生的 HTML 标签，需要区分第一次渲染和更新阶段。
+对于 `HostComponent`，则需要区分第一次渲染以及更新阶段。注意这里的第一次渲染是指这个 DOM 元素第一次渲染。而不是我们的页面第一次渲染。
+
+`HostComponent` 第一次渲染
+
+- 创建真实的 DOM 元素。并将 fiber 节点挂载到 DOM 上的 `__reactFiber$uqibbgdk1tp` 属性， 同时将 newProps 挂载到 DOM 上的 `__reactProps$uqibbgdk1tp` 属性。所以我们可以看到，浏览器上的每个 DOM 都会有至少两个自定义的属性：`__reactProps$uqibbgdk1tp` 和 `__reactFiber$uqibbgdk1tp`。这两个属性名称 `$` 后面的是一串随机字符串
+- 在 `appendAllChildren` 中，调用 `parent.appendChild(child)` 将 fiber 的 child(对应的真实 dom) 添加到当前的 DOM 上。
+- 在 `finalizeInitialChildren` 方法中，给真实的 DOM 设置属性，比如 style，id 等。
+
+这里有一点需要注意，`appendAllChildren` 要区分两个场景：单一节点以及多节点。
+
+我们知道在 `beginWork：updateHostComponent` 中，如果 `HostComponent` 只有一个新的子节点并且是字符串或者数字，那么则不会为新的子节点创建对应的 fiber 节点，比如：
+
+```js
+// 单一节点情况，div只有一个新的子节点，并且是字符串，因此在 beginWork 阶段不会为这个新的子节点创建对应的 fiber 节点，从而不会走appendAllChildren的逻辑。而是在finalizeInitialChildren函数中设置 div 的textContent
+<div>只有一个子元素并且是字符串或者数字</div>
+```
+
+```jsx
+// 多节点情况。假设此时的 count 为数字0，那么对于 div 这个fiber节点，在 reconcile 阶段，会认为它有两个新的子节点：
+// 一个是 "接收父组件的props："，一个是 0。React 会为这两个文本节点创建对应的 fiber 节点，fiber.tag 都是
+// HostText。然后在 completeUnitOfWork 阶段，针对 HostText 类型的fiber节点，React会调用 document.createTextNode(text) 创建文本DOM节点。在 div 的 completeUnitOfWork 中，就会走 appendAllChildren 的逻辑，将这些文本DOM添加到div中。
+<div>接收父组件的props：{props.count}</div>
+```
+
+`HostComponent` 第一次渲染的逻辑主要集中在 `createInstance`、`appendAllChildren`、`finalizeInitialChildren` 三个函数中。从这个过程也可以看出，是有对真实的 dom 进行操作的。
+
+##### 4.4.2 HostText completeUnitOfWork
+类似于 `HostComponent`，`HostText` 也需要区分第一次渲染以及更新阶段。
+
+在第一次渲染阶段，只需要直接调用 `document.createTextNode(text)` 创建文本DOM节点，初次之外没有其他操作。
+
+在更新阶段，判断是否需要更新 fiber.flags，除此之外没有其他操作。
+
+##### 4.4.3 HostRoot completeUnitOfWork
+ `updateHostContainer` 方法其实就是一个空函数，`HostRoot` 在这个过程几乎没有操作。当执行到这里的时候，`render` 阶段已经完成，进入 `commit` 阶段。
+
+**注意，在初次渲染的过程中，React不需要追踪副作用，同时在 render 阶段就操作真实的DOM！！！！！！。当 `HostRoot` 的 `completeUnitOfWork` 执行完成时，我们实际上已经得到一棵真实的DOM树，存储在内存中，还没挂载到容器root上**
+
+
+
+### 五、commit 阶段
