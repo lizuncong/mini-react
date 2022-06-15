@@ -84,7 +84,7 @@ commit 阶段是同步的，一旦开始就不能再中断。这个阶段遍历�
 
 ### 二、ReactDOM.render 初次渲染
 
-初次渲染的入口。初次渲染主要逻辑在 `createRootImpl` 以及 `updateContainer` 这两个函数中，主要工作：
+初次渲染的入口。初次渲染主要逻辑在 `createRootImpl` 以及 `updateContainer` 这两个函数中，**React 在初次渲染不会追踪副作用**，主要工作：
 
 - 创建 FiberRootNode 类型节点。**这是用于保存 fiber 树的容器**。可以通过 `root._reactRootContainer._internalRoot` 属性访问。
 - 创建 HostRoot Fiber。即容器 root 节点对应的 fiber 节点，这也是 fiber 树的根节点
@@ -241,7 +241,7 @@ function performUnitOfWork(unitOfWork) {
 
 `beginWork` 函数自身就是一个简单的基于 `fiber.tag` 的 switch 语句，这个阶段的逻辑主要在各个分支函数中。`beginWork` 最主要的工作：
 
-- 协调。根据最新的 react element 子元素和旧的 fiber 子节点 对比，生成新的 fiber 子节点
+- 协调。根据最新的 react element 子元素和旧的 fiber 子节点 对比，生成新的 fiber 子节点，即 DOM DIFF。
 - 标记副作用。在协调子元素的过程中，会根据子元素是否增删改，从而将新的 newFiber 子节点的 flags 更新为对应的值。
 - 返回新的子 fiber 节点作为下一个工作的 fiber 节点
 
@@ -295,8 +295,13 @@ function updateHostRoot(current, workInProgress, renderLanes) {
     - 根据最新的 state 调用 `getDerivedStateFromProps` 静态生命周期方法
     - 调用 `componentWillMount` 生命周期方法
     - 如果类组件实现了 componentDidMount 生命周期方法，则更新 flags： workInProgress.flags |= Update
-- 更新阶段。逻辑主要在 `updateClassInstance` 函数中
-  - TODO
+- 更新阶段。逻辑主要在 `updateClassInstance` 函数中，按顺序执行以下操作：
+  - 调用 componentWillReceiveProps 生命周期方法
+  - processUpdateQueue 计算更新队列，获取最新的 state
+  - 如果组件实例实现了 componentDidUpdate 或者 getSnapshotBeforeUpdate，则说明这个 fiber 节点有副作用，更新 fiber.flags
+  - 根据最新的 state 调用 getDerivedStateFromProps 静态生命周期方法
+  - 调用 shouldComponentUpdate 生命周期方法
+  - 调用 componentWillUpdate 生命周期方法
 
 最后，调用 `finishClassComponent` 开始协调子元素
 
@@ -354,7 +359,11 @@ function mountIndeterminateComponent(_current, workInProgress) {
 函数组件在更新阶段，会走 `FunctionComponent` 分支，执行 `updateFunctionComponent` 方法。
 
 ```js
-function updateFunctionComponent(current, workInProgress, Component) {}
+function updateFunctionComponent(current, workInProgress, Component) {
+  const newChildren = renderWithHooks(current, workInProgress, Component);
+  reconcileChildren(null, workInProgress, newChildren);
+  return workInProgress.child;
+}
 ```
 
 不管是初次渲染还是更新阶段，都会走 `renderWithHooks` 方法，这是函数组件执行的主要逻辑。React 提供了各种 hook 给我们在函数组件中使用，但是这些 hook 在初次渲染和更新阶段的行为又有点不同，为了屏蔽这些行为，React 在 `renderWithHooks` 中会判断，如果是初次渲染，则使用 `HooksDispatcherOnMount`，如果是更新阶段，则使用 `HooksDispatcherOnUpdate`。`HooksDispatcherOnMount` 和 `HooksDispatcherOnUpdate` 提供的 API 一模一样，只是实现有细微差别。
