@@ -2,15 +2,15 @@
 
 ## 深入概述 ReactDOM.render 初次渲染 以及 setState 手动触发状态更新主流程
 
-### 前置知识
+### 一、前置知识
 
 在阅读本文时，假设你已经有一些 fiber 的基础知识。
 
-#### 容器 root 节点
+#### 1.1 容器 root 节点
 
 我们传递给 `ReactDOM.render(element, root)` 的第二个参数 `root`
 
-#### fiber 类型
+#### 1.2 fiber 类型
 
 `fiber` 节点的类型通过 `fiber.tag` 标识，称为 `React work tag`。我们重点关注以下几个类型：
 
@@ -22,7 +22,7 @@
 
 记住这几个 fiber 类型，会贯穿整篇文章。在整个 react 渲染阶段，react 基于 fiber.tag 执行不同的操作。因此你会看到大量的基于 fiber.tag 的 switch 语句。
 
-#### 副作用
+#### 1.3 副作用
 
 副作用通过 `fiber.flags` 标记。对于不同的 fiber 类型，副作用含义不同
 
@@ -33,11 +33,11 @@
 
 在 render 阶段，react 会找出有副作用的 fiber 节点，并构建单向的`副作用链表`
 
-#### React 渲染流程
+#### 1.4 React 渲染流程
 
 React 渲染主要分为两个阶段：`render` 阶段 和 `commit` 阶段。
 
-##### render 阶段
+##### 1.4.1 render 阶段
 
 `render` 阶段支持异步并发渲染，可中断。分为 beginWork 以及 completeUnitOfWork 两个子阶段：
 
@@ -49,7 +49,7 @@ React 渲染主要分为两个阶段：`render` 阶段 和 `commit` 阶段。
 
 render 阶段的结果是一个副作用链表以及一棵 finishedWork 树。
 
-##### commit 阶段
+##### 1.4.2 commit 阶段
 
 commit 阶段是同步的，一旦开始就不能再中断。这个阶段遍历副作用链表并执行真实的 DOM 操作。commit 阶段分为 `commitBeforeMutationEffects`、`commitMutationEffects` 以及 `commitLayoutEffects` 三个子阶段。每个子阶段都是一个 while 循环。同时，**每个子阶段都是从头开始遍历副作用链表！！！**
 
@@ -69,7 +69,7 @@ commit 阶段是同步的，一旦开始就不能再中断。这个阶段遍历�
     - 更新则调用 componentDidUpdate
     - 调用 this.setState 的 callback
 
-### ReactDOM.render 初次渲染
+### 二、ReactDOM.render 初次渲染
 
 初次渲染的入口。初次渲染主要逻辑在 `createRootImpl` 以及 `updateContainer` 这两个函数中，主要工作：
 
@@ -126,9 +126,9 @@ function updateContainer(element, container) {
 }
 ```
 
-### 调度更新
+### 三、调度更新
 
-#### scheduleUpdateOnFiber
+#### 3.1 scheduleUpdateOnFiber
 
 更新的入口。不管是初次渲染，还是后续我们通过 this.setState 或者 useState 等手动触发状态更新，都会走 `scheduleUpdateOnFiber` 方法开始调度更新。`scheduleUpdateOnFiber` 会从当前 fiber 开始往上找到 HostRootFiber，然后从 HostRootFiber 开始更新。
 
@@ -163,7 +163,7 @@ function ensureRootIsScheduled(root) {
 }
 ```
 
-#### performSyncWorkOnRoot
+#### 3.2 performSyncWorkOnRoot
 
 `performSyncWorkOnRoot` 的 render 阶段是同步的。在这里，React 将渲染过程拆分成了两个子阶段：
 
@@ -182,9 +182,9 @@ function performSyncWorkOnRoot(root) {
 }
 ```
 
-### render 阶段
+### 四、render 阶段
 
-#### renderRootSync
+#### 4.1 renderRootSync
 
 render 阶段从 `renderRootSync` 函数开始。主要逻辑在 `prepareFreshStack` 以及 `workLoopSync` 方法。
 
@@ -207,7 +207,7 @@ function workLoopSync() {
 
 workInProgress 代表正在工作的 fiber 节点。对于每一个 fiber 节点，都会执行 performUnitOfWork。
 
-#### performUnitOfWork
+#### 4.2 performUnitOfWork
 
 对于每一个 fiber 节点，首先调用 `beginWork` 协调子节点，如果 `beginWork` 返回 `null`，说明当前 fiber 节点已经没有子节点，工作可以完成了，调用 `completeUnitOfWork` 完成工作。
 
@@ -224,9 +224,9 @@ function performUnitOfWork(unitOfWork) {
 }
 ```
 
-#### beginWork
+#### 4.3 beginWork
 
-`beginWork` 就是一个简单的基于 `fiber.tag` 的 switch 语句。`beginWork` 最主要的工作：
+`beginWork` 函数自身就是一个简单的基于 `fiber.tag` 的 switch 语句，这个阶段的逻辑主要在各个分支函数中。`beginWork` 最主要的工作：
 
 - 协调。根据最新的 react element 子元素和旧的 fiber 子节点 对比，生成新的 fiber 子节点
 - 标记副作用。在协调子元素的过程中，会根据子元素是否增删改，从而将新的 newFiber 子节点的 flags 更新为对应的值。
@@ -278,7 +278,7 @@ workInProgress.flags |= Update; // Update对应的值是4
 workInProgress.flags |= PerformedWork; // PerformedWork对应的值为1，提供给 React DevTools读取的
 ```
 
-##### HostRootFiber：updateHostRoot
+##### 4.3.1 HostRootFiber beginWork：updateHostRoot
 
 `updateHostRoot` 函数执行完，由于 HostRootFiber 没有副作用，因此 HostRootFiber.flags 依然是 0
 
@@ -291,7 +291,7 @@ function updateHostRoot(current, workInProgress, renderLanes) {
 }
 ```
 
-##### 类组件： updateClassComponent
+##### 4.3.2 类组件 beginWork： updateClassComponent
 
 类组件的更新分为初次渲染以及更新两种情况。
 
@@ -342,29 +342,165 @@ function finishClassComponent(current, workInProgress, Component) {
 }
 ```
 
-##### 函数组件：mountIndeterminateComponent
+##### 4.3.3 函数组件 beginWork：mountIndeterminateComponent & updateFunctionComponent
 
 函数组件在第一次渲染时，会走 `IndeterminateComponent` 分支，执行 `mountIndeterminateComponent` 方法
+
+当执行完成 `renderWithHooks` 方法后，此时 fiber 类型已经确定，因此需要修改 `workInProgress.tag`
 
 ```js
 function mountIndeterminateComponent(_current, workInProgress) {
   const props = workInProgress.pendingProps;
-  const context = {};
-  let value;
-  value = renderWithHooks(
-    null,
-    workInProgress,
-    Component,
-    props,
-    context,
-    renderLanes
-  );
+  const nextChildren = renderWithHooks(current, workInProgress, Component);
 
-  workInProgress.flags |= PerformedWork;
+  workInProgress.flags |= PerformedWork; // PerformedWork对应的值为1
 
   workInProgress.tag = FunctionComponent;
 
-  reconcileChildren(null, workInProgress, value, renderLanes);
+  reconcileChildren(current, workInProgress, nextChildren, renderLanes);
   return workInProgress.child;
 }
 ```
+
+函数组件在更新阶段，会走 `FunctionComponent` 分支，执行 `updateFunctionComponent` 方法。
+
+```js
+function updateFunctionComponent(current, workInProgress, Component) {}
+```
+
+不管是初次渲染还是更新阶段，都会走 `renderWithHooks` 方法，这是函数组件执行的主要逻辑。React 提供了各种 hook 给我们在函数组件中使用，但是这些 hook 在初次渲染和更新阶段的行为又有点不同，为了屏蔽这些行为，React 在 `renderWithHooks` 中会判断，如果是初次渲染，则使用 `HooksDispatcherOnMount`，如果是更新阶段，则使用 `HooksDispatcherOnUpdate`。`HooksDispatcherOnMount` 和 `HooksDispatcherOnUpdate` 提供的 API 一模一样，只是实现有细微差别。
+
+```js
+function renderWithHooks(current, workInProgress, Component) {
+  currentlyRenderingFiber = workInProgress;
+  workInProgress.memoizedState = null;
+  workInProgress.updateQueue = null;
+  ReactCurrentDispatcher.current =
+    current === null || current.memoizedState === null
+      ? HooksDispatcherOnMount
+      : HooksDispatcherOnUpdate;
+  const children = Component(props, secondArg); // 调用函数组件
+  currentlyRenderingFiber = null;
+  workInProgressHook = null;
+  currentHook = null;
+  return children;
+}
+```
+
+##### 4.3.4 原生的 HTML 标签 beginWork：updateHostComponent
+
+调用 `shouldSetTextContent` 判断是否需要为新的 react element 子节点创建 fiber 节点。如果新的 react element，即 nextChildren 是一个字符串或者数字，则说明 nextChildren 不需要创建 fiber 节点
+
+```js
+function updateHostComponent(current, workInProgress, renderLanes) {
+  const type = workInProgress.type; // 原生的html标签，如 button
+  const nextProps = workInProgress.pendingProps;
+  let nextChildren = nextProps.children;
+  // 对于原生的html标签，如果只有一个子节点，并且这个子节点是一个字符串或者数字的话，则
+  // 不会对此子节点创建fiber
+  const isDirectTextChild = shouldSetTextContent(type, nextProps);
+  if (isDirectTextChild) {
+    nextChildren = null;
+  }
+  reconcileChildren(current, workInProgress, nextChildren);
+  return workInProgress.child;
+}
+```
+
+#### 4.4 completeUnitOfWork
+
+当一个 fiber 节点没有子节点，或者子节点仅仅是单一的字符串或者数字时，说明这个 fiber 节点当前的 `beginWork` 已经完成，可以进入 `completeUnitOfWork` 完成工作。
+
+`completeUnitOfWork` 主要工作如下：
+
+- 调用 `completeWork`。创建真实的 DOM 节点，属性赋值等。
+- 构建副作用链表。
+- 如果有兄弟节点，则返回兄弟节点，兄弟节点执行 beginWork。否则继续完成父节点的工作。
+
+```js
+function completeUnitOfWork(unitOfWork) {
+  let completedWork = unitOfWork;
+  do {
+    const current = completedWork.alternate;
+    const returnFiber = completedWork.return;
+    let next;
+    // 完成此fiber对应的真实DOM节点创建和属性赋值的功能
+    next = completeWork(current, completedWork, subtreeRenderLanes);
+    // 开始构建副作用列表。
+    if (returnFiber !== null) {
+      if (returnFiber.firstEffect === null) {
+        returnFiber.firstEffect = completedWork.firstEffect;
+      }
+      if (completedWork.lastEffect !== null) {
+        if (returnFiber.lastEffect !== null) {
+          returnFiber.lastEffect.nextEffect = completedWork.firstEffect;
+        }
+        returnFiber.lastEffect = completedWork.lastEffect;
+      }
+      const flags = completedWork.flags;
+
+      if (flags > PerformedWork) {
+        if (returnFiber.lastEffect !== null) {
+          returnFiber.lastEffect.nextEffect = completedWork;
+        } else {
+          returnFiber.firstEffect = completedWork;
+        }
+
+        returnFiber.lastEffect = completedWork;
+      }
+    }
+    const siblingFiber = completedWork.sibling;
+    if (siblingFiber !== null) {
+      // If there is more work to do in this returnFiber, do that next.
+      workInProgress = siblingFiber;
+      return;
+    }
+
+    completedWork = returnFiber;
+
+    workInProgress = completedWork;
+  } while (completedWork !== null);
+}
+```
+
+`completeWork` 函数也是一个基于 `fiber.tag` 的 switch 语句，主要工作如下：
+- 对于函数组件和类组件，这个阶段几乎没有工作。
+```js
+export function completeWork(current, workInProgress, renderLanes) {
+  const newProps = workInProgress.pendingProps;
+  switch (workInProgress.tag) {
+    case FunctionComponent:
+      return null;
+    case ClassComponent:
+      return null;
+    case HostRoot:
+      const fiberRoot = workInProgress.stateNode;
+      if (current === null || current.child === null) {
+        // 添加一个副作用，在下次commit开始前清空容器？？？
+        workInProgress.flags |= Snapshot;
+      }
+      updateHostContainer(workInProgress);
+      return null;
+    case HostComponent:
+      const type = workInProgress.type;
+      if (current && workInProgress.stateNode) {
+        updateHostComponent(current, workInProgress);
+      } else {
+        // 第一次渲染，创建真实的DOM节点
+        const instance = createInstance(type, newProps, workInProgress);
+        // 将子元素对应的dom节点添加到instance中，即instance.appendChild(chid)
+        appendAllChildren(instance, workInProgress, false, false);
+        workInProgress.stateNode = instance;
+        // 给真实dom实例添加属性，比如style等
+        finalizeInitialChildren(instance, type, newProps);
+      }
+      return null;
+    case HostText:
+      const newText = newProps;
+      workInProgress.stateNode = createTextInstance(newText, workInProgress);
+      return null;
+  }
+}
+```
+
+##### 4.4.1 原生的 HTML 标签 completeUnitOfWork：updateHostComponent
