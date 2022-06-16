@@ -1,6 +1,51 @@
-### 类组件
+## React 支持的所有 flags
 
-一开始 `workInProgress.flags = 0`
+```js
+// 下面两个运用于 React Dev Tools，不能更改他们的值
+const NoFlags = 0b000000000000000000;
+const PerformedWork = 0b000000000000000001;
+
+// 下面的 flags 用于标记副作用
+const Placement = 0b000000000000000010; // 2
+const Update = 0b000000000000000100; // 4
+const PlacementAndUpdate = 0b000000000000000110; // 6
+const Deletion = 0b000000000000001000; // 8
+//const ContentReset = 0b000000000000010000; // 16
+const Callback = 0b000000000000100000; // 32
+const DidCapture = 0b000000000001000000; // 64
+//const Ref = 0b000000000010000000; // 128
+const Snapshot = 0b000000000100000000; // 256
+const Passive = 0b000000001000000000; // 512
+const Hydrating = 0b000000010000000000; // 1024
+//const HydratingAndUpdate =  0b000000010000000100; // 1028
+
+// Passive & Update & Callback & Ref & Snapshot
+// const LifecycleEffectMask = 0b000000001110100100; // 932
+
+// Union of all host effects
+// const HostEffectMask = 0b000000011111111111; // 2047
+
+// These are not really side effects, but we still reuse this field.
+// const Incomplete = 0b000000100000000000; // 2048
+const ShouldCapture = 0b000001000000000000; // 4096
+// const ForceUpdateForLegacySuspense = 0b000100000000000000; // 16384
+```
+
+## 类组件
+
+### processUpdateQueue
+
+在 `getStateFromUpdate` 方法中计算 state 时， 如果 update.tag === CaptureUpdate，则更新 flags：
+
+```js
+workInProgress.flags = (workInProgress.flags & ~ShouldCapture) | DidCapture; // ShouldCapture 4096 DidCapture 64
+```
+
+同时，如果 update.callback 不为空，说明我们在调用 `this.setState(arg, callback)` 时，传了第二个参数 `callback`。因此需要在 `processUpdateQueue` 中更新 flags：
+
+```js
+workInProgress.flags |= Callback; // Callback 32
+```
 
 #### this.setState 的回调函数，值 32
 
@@ -61,23 +106,24 @@ workInProgress.flags |= PerformedWork; // PerformedWork对应的值为1
 
 此时 `workInProgress.flags = 1`
 
-
-### 原生的HTML标签
+### 原生的 HTML 标签
 
 #### prepareUpdate
-在 completeUnitOfWork 阶段，调用 prepareUpdate 方法比较fiber节点的oldProps和newProps，收集变更的属性的 `键值对` 存储在 fiber.updateQueue 中。如果 fiber.updateQueue 不为 null，则需要更新 fiber.flags：
+
+在 completeUnitOfWork 阶段，调用 prepareUpdate 方法比较 fiber 节点的 oldProps 和 newProps，收集变更的属性的 `键值对` 存储在 fiber.updateQueue 中。如果 fiber.updateQueue 不为 null，则需要更新 fiber.flags：
 
 ```js
-	workInProgress.flags |= Update; // Update对应的值是4
+workInProgress.flags |= Update; // Update对应的值是4
 ```
 
 此时 `workInProgress.flags = 4`
 
-
-
 ### 文本节点
+
 在 completeUnitOfWork 阶段，调用 updateHostText，比较新旧文本是否相同，如果不同，则更新 fiber.flags：
+
 ```js
-	workInProgress.flags |= Update; // Update对应的值是4
+workInProgress.flags |= Update; // Update对应的值是4
 ```
+
 此时 `workInProgress.flags = 4`

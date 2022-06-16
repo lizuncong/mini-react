@@ -1,10 +1,8 @@
-// import React from "react";
-// import ReactDOM from "react-dom";
+import React from "react";
+import ReactDOM from "react-dom";
 
-import React from "@react";
-import ReactDOM from "@react-dom";
-
-import Counter from "./Counter";
+// import React from "@react";
+// import ReactDOM from "@react-dom";
 
 class Home extends React.Component {
   constructor(props) {
@@ -23,16 +21,16 @@ class Home extends React.Component {
       }
     );
   }
-  static getDerivedStateFromProps(props, state) {
-    console.log("getDerivedStateFromProps======");
-    return null;
-  }
-  getSnapshotBeforeUpdate(prevProps, prevState) {
-    const btn = document.getElementById("btn");
-    const scrollHeight = btn.scrollHeight;
-    console.log("get snapshot before update...", scrollHeight);
-    return scrollHeight;
-  }
+  // static getDerivedStateFromProps(props, state) {
+  //   console.log("getDerivedStateFromProps======");
+  //   return null;
+  // }
+  // getSnapshotBeforeUpdate(prevProps, prevState) {
+  //   const btn = document.getElementById("btn");
+  //   const scrollHeight = btn.scrollHeight;
+  //   console.log("get snapshot before update...", scrollHeight);
+  //   return scrollHeight;
+  // }
   componentDidUpdate(prevProps, prevState, snapshot) {
     console.log("component did update...", snapshot);
   }
@@ -57,14 +55,21 @@ class Home extends React.Component {
   }
 
   render() {
-    return [
-      (!this.state.step || this.state.step % 3) && (
-        <Counter step={this.state.step} />
-      ),
-      <button id="btn" key="2" onClick={this.handleClick}>
-        类组件按钮：{this.state.step}
-      </button>,
-    ];
+    const { step } = this.state;
+
+    return (
+      <div
+        id={step}
+        style={{ marginTop: `${100 + step}px` }}
+        onClick={this.handleClick}
+      >
+        <div>hello</div>
+        {!!(step % 2) && <div>偶数</div>}
+        <div>{step}</div>
+        {!(step % 2) && <div>奇数</div>}
+        <div>{step + 1}</div>
+      </div>
+    );
   }
 }
 
