@@ -147,7 +147,8 @@ React 对于文本节点的处理分两种场景：单一节点和多节点。�
 - FunctionComponent。函数组件如果调用了 useEffect、useLayoutEffect，则对应的 fiber 节点包含副作用
 - HostComponent。原生的 HTML 标签如果属性，比如 style 等发生了变更，则对应的 fiber 节点包含副作用。
 - HostText。文本发生了变化，则对应的 fiber 节点包含副作用。
-  在 render 阶段，react 会找出有副作用的 fiber 节点，并自底向上构建单向的`副作用链表`
+
+在 render 阶段，react 会找出有副作用的 fiber 节点，并自底向上构建单向的`副作用链表`
 
 #### 1.4 React 渲染流程
 
