@@ -401,10 +401,10 @@ function updateHostRoot(current, workInProgress, renderLanes) {
 - 更新阶段。逻辑主要在 `updateClassInstance` 函数中，按顺序执行以下操作：
   - 调用 componentWillReceiveProps 生命周期方法
   - processUpdateQueue 计算更新队列，获取最新的 state
-  - 如果组件实例实现了 componentDidUpdate 或者 getSnapshotBeforeUpdate，则说明这个 fiber 节点有副作用，更新 fiber.flags
   - 根据最新的 state 调用 getDerivedStateFromProps 静态生命周期方法
   - 调用 shouldComponentUpdate 生命周期方法
   - 调用 componentWillUpdate 生命周期方法
+  - 如果组件实例实现了 componentDidUpdate 或者 getSnapshotBeforeUpdate，则说明这个 fiber 节点有副作用，更新 fiber.flags
 
 最后，调用 `finishClassComponent` 开始协调子元素
 
@@ -634,7 +634,7 @@ export function completeWork(current, workInProgress, renderLanes) {
 }
 ```
 
-##### 4.4.1 原生的 HTML 标签初次渲染 completeUnitOfWork
+##### 4.4.1 原生的 HTML 标签渲染 completeUnitOfWork
 
 对于 `HostComponent`，则需要区分第一次渲染以及更新阶段。注意这里的第一次渲染是指这个 DOM 元素第一次渲染。而不是我们的页面第一次渲染。
 
@@ -661,6 +661,12 @@ export function completeWork(current, workInProgress, renderLanes) {
 ```
 
 `HostComponent` 第一次渲染的逻辑主要集中在 `createInstance`、`appendAllChildren`、`finalizeInitialChildren` 三个函数中。从这个过程也可以看出，是有对真实的 dom 进行操作的。
+
+`HostComponent` 更新阶段，主要逻辑在 `updateHostComponent` 函数中：
+
+- 调用 `prepareUpdate` 比较 oldProps 和 newProps 的差异。如果属性发生了变更，则将变更的属性的键值对存入数组 `updatePayload` 中。
+- 将 `updatePayload` 复制给 workInProgress.updateQueue
+- 这里有一个特殊场景，如果只是合成事件变了，比如 `onClick` 变了，其他属性没有变化，React 在 `diffProperties` 时会特意将 `updatePayload` 赋值一个空数组。方便在 commit 阶段重新挂载 `__reactProps$` 属性
 
 ##### 4.4.2 HostText completeUnitOfWork
 
@@ -772,7 +778,7 @@ function commitBeforeMutationLifeCycles(current, finishedWork) {
     case HostRoot:
       if (finishedWork.flags & Snapshot) {
         var root = finishedWork.stateNode;
-        clearContainer(root.containerInfo); // TODO看上去是将root的textContent清空？？？root.textContent = '';但是清空textContent不就整个页面都是空白了吗？？？
+        clearContainer(root.containerInfo); // 页面第一次渲染时，清空root的textContent：root.textContent = '';
       }
       return;
     case HostComponent:
@@ -787,7 +793,10 @@ function commitBeforeMutationLifeCycles(current, finishedWork) {
 这个函数操作 DOM，主要有三个方法：
 
 - commitPlacement。调用 `parentNode.appendChild(child);` 或者 `container.insertBefore(child, beforeChild)` 插入 DOM 节点
-- commitWork。同步调用函数组件 `useLayoutEffect` 的`清除函数`，这个函数对于类组件没有任何操作
+- commitWork。
+  - 对于 HostText 节点，直接更新 nodeValue
+  - 对于类组件，什么都不做
+  - 同步调用函数组件 `useLayoutEffect` 的`清除函数`，这个函数对于类组件没有任何操作
 - commitDeletion。主要是删除 DOM 节点，以及调用当前节点以及子节点所有的 `卸载` 相关的生命周期方法
   - 同步调用函数组件的 `useLayoutEffect` 的 `清除函数`，这是同步执行的
   - 将函数组件的 `useEffect` 的 `清除函数` 添加进异步刷新队列，这是异步执行的
@@ -888,11 +897,14 @@ function commitUnmount(finishedRoot, current, renderPriorityLevel) {
 
 当执行到这个函数，此时 `useLayoutEffect` 的清除函数已经全部执行完成。
 
+- 对于 HostComponent。判断是否需要聚焦
+- 对于 HostText。什么都不做。
+- 对于类组件。
+  - 执行类组件的 `componentDidMount` 生命周期方法，同步执行
+  - 执行类组件的 `componentDidUpdate` 生命周期方法，同步执行
+  - 执行类组件 `this.setState(arg, callback)` 中的 `callback` 回调，同步执行
 - 调用函数组件的 `useLayoutEffect` 监听函数，同步执行
 - 将函数组件的 `useEffect` 监听函数放入异步队列，异步执行
-- 执行类组件的 `componentDidMount` 生命周期方法，同步执行
-- 执行类组件的 `componentDidUpdate` 生命周期方法，同步执行
-- 执行类组件 `this.setState(arg, callback)` 中的 `callback` 回调，同步执行
 
 ```js
 function commitLayoutEffects(root, committedLanes) {
