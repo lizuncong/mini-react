@@ -1,4 +1,4 @@
-## React 支持的所有 flags
+## React Fiber 支持的所有 flags
 
 ```js
 // 下面两个运用于 React Dev Tools，不能更改他们的值
@@ -302,4 +302,224 @@ if (current !== null) {
 if (shouldTrackSideEffects && newFiber.alternate === null) {
   newFiber.flags = Placement; // 2
 }
+```
+
+## fiber flags 的使用场景
+
+上面都是介绍 fiber flags 的更新场景，本节介绍 fiber flags 都在哪些地方使用
+
+### getNearestMountedFiber
+
+```js
+function getNearestMountedFiber(fiber) {
+  if ((node.flags & (Placement | Hydrating)) !== NoFlags) {
+    // This is an insertion or in-progress hydration. The nearest possible
+    // mounted fiber is the parent but we need to continue to figure out
+    // if that one is still mounted.
+    nearestMounted = node.return;
+  }
+}
+```
+
+### commitBeforeMutationEffects
+
+```js
+function commitBeforeMutationEffects() {
+  while (nextEffect !== null) {
+    var current = nextEffect.alternate;
+
+    if (!shouldFireAfterActiveInstanceBlur && focusedInstanceHandle !== null) {
+      if ((nextEffect.flags & Deletion) !== NoFlags) {
+        if (doesFiberContain(nextEffect, focusedInstanceHandle)) {
+          shouldFireAfterActiveInstanceBlur = true;
+        }
+      } else {
+        // TODO: Move this out of the hot path using a dedicated effect tag.
+        if (
+          nextEffect.tag === SuspenseComponent &&
+          isSuspenseBoundaryBeingHidden(current, nextEffect) &&
+          doesFiberContain(nextEffect, focusedInstanceHandle)
+        ) {
+          shouldFireAfterActiveInstanceBlur = true;
+        }
+      }
+    }
+
+    var flags = nextEffect.flags;
+
+    if ((flags & Snapshot) !== NoFlags) {
+      commitBeforeMutationLifeCycles(current, nextEffect);
+    }
+
+    if ((flags & Passive) !== NoFlags) {
+      // If there are passive effects, schedule a callback to flush at
+      // the earliest opportunity.
+      if (!rootDoesHavePassiveEffects) {
+        rootDoesHavePassiveEffects = true;
+        scheduleCallback(NormalPriority$1, function () {
+          flushPassiveEffects();
+          return null;
+        });
+      }
+    }
+
+    nextEffect = nextEffect.nextEffect;
+  }
+}
+function commitBeforeMutationLifeCycles(current, finishedWork) {
+  switch (finishedWork.tag) {
+    case FunctionComponent: {
+      return;
+    }
+    case ClassComponent: {
+      if (finishedWork.flags & Snapshot) {
+        var snapshot = instance.getSnapshotBeforeUpdate(prevProps, prevState);
+      }
+      return;
+    }
+    case HostRoot:
+      if (finishedWork.flags & Snapshot) {
+        clearContainer(root.containerInfo);
+      }
+      return;
+    case HostComponent:
+    case HostText:
+      return;
+  }
+}
+```
+
+### commitLayoutEffects
+
+```js
+function commitLayoutEffects(root, committedLanes) {
+  while (nextEffect !== null) {
+    var flags = nextEffect.flags;
+    if (flags & (Update | Callback)) {
+      commitLifeCycles(root, current, nextEffect);
+    }
+    if (flags & Ref) {
+      commitAttachRef(nextEffect);
+    }
+    nextEffect = nextEffect.nextEffect;
+  }
+}
+function commitLifeCycles(finishedRoot, current, finishedWork, committedLanes) {
+  switch (finishedWork.tag) {
+    case FunctionComponent: {
+      return;
+    }
+
+    case ClassComponent: {
+      if (finishedWork.flags & Update) {
+        if (current === null) {
+          instance.componentDidMount();
+        } else {
+          instance.componentDidUpdate(
+            prevProps,
+            prevState,
+            instance.__reactInternalSnapshotBeforeUpdate
+          );
+        }
+      }
+      return;
+    }
+
+    case HostRoot: {
+      return;
+    }
+    case HostComponent: {
+      if (current === null && finishedWork.flags & Update) {
+        commitMount(_instance2, type, props); // 判断元素是否需要聚焦
+      }
+      return;
+    }
+    case HostText: {
+      return;
+    }
+  }
+}
+```
+
+### commitMutationEffects
+
+```js
+function commitMutationEffects(root, renderPriorityLevel) {
+  // TODO: Should probably move the bulk of this function to commitWork.
+  while (nextEffect !== null) {
+    var flags = nextEffect.flags;
+
+    if (flags & ContentReset) {
+      commitResetTextContent(nextEffect);
+    }
+
+    if (flags & Ref) {
+      var current = nextEffect.alternate;
+
+      if (current !== null) {
+        commitDetachRef(current);
+      }
+    } // The following switch statement is only concerned about placement,
+    // updates, and deletions. To avoid needing to add a case for every possible
+    // bitmap value, we remove the secondary effects from the effect tag and
+    // switch on that value.
+
+    var primaryFlags = flags & (Placement | Update | Deletion | Hydrating);
+
+    switch (primaryFlags) {
+      case Placement: {
+        commitPlacement(nextEffect); // Clear the "placement" from effect tag so that we know that this is
+        // inserted, before any life-cycles like componentDidMount gets called.
+        // TODO: findDOMNode doesn't rely on this any more but isMounted does
+        // and isMounted is deprecated anyway so we should be able to kill this.
+
+        nextEffect.flags &= ~Placement;
+        break;
+      }
+
+      case PlacementAndUpdate: {
+        // Placement
+        commitPlacement(nextEffect); // Clear the "placement" from effect tag so that we know that this is
+        // inserted, before any life-cycles like componentDidMount gets called.
+
+        nextEffect.flags &= ~Placement; // Update
+
+        var _current = nextEffect.alternate;
+        commitWork(_current, nextEffect);
+        break;
+      }
+
+      case Hydrating: {
+        nextEffect.flags &= ~Hydrating;
+        break;
+      }
+
+      case HydratingAndUpdate: {
+        nextEffect.flags &= ~Hydrating; // Update
+
+        var _current2 = nextEffect.alternate;
+        commitWork(_current2, nextEffect);
+        break;
+      }
+
+      case Update: {
+        var _current3 = nextEffect.alternate;
+        commitWork(_current3, nextEffect);
+        break;
+      }
+
+      case Deletion: {
+        commitDeletion(root, nextEffect);
+        break;
+      }
+    }
+    nextEffect = nextEffect.nextEffect;
+  }
+}
+```
+
+### 杂记
+
+```js
+(workInProgress.flags & DidCapture) === NoFlags;
 ```
