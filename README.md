@@ -56,6 +56,7 @@
 
 - Fiber
   - [【TODO】updateQueue 在不同类型的 Fiber 节点的含义](https://github.com/lizuncong/mini-react/blob/master/docs/fiber/fiber.updateQueue.md)
+   - [盘点fiber中场景的副作用标志flags](https://github.com/lizuncong/mini-react/blob/master/docs/fiber/fiber.updateQueue.md)
 
 ### 参考链接
 
