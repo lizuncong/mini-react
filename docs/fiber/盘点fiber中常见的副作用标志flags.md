@@ -1,4 +1,92 @@
+> 在 React 的渲染流程中，render 阶段从根节点开始处理所有的 fiber 节点，收集有副作用的 fiber 节点(即 fiber.flags 大于 1 的节点)，并构建副作用链表。commit 阶段并不会处理所有的 fiber 节点，而是遍历副作用链表，根据 fiber.flags 的标志进行对应的处理。
+
+## 位操作
+
+在开始介绍 fiber flags 前，先来看下位操作
+
+### 按位非(~)
+
+按位非运算符（~），反转操作数的位。
+
+```js
+const a = 5; // 00000000000000000000000000000101
+const b = -3; // 11111111111111111111111111111101
+
+console.log(~a); // 11111111111111111111111111111010，即-6
+
+console.log(~b); // 00000000000000000000000000000010， 即2
+```
+
+按位非运算时，任何数字 x 的运算结果都是 -(x + 1)。例如，〜-5 运算结果为 4。
+
+### 按位与(&)
+
+按位与运算符 (&) 在两个操作数对应的二进位都为 1 时，该位的结果值才为 1，否则为 0。
+
+### 按位或(|)
+
+按位或运算符 (|) 在两个操作数对应的二进位只要有一个为 1 时，该位的结果值为 1，否则为 0。
+
+### 按位异或(^)
+
+有且仅有一个为 1 时，结果才为 1，否则为 0:
+
+```js
+const a = 5; // 00000000000000000000000000000101
+const b = 3; // 00000000000000000000000000000011
+
+console.log(a ^ b); // 00000000000000000000000000000110，即6
+```
+
+## React 为什么采用二进制表示副作用
+
+原因可以归类为以下两点：
+
+- 位运算快速
+- 可以方便的给一个 fiber 节点添加多个副作用，同时内存开销小。
+
+我们先来看下使用其他方式表示副作用会有什么问题。假设我们使用 2 表示插入，在 render 阶段，如果这个 fiber 节点是新的，我们就给这个 fiber 节点添加一个副作用：`fiber.flags = 2`。然后在 commit 阶段使用 `fiber.flags === 2` 判断节点是否需要插入。
+
+**这会带来一个问题，React 中一个 fiber 节点会有多个副作用，比如，既可以是插入，又可以是更新(类组件实现了 componentDidMount 方法，就是更新的副作用)**，如果使用十进制，我们可以很容易想到这样实现：
+
+```js
+fiber.flags = [];
+fiber.flags.push(2); // 插入
+fiber.flags.push(4); // 更新，此时 fiber.flags有两个副作用：[2, 4]
+```
+
+在 commit 阶段就可以这样判断：
+
+```js
+if (fiber.flags.includes(2)) {
+  // 执行插入的逻辑
+}
+if (fiber.flags.includes(4)) {
+  // 执行更新的逻辑
+}
+```
+
+这样做理论上是可以的，但是数组操作比较麻烦，还会冗余，比如，如果多次 `fiber.flags.push(2)` 就会有多个重复的 2。同时如果需要先删除插入的副作用，并添加一个更新的副作用，操作起来较繁琐
+
+因此 React 采用了二进制标记这些副作用。不仅占用内存小，运算迅速，同时还能表示多个副作用
+
+如果一个 fiber 节点，既要插入又要更新，可以这样标记：
+
+```js
+fiber.flags |= Placement | Update; // Placement 0b000000000000000010  Update  0b000000000000000100
+```
+
+如果需要删除一个插入的副作用，并且添加一个更新的副作用，那么可以这样标记：
+
+```js
+fiber.flags = (fiber.flags & ~Placement) | Update;
+```
+
+可以说是相当的方便了
+
 ## React Fiber 支持的所有 flags
+
+`PerformedWork` 是专门提供给 React Dev Tools 读取的。fiber 节点的副作用从 2 开始。0 表示没有副作用。
 
 ```js
 // 下面两个运用于 React Dev Tools，不能更改他们的值
@@ -6,21 +94,22 @@ const NoFlags = 0b000000000000000000;
 const PerformedWork = 0b000000000000000001;
 
 // 下面的 flags 用于标记副作用
-const Placement = 0b000000000000000010; // 2
+const Placement = 0b000000000000000010; // 2 移动，插入
 const Update = 0b000000000000000100; // 4
 const PlacementAndUpdate = 0b000000000000000110; // 6
 const Deletion = 0b000000000000001000; // 8
-//const ContentReset = 0b000000000000010000; // 16
-const Callback = 0b000000000000100000; // 32
+const ContentReset = 0b000000000000010000; // 16
+const Callback = 0b000000000000100000; // 32 类组件的 update.callback
 const DidCapture = 0b000000000001000000; // 64
-//const Ref = 0b000000000010000000; // 128
+const Ref = 0b000000000010000000; // 128
 const Snapshot = 0b000000000100000000; // 256
 const Passive = 0b000000001000000000; // 512
 const Hydrating = 0b000000010000000000; // 1024
-//const HydratingAndUpdate =  0b000000010000000100; // 1028
 
-// Passive & Update & Callback & Ref & Snapshot
-// const LifecycleEffectMask = 0b000000001110100100; // 932
+const HydratingAndUpdate = 0b000000010000000100; // 1028 Hydrating | Update
+
+// 这是所有的生命周期方法(lifecycle methods)以及回调(callbacks)相关的副作用标志，其中 callbacks 指的是 update 的回调，比如调用this.setState(arg, callback)的第二个参数
+// const LifecycleEffectMask = 0b000000001110100100; // 932 Passive | Update | Callback | Ref | Snapshot
 
 // Union of all host effects
 // const HostEffectMask = 0b000000011111111111; // 2047
@@ -30,6 +119,8 @@ const Hydrating = 0b000000010000000000; // 1024
 const ShouldCapture = 0b000001000000000000; // 4096
 // const ForceUpdateForLegacySuspense = 0b000100000000000000; // 16384
 ```
+
+## Placement
 
 ## 类组件
 
@@ -308,19 +399,6 @@ if (shouldTrackSideEffects && newFiber.alternate === null) {
 
 上面都是介绍 fiber flags 的更新场景，本节介绍 fiber flags 都在哪些地方使用
 
-### getNearestMountedFiber
-
-```js
-function getNearestMountedFiber(fiber) {
-  if ((node.flags & (Placement | Hydrating)) !== NoFlags) {
-    // This is an insertion or in-progress hydration. The nearest possible
-    // mounted fiber is the parent but we need to continue to figure out
-    // if that one is still mounted.
-    nearestMounted = node.return;
-  }
-}
-```
-
 ### commitBeforeMutationEffects
 
 ```js
@@ -516,10 +594,4 @@ function commitMutationEffects(root, renderPriorityLevel) {
     nextEffect = nextEffect.nextEffect;
   }
 }
-```
-
-### 杂记
-
-```js
-(workInProgress.flags & DidCapture) === NoFlags;
 ```
