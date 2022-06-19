@@ -84,9 +84,15 @@ fiber.flags = (fiber.flags & ~Placement) | Update;
 
 可以说是相当的方便了
 
-## React Fiber 支持的所有 flags
+## Fiber flags
 
 `PerformedWork` 是专门提供给 React Dev Tools 读取的。fiber 节点的副作用从 2 开始。0 表示没有副作用。
+
+对于原生的 HTML 标签，如果需要修改属性，文本等，就视为有副作用。对于类组件，如果类实例实现了 `componentDidMount`、`componentDidUpdate` 等生命周期方法，则视为有副作用。对于函数组件，如果实现了 `useEffect`、`useLayoutEffect` 等 hook，则视为有副作用。以上这些都是副作用的例子。
+
+React 在 render 阶段给有副作用的节点添加标志，并在 commit 阶段根据 fiber flags 执行对应的副作用操作，比如调用生命周期方法，或者操作真实的 DOM 节点。
+
+### React 支持的所有 flags
 
 ```js
 // 下面两个运用于 React Dev Tools，不能更改他们的值
@@ -109,158 +115,57 @@ const Hydrating = 0b000000010000000000; // 1024
 const HydratingAndUpdate = 0b000000010000000100; // 1028 Hydrating | Update
 
 // 这是所有的生命周期方法(lifecycle methods)以及回调(callbacks)相关的副作用标志，其中 callbacks 指的是 update 的回调，比如调用this.setState(arg, callback)的第二个参数
-// const LifecycleEffectMask = 0b000000001110100100; // 932 Passive | Update | Callback | Ref | Snapshot
+const LifecycleEffectMask = 0b000000001110100100; // 932 Passive | Update | Callback | Ref | Snapshot
 
-// Union of all host effects
-// const HostEffectMask = 0b000000011111111111; // 2047
+// 所有 host effects 的集合
+const HostEffectMask = 0b000000011111111111; // 2047
 
-// These are not really side effects, but we still reuse this field.
-// const Incomplete = 0b000000100000000000; // 2048
+// 下面这些并不是真正的副作用标志
+const Incomplete = 0b000000100000000000; // 2048
 const ShouldCapture = 0b000001000000000000; // 4096
-// const ForceUpdateForLegacySuspense = 0b000100000000000000; // 16384
+const ForceUpdateForLegacySuspense = 0b000100000000000000; // 16384
+```
+
+### flags 位操作
+
+这里简单列举一下 fiber flags 中一些位操作的含义。
+
+```js
+// 1.移除所有的生命周期相关的 flags
+fiber.flags &= ~LifecycleEffectMask;
+
+// 2.只保留 host effect 相关的副作用，移除其他的副作用位
+fiber.flags &= HostEffectMask;
+
+// 3.只保留 "插入" 副作用
+fiber.flags &= Placement;
+
+// 4.移除 "插入" 副作用，添加 "更新" 副作用
+fiber.flags = (fiber.flags & ~Placement) | Update;
 ```
 
 ## Placement
 
-## 类组件
+### render 阶段
 
-### this.setState 第二个参数 callback：beginWork 阶段
-
-在 `processUpdateQueue` 方法中，如果 update.callback 不为空，说明我们在调用 `this.setState(arg, callback)` 时，传了第二个参数 `callback`。因此需要在 `processUpdateQueue` 中更新 flags：
+`reconcile children` 过程中，如果节点需要移动，插入，则在 `placeChild` 以及 `placeSingleChild` 方法中将 fiber 标记为 `Placement`：
 
 ```js
-workInProgress.flags |= Callback; // Callback 32
+newFiber.flags = Placement;
 ```
 
-### componentDidMount：beginWork 阶段
-
-在 `mountClassInstance` 或者 `resumeMountClassInstance` 方法内部，会判断类组件如果实现了 `componentDidMount`，则更新 flags：
-
-```js
-if (typeof instance.componentDidMount === "function") {
-  workInProgress.flags |= Update; // 4
-}
-```
-
-### componentDidUpdate：beginWork 阶段
-
-在 `updateClassInstance` 方法内部，会判断类组件如果实现了 `componentDidUpdate`，则更新 flags：
-
-```js
-if (typeof instance.componentDidUpdate === "function") {
-  workInProgress.flags |= Update; // 4
-}
-```
-
-### getSnapshotBeforeUpdate：beginWork 阶段
-
-在 `updateClassInstance` 方法内部，会判断类组件如果实现了 `getSnapshotBeforeUpdate`，则更新 flags：
-
-```js
-if (typeof instance.getSnapshotBeforeUpdate === "function") {
-  workInProgress.flags |= Snapshot; // 256
-}
-```
-
-### updateClassComponent：beginWork 阶段
-
-在 `updateClassComponent` 方法中，如果 `instance == null` 以及 `current === null`，说明类组件第一次渲染，更新 flags：
+本质上，创建新的 fiber 节点，也是一种 Placement 的副作用，即在 commit 阶段需要插入。因此，在类组件的 `updateClassComponent` 方法中判断 fiber 节点如果是新创建的，则标记为 `Placement`
 
 ```js
 if (instance === null) {
   if (current !== null) {
     // Since this is conceptually a new fiber, schedule a Placement effect
-    workInProgress.flags |= Placement; // 2
+    workInProgress.flags |= Placement;
   }
 }
 ```
 
-### finishClassComponent：beginWork 阶段
-
-在 `finishClassComponent` 函数中，调用完类组件实例的 `render` 方法后：
-
-```js
-workInProgress.flags |= PerformedWork; // PerformedWork 对应的值为1
-```
-
-### mountIncompleteClassComponent：beginWork 阶段
-
-在 `mountIncompleteClassComponent` 方法中，更新 flags：
-
-```js
-if (_current !== null) {
-  // Since this is conceptually a new fiber, schedule a Placement effect
-  workInProgress.flags |= Placement; // 2
-}
-```
-
-`mountIncompleteClassComponent` 在 `beginWork` 函数中的 `IncompleteClassComponent` 分支调用
-
-## 函数组件
-
-### useEffect：beginWork 阶段
-
-第一次渲染时，调用 `mountEffectImpl` 方法，更新 flags：
-
-```js
-const fiberflags = Update | Passive;
-currentlyRenderingFiber.flags |= fiberflags; // Update 4 Passive 512
-```
-
-更新阶段，调用 `updateEffectImpl` 方法，更新 flags：
-
-```js
-const fiberflags = Update | Passive;
-currentlyRenderingFiber.flags |= fiberflags;
-```
-
-### useLayoutEffect：beginWork 阶段
-
-第一次渲染时，调用 `mountEffectImpl` 方法，更新 flags：
-
-```js
-currentlyRenderingFiber.flags |= Update; // Update 4
-```
-
-更新阶段，调用 `updateEffectImpl` 方法，更新 flags：
-
-```js
-currentlyRenderingFiber.flags |= Update; // Update 4
-```
-
-### useImperativeHandle：beginWork 阶段
-
-第一次渲染时，调用 `mountEffectImpl` 方法，更新 flags：
-
-```js
-currentlyRenderingFiber.flags |= Update; // Update 4
-```
-
-更新阶段，调用 `updateEffectImpl` 方法，更新 flags:
-
-```js
-currentlyRenderingFiber.flags |= Update; // Update 4
-```
-
-### useOpaqueIdentifier：beginWork 阶段
-
-第一次渲染时，调用 `mountOpaqueIdentifier` 方法，更新 flags：
-
-```js
-if ((currentlyRenderingFiber.mode & BlockingMode) === NoMode) {
-  currentlyRenderingFiber.flags |= Update | Passive; // Update 4  Passive 512
-}
-```
-
-### updateFunctionComponent：beginWork 阶段
-
-在 `updateFunctionComponent` 函数中，当调用完成函数组件获取新的 react element 子元素以后，改变 fiber flags 的值：
-
-```js
-workInProgress.flags |= PerformedWork; // PerformedWork对应的值为1
-```
-
-### mountIndeterminateComponent：beginWork 阶段
+在懒加载的 `mountLazyComponent` 方法中，以及在函数组件第一次执行的 `mountIndeterminateComponent` 方法中，判断 fiber 节点如果是新创建的，则标记为 `Placement`
 
 ```js
 if (_current !== null) {
@@ -269,225 +174,133 @@ if (_current !== null) {
 }
 ```
 
-`mountIndeterminateComponent` 在 `beginWork` 函数中的 `IndeterminateComponent` 分支调用
+### commit 阶段
 
-## HostRoot
-
-### clearContainer: completeUnitOfWork 阶段
-
-在 `completeWork` 函数中的 `HostRoot` 分支，判断如果是第一次渲染，则清空容器：
+commit 阶段执行 Placement 副作用操作。Placement 对应的副作用操作是插入新的 DOM 节点。插入节点的逻辑都在 `commitMutationEffects` 方法以及 `commitPlacement` 方法中
 
 ```js
-if (current === null || current.child === null) {
-  if (wasHydrated) {
-  } else if (!fiberRoot.hydrate) {
-    // Schedule an effect to clear this container at the start of the next commit.
-    // This handles the case of React rendering into a container with previous children.
-    // It's also safe to do for updates too, because current.child would only be null
-    // if the previous render was null (so the the container would already be empty).
-    workInProgress.flags |= Snapshot; // 256
+function commitPlacement(finishedWork) {
+  // 执行节点的插入逻辑
+  if (isContainer) {
+    insertOrAppendPlacementNodeIntoContainer(finishedWork, before, parent);
+  } else {
+    insertOrAppendPlacementNode(finishedWork, before, parent);
   }
 }
-```
-
-## HostComponent
-
-### updateHostComponent：beginWork 阶段
-
-在 `updateHostComponent` 方法中，会判断是否需要重置文本节点：
-
-```js
-if (isDirectTextChild) {
-} else if (prevProps !== null && shouldSetTextContent(type, prevProps)) {
-  // If we're switching from a direct text child to a normal child, or to
-  // empty, we need to schedule the text content to be reset.
-  workInProgress.flags |= ContentReset; // 16
-}
-```
-
-`updateHostComponent` 在 `beginWork` 函数的 `HostComponent` 分支调用
-
-### updateHostComponent：completeUnitOfWork 阶段
-
-在 completeUnitOfWork 阶段，调用 prepareUpdate 方法比较 fiber 节点的 oldProps 和 newProps，收集变更的属性的 `键值对` 存储在 fiber.updateQueue 中。如果 fiber.updateQueue 不为 null，则需要更新 fiber.flags：
-
-```js
-workInProgress.flags |= Update; // Update对应的值是4
-```
-
-### shouldAutoFocusHostComponent: completeUnitOfWork 阶段
-
-在 completeWork 的 `HostComponent` 分支中，会判断元素是否需要聚焦：
-
-```js
-// Certain renderers require commit-time effects for initial mount.
-// (eg DOM renderer supports auto-focus for certain elements).
-// Make sure such renderers get scheduled for later work.
-
-if (shouldAutoFocusHostComponent) {
-  workInProgress.flags |= Update; // Update对应的值是4
-}
-```
-
-### markRef: completeUnitOfWork 阶段
-
-在 completeWork 的 `HostComponent` 分支中：
-
-```js
-if (current.ref !== workInProgress.ref) {
-  workInProgress.flags |= Ref; // 128
-}
-```
-
-## HostText
-
-### updateHostText: completeUnitOfWork 阶段
-
-在 completeUnitOfWork 阶段，调用 updateHostText，比较新旧文本是否相同，如果不同，则更新 fiber.flags：
-
-```js
-workInProgress.flags |= Update; // Update对应的值是4
-```
-
-## Reconcile Children: beginWork 阶段
-
-reconcile children 的逻辑都在 `ChildReconciler(shouldTrackSideEffects)` 函数中。
-
-### 删除子节点
-
-在 `deleteChild` 方法中，如果子节点需要被删除，则更新子节点的 flags：
-
-```js
-childToDelete.flags = Deletion; // 8
-```
-
-### 移动节点
-
-在 `placeChild` 方法中，如果 `oldIndex` 小于 `lastPlacedIndex`，则说明子节点需要移动，更新 flags：
-
-```js
-if (oldIndex < lastPlacedIndex) {
-  // 这是一个移动
-  newFiber.flags = Placement; // 2
-  return lastPlacedIndex;
-}
-```
-
-### 新节点插入
-
-在 `placeChild` 方法中，如果 `current` 为空，说明这是一个新的节点，需要插入，更新 flags：
-
-```js
-if (current !== null) {
-} else {
-  newFiber.flags = Placement; // 2
-  return lastPlacedIndex;
-}
-```
-
-### 单一节点插入
-
-在 `placeSingleChild` 方法中，如果新的子节点 `alternate` 为空，说明是新节点，需要插入，更新 flags：
-
-```js
-if (shouldTrackSideEffects && newFiber.alternate === null) {
-  newFiber.flags = Placement; // 2
-}
-```
-
-## fiber flags 的使用场景
-
-上面都是介绍 fiber flags 的更新场景，本节介绍 fiber flags 都在哪些地方使用
-
-### commitBeforeMutationEffects
-
-```js
-function commitBeforeMutationEffects() {
+function commitMutationEffects(root, renderPriorityLevel) {
   while (nextEffect !== null) {
-    var current = nextEffect.alternate;
+    var primaryFlags = flags & (Placement | Update | Deletion | Hydrating);
+    switch (primaryFlags) {
+      case Placement: {
+        commitPlacement(nextEffect);
+        // 插入逻辑执行完成后，移除 Placement 副作用标记
+        nextEffect.flags &= ~Placement;
+        break;
+      }
 
-    if (!shouldFireAfterActiveInstanceBlur && focusedInstanceHandle !== null) {
-      if ((nextEffect.flags & Deletion) !== NoFlags) {
-        if (doesFiberContain(nextEffect, focusedInstanceHandle)) {
-          shouldFireAfterActiveInstanceBlur = true;
-        }
-      } else {
-        // TODO: Move this out of the hot path using a dedicated effect tag.
-        if (
-          nextEffect.tag === SuspenseComponent &&
-          isSuspenseBoundaryBeingHidden(current, nextEffect) &&
-          doesFiberContain(nextEffect, focusedInstanceHandle)
-        ) {
-          shouldFireAfterActiveInstanceBlur = true;
-        }
+      case PlacementAndUpdate: {
+        // Placement
+        commitPlacement(nextEffect);
+        nextEffect.flags &= ~Placement;
+        // Update
+        commitWork(_current, nextEffect);
+        break;
       }
     }
-
-    var flags = nextEffect.flags;
-
-    if ((flags & Snapshot) !== NoFlags) {
-      commitBeforeMutationLifeCycles(current, nextEffect);
-    }
-
-    if ((flags & Passive) !== NoFlags) {
-      // If there are passive effects, schedule a callback to flush at
-      // the earliest opportunity.
-      if (!rootDoesHavePassiveEffects) {
-        rootDoesHavePassiveEffects = true;
-        scheduleCallback(NormalPriority$1, function () {
-          flushPassiveEffects();
-          return null;
-        });
-      }
-    }
-
     nextEffect = nextEffect.nextEffect;
   }
 }
-function commitBeforeMutationLifeCycles(current, finishedWork) {
+```
+
+## Update
+
+### render 阶段
+
+- `mountClassInstance` 方法中判断类组件如果实现了 componentDidMount 方法
+- `updateClassInstance` 方法中判断如果类组件实现了 `componentDidUpdate`方法
+- `updateHostComponent` 方法中调用 `prepareUpdate` 方法判断 HostComponent 的属性如果发生了变更
+- `updateHostText` 方法中判断如果新旧文本不同
+- `completeWork` 方法中，判断如果 HostComponent 需要聚焦
+- 函数组件如果调用了 `useEffect`、 `useLayoutEffect` 这两个 hook
+
+```js
+workInProgress.flags |= Update;
+```
+
+### commit 阶段
+
+Update 副作用执行的逻辑在 `commitMutationEffects` 以及 `commitLayoutEffects` 两个方法中：
+
+commitMutationEffects 方法，用于执行 commitWork：
+
+```js
+function commitMutationEffects(root, renderPriorityLevel) {
+  while (nextEffect !== null) {
+    var primaryFlags = flags & (Placement | Update | Deletion | Hydrating);
+    switch (primaryFlags) {
+      case PlacementAndUpdate: {
+        // Placement
+        commitPlacement(nextEffect);
+        // Clear the "placement" from effect tag so that we know that this is
+        // inserted, before any life-cycles like componentDidMount gets called.
+        nextEffect.flags &= ~Placement; // Update
+        var _current = nextEffect.alternate;
+        commitWork(_current, nextEffect);
+        break;
+      }
+      case HydratingAndUpdate: {
+        nextEffect.flags &= ~Hydrating; // Update
+        var _current2 = nextEffect.alternate;
+        commitWork(_current2, nextEffect);
+        break;
+      }
+      case Update: {
+        var _current3 = nextEffect.alternate;
+        commitWork(_current3, nextEffect);
+        break;
+      }
+    }
+    nextEffect = nextEffect.nextEffect;
+  }
+}
+function commitWork(current, finishedWork) {
   switch (finishedWork.tag) {
     case FunctionComponent: {
+      // 调用函数组件 useLayoutEffect 的清除函数
+      commitHookEffectListUnmount(Layout | HasEffect, finishedWork);
       return;
     }
-    case ClassComponent: {
-      if (finishedWork.flags & Snapshot) {
-        var snapshot = instance.getSnapshotBeforeUpdate(prevProps, prevState);
+    case HostComponent: {
+      if (instance != null) {
+        var updatePayload = finishedWork.updateQueue;
+        if (updatePayload !== null) {
+          // 更新真实的DOM节点的属性
+          commitUpdate(instance, updatePayload, type, oldProps, newProps);
+        }
       }
       return;
     }
-    case HostRoot:
-      if (finishedWork.flags & Snapshot) {
-        clearContainer(root.containerInfo);
-      }
+    case HostText: {
+      var oldText = current !== null ? current.memoizedProps : newText;
+      commitTextUpdate(textInstance, oldText, newText); // 更新 textInstance.nodeValue = newText
       return;
-    case HostComponent:
-    case HostText:
-      return;
+    }
   }
 }
 ```
-
-### commitLayoutEffects
 
 ```js
 function commitLayoutEffects(root, committedLanes) {
   while (nextEffect !== null) {
-    var flags = nextEffect.flags;
     if (flags & (Update | Callback)) {
+      var current = nextEffect.alternate;
       commitLifeCycles(root, current, nextEffect);
-    }
-    if (flags & Ref) {
-      commitAttachRef(nextEffect);
     }
     nextEffect = nextEffect.nextEffect;
   }
 }
 function commitLifeCycles(finishedRoot, current, finishedWork, committedLanes) {
   switch (finishedWork.tag) {
-    case FunctionComponent: {
-      return;
-    }
-
     case ClassComponent: {
       if (finishedWork.flags & Update) {
         if (current === null) {
@@ -502,93 +315,178 @@ function commitLifeCycles(finishedRoot, current, finishedWork, committedLanes) {
       }
       return;
     }
-
-    case HostRoot: {
-      return;
-    }
     case HostComponent: {
       if (current === null && finishedWork.flags & Update) {
-        commitMount(_instance2, type, props); // 判断元素是否需要聚焦
+        commitMount(_instance2, type, props); // commitMount用于判断元素是否需要自动聚焦
       }
-      return;
-    }
-    case HostText: {
       return;
     }
   }
 }
 ```
 
-### commitMutationEffects
+## Deletion
+
+### render 阶段
+
+- 在 `reconcile children` 过程中， `deleteChild` 判断节点如果需要被删除
+
+```js
+childToDelete.flags = Deletion;
+```
+
+### commit 阶段
 
 ```js
 function commitMutationEffects(root, renderPriorityLevel) {
-  // TODO: Should probably move the bulk of this function to commitWork.
   while (nextEffect !== null) {
-    var flags = nextEffect.flags;
-
-    if (flags & ContentReset) {
-      commitResetTextContent(nextEffect);
-    }
-
-    if (flags & Ref) {
-      var current = nextEffect.alternate;
-
-      if (current !== null) {
-        commitDetachRef(current);
-      }
-    } // The following switch statement is only concerned about placement,
-    // updates, and deletions. To avoid needing to add a case for every possible
-    // bitmap value, we remove the secondary effects from the effect tag and
-    // switch on that value.
-
     var primaryFlags = flags & (Placement | Update | Deletion | Hydrating);
 
     switch (primaryFlags) {
-      case Placement: {
-        commitPlacement(nextEffect); // Clear the "placement" from effect tag so that we know that this is
-        // inserted, before any life-cycles like componentDidMount gets called.
-        // TODO: findDOMNode doesn't rely on this any more but isMounted does
-        // and isMounted is deprecated anyway so we should be able to kill this.
-
-        nextEffect.flags &= ~Placement;
-        break;
-      }
-
-      case PlacementAndUpdate: {
-        // Placement
-        commitPlacement(nextEffect); // Clear the "placement" from effect tag so that we know that this is
-        // inserted, before any life-cycles like componentDidMount gets called.
-
-        nextEffect.flags &= ~Placement; // Update
-
-        var _current = nextEffect.alternate;
-        commitWork(_current, nextEffect);
-        break;
-      }
-
-      case Hydrating: {
-        nextEffect.flags &= ~Hydrating;
-        break;
-      }
-
-      case HydratingAndUpdate: {
-        nextEffect.flags &= ~Hydrating; // Update
-
-        var _current2 = nextEffect.alternate;
-        commitWork(_current2, nextEffect);
-        break;
-      }
-
-      case Update: {
-        var _current3 = nextEffect.alternate;
-        commitWork(_current3, nextEffect);
-        break;
-      }
-
       case Deletion: {
-        commitDeletion(root, nextEffect);
+        commitDeletion(root, nextEffect); // 删除节点
         break;
+      }
+    }
+    nextEffect = nextEffect.nextEffect;
+  }
+}
+```
+
+## ContentReset
+
+### render 阶段
+
+- updateHostComponent 方法判断是否需要重置文本
+
+```js
+workInProgress.flags |= ContentReset;
+```
+
+### commit 阶段
+
+```js
+function commitMutationEffects(root, renderPriorityLevel) {
+  while (nextEffect !== null) {
+    if (flags & ContentReset) {
+      commitResetTextContent(nextEffect);
+    }
+    nextEffect = nextEffect.nextEffect;
+  }
+}
+```
+
+## Callback
+
+### render 阶段
+
+- `processUpdateQueue` 判断如果 update.callback 不为 null
+
+```js
+if (callback !== null) {
+  workInProgress.flags |= Callback;
+}
+```
+
+### commit 阶段
+
+```js
+function commitLayoutEffects(root, committedLanes) {
+  while (nextEffect !== null) {
+    if (flags & (Update | Callback)) {
+      commitLifeCycles(root, current, nextEffect);
+    }
+    nextEffect = nextEffect.nextEffect;
+  }
+}
+function commitLifeCycles(finishedRoot, current, finishedWork, committedLanes) {
+  switch (finishedWork.tag) {
+    case ClassComponent: {
+      var updateQueue = finishedWork.updateQueue;
+      if (updateQueue !== null) {
+        commitUpdateQueue(finishedWork, updateQueue, instance); // 执行update.callback
+      }
+      return;
+    }
+    case HostRoot: {
+      if (_updateQueue !== null) {
+        commitUpdateQueue(finishedWork, _updateQueue, _instance); // 执行update.callback
+      }
+      return;
+    }
+  }
+}
+```
+
+## Snapshot
+
+### render 阶段
+
+- updateClassInstance 方法判断类组件实例如果实现了 getSnapshotBeforeUpdate 方法
+
+```js
+workInProgress.flags |= Snapshot;
+```
+
+### commit 阶段
+
+```js
+function commitBeforeMutationEffects() {
+  while (nextEffect !== null) {
+    if ((flags & Snapshot) !== NoFlags) {
+      commitBeforeMutationLifeCycles(current, nextEffect);
+    }
+    nextEffect = nextEffect.nextEffect;
+  }
+}
+function commitBeforeMutationLifeCycles(current, finishedWork) {
+  switch (finishedWork.tag) {
+    case FunctionComponent: {
+      return;
+    }
+    case ClassComponent: {
+      if (finishedWork.flags & Snapshot) {
+        if (current !== null) {
+          var snapshot = instance.getSnapshotBeforeUpdate(prevProps, prevState);
+        }
+      }
+      return;
+    }
+    case HostRoot: {
+      if (finishedWork.flags & Snapshot) {
+        var root = finishedWork.stateNode;
+        clearContainer(root.containerInfo);
+      }
+      return;
+    }
+  }
+}
+```
+
+## Passive
+
+### render 阶段
+
+- 函数组件如果实现了 `useEffect`(注意，useLayoutEffect 并不属于 Passive 的副作用)
+
+```js
+fiber.flags |= Passive;
+```
+
+### commit 阶段
+
+```js
+function commitBeforeMutationEffects() {
+  while (nextEffect !== null) {
+    var flags = nextEffect.flags;
+    if ((flags & Passive) !== NoFlags) {
+      // 启动一个微任务刷新 useEffect 的监听函数以及清除函数
+      if (!rootDoesHavePassiveEffects) {
+        rootDoesHavePassiveEffects = true;
+        scheduleCallback(NormalPriority$1, function () {
+          flushPassiveEffects();
+          return null;
+        });
       }
     }
     nextEffect = nextEffect.nextEffect;
