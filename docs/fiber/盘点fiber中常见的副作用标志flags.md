@@ -153,7 +153,7 @@ fiber.flags = (fiber.flags & ~Placement) | Update;
 
 ## Placement 副作用
 
-Placement 用于标记新的节点创建并插入，旧的节点移动。
+Placement 用于标记新的节点创建并插入，旧的节点移动。这个标记作用于所有类型的 fiber 节点
 
 ### render 阶段
 
@@ -214,7 +214,7 @@ function commitPlacement(finishedWork) {
 
 ## Update 副作用
 
-Update 副作用主要用来标记某些生命周期方法，DOM 属性及文本内容变更等
+Update 副作用主要用来标记某些生命周期方法，DOM 属性及文本内容变更等。这个标记作用于所有类型的 fiber 节点
 
 ### render 阶段
 
@@ -348,7 +348,7 @@ function commitLifeCycles(finishedRoot, current, finishedWork, committedLanes) {
 
 ## Deletion 副作用
 
-Deletion 主要用于标记需要被删除的节点
+Deletion 主要用于标记需要被删除的节点。这个标记作用于所有类型的 fiber 节点
 
 ### render 阶段
 
@@ -452,7 +452,7 @@ function detachFiberMutation(fiber) {
 
 ## ContentReset 副作用
 
-ContentReset 用于标记需要重置文本的 HostComponent 节点
+ContentReset 用于标记需要重置文本的 HostComponent 节点。这个标记只作用于 HostComponent
 
 ### render 阶段
 
@@ -527,7 +527,7 @@ function commitPlacement(finishedWork) {
 
 ## Callback 副作用
 
-Callback 用于标记创建了更新对象并且更新对象有 callback 回调的类组件或者 HostRoot
+Callback 用于标记创建了更新对象并且更新对象有 callback 回调的类组件或者 HostRoot。这个标记只作用于类组件和 HostRoot 节点(即容器 root 节点)
 
 ### render 阶段
 
@@ -579,15 +579,21 @@ function commitLifeCycles(finishedRoot, current, finishedWork, committedLanes) {
 
 ## Snapshot 副作用
 
+Snapshot 用于标记实现了 getSnapshotBeforeUpdate 方法的类组件对应的 fiber 节点。这个标记只作用于类组件以及 HostRoot(即容器 root 节点)
+
 ### render 阶段
 
 - updateClassInstance 方法判断类组件实例如果实现了 getSnapshotBeforeUpdate 方法
+- completeWork 方法中，对于 HostRoot，如果是页面第一次渲染，则给 HostRoot 添加一个 Snapshot 副作用
 
 ```js
 workInProgress.flags |= Snapshot;
 ```
 
 ### commit 阶段
+
+- 类组件对应的 fiber flag 有 Snapshot 标记，说明需要调用 getSnapshotBeforeUpdate 生命周期方法。
+- 对于 HostRoot，如果 HostRootFiber 带有 Snapshot 标记，说明是页面第一次渲染，需要先清空 root： root.textContent = ''
 
 ```js
 function commitBeforeMutationEffects() {
@@ -614,6 +620,7 @@ function commitBeforeMutationLifeCycles(current, finishedWork) {
     case HostRoot: {
       if (finishedWork.flags & Snapshot) {
         var root = finishedWork.stateNode;
+        // 在插入我们的页面内容之前，先清空root容器 root.textContent = ''
         clearContainer(root.containerInfo);
       }
       return;
@@ -623,6 +630,8 @@ function commitBeforeMutationLifeCycles(current, finishedWork) {
 ```
 
 ## Passive 副作用
+
+Passive 用于标记调用了 useEffect 的函数组件。这个标记只作用于函数组件。
 
 ### render 阶段
 
