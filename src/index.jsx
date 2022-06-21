@@ -64,9 +64,9 @@ class Home extends React.Component {
         onClick={this.handleClick}
       >
         <div>hello</div>
-        {!!(step % 2) && <div>偶数</div>}
+        {!(step % 2) && <div>偶数</div>}
         <div>{step}</div>
-        {!(step % 2) && <div>奇数</div>}
+        {!!(step % 2) && <div>奇数</div>}
         <div>{step + 1}</div>
       </div>
     );
