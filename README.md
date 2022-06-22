@@ -51,7 +51,7 @@
 - Reconciler
 
   - [Dom Diff 算法简介](https://github.com/lizuncong/mini-react/blob/master/docs/reconciler/dom-diff%E7%AE%97%E6%B3%95%E7%AE%80%E4%BB%8B.md)
-  - [构建副作用链表算法，为什么React不采用数组保存具有副作用的Fiber节点？](https://github.com/lizuncong/mini-react/blob/master/docs/reconciler/%E3%80%90TODO%E3%80%91%E6%9E%84%E5%BB%BA%E5%89%AF%E4%BD%9C%E7%94%A8%E9%93%BE%E8%A1%A8.md)
+  - [构建副作用链表算法，为什么React不采用数组保存具有副作用的Fiber节点？](https://github.com/lizuncong/mini-react/blob/master/docs/reconciler/%E6%9E%84%E5%BB%BA%E5%89%AF%E4%BD%9C%E7%94%A8%E9%93%BE%E8%A1%A8%E7%AE%97%E6%B3%95.md)
   - [【TODO】Dom diff 所有场景介绍](https://github.com/lizuncong/mini-react/blob/master/docs/reconciler/%E3%80%90TODO%E3%80%91dom-diff%E6%89%80%E6%9C%89%E7%9A%84%E5%9C%BA%E6%99%AF.md)
 
 - Fiber
