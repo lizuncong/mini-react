@@ -17,13 +17,23 @@ class Home extends React.Component {
   }
   render() {
     const { step } = this.state;
-    return (
-      <div style={{ height: "100px" }} id={"A" + step} onClick={this.handleClick}>
+    return [
+      <div
+        style={{ height: "100px" }}
+        id={"A" + step}
+        onClick={this.handleClick}
+      >
         <div id={"B" + step}></div>
-        {!(step % 2) && <div id="C"></div>}
-        <div id={"D" + step}></div>
-      </div>
-    );
+        <div id={"C" + step}></div>
+        {!(step % 2) && <div id={"D" + step}></div>}
+      </div>,
+      <div id={"E" + step}>
+        <div id={"F" + step}></div>
+        {!(step % 2) && <div id={"H" + step}></div>}
+        <div id={"G" + step}></div>
+        {!(step % 2) && <div id={"I" + step}></div>}
+      </div>,
+    ];
   }
   // render() {
   //   const { step } = this.state;
