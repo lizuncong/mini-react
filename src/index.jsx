@@ -10,64 +10,37 @@ class Home extends React.Component {
     this.state = { step: 0 };
     this.handleClick = this.handleClick.bind(this);
   }
-
   handleClick() {
-    this.setState(
-      (state) => {
-        return { step: state.step + 1 };
-      },
-      () => {
-        console.log("this.setState callback");
-      }
-    );
+    this.setState({
+      step: this.state.step + 1,
+    });
   }
-  // static getDerivedStateFromProps(props, state) {
-  //   console.log("getDerivedStateFromProps======");
-  //   return null;
-  // }
-  // getSnapshotBeforeUpdate(prevProps, prevState) {
-  //   const btn = document.getElementById("btn");
-  //   const scrollHeight = btn.scrollHeight;
-  //   console.log("get snapshot before update...", scrollHeight);
-  //   return scrollHeight;
-  // }
-  componentDidUpdate(prevProps, prevState, snapshot) {
-    console.log("component did update...", snapshot);
-  }
-  componentDidMount() {
-    console.log("component did mount......");
-  }
-  componentWillUnmount() {
-    console.log("component will unmount...");
-  }
-  UNSAFE_componentWillMount() {
-    console.log("component will mount...");
-  }
-  UNSAFE_componentWillReceiveProps(nextProps) {
-    console.log("component will receive props...", nextProps);
-  }
-  UNSAFE_componentWillUpdate(nextProps, nextState) {
-    console.log("component will update....", nextProps, nextState);
-  }
-  shouldComponentUpdate() {
-    console.log("should component update");
-    return true;
-  }
-
   render() {
     const { step } = this.state;
-
     return (
       <div
-        id={step}
-        style={{ marginTop: `${100 + step}px` }}
+        style={{ height: "100px" }}
+        id={"A-" + step}
         onClick={this.handleClick}
       >
-        <div>hello</div>
-        {!(step % 2) && <div>偶数</div>}
-        <div>{step}</div>
-        {!!(step % 2) && <div>奇数</div>}
-        <div>{step + 1}</div>
+        <div id={"B-" + step}>
+          <div id={"D"}>
+            <div id={"F-" + step}></div>
+            {!(step % 2) && <div id={"K-" + step}></div>}
+          </div>
+          <div id={"E-" + step}>
+            <div id={"G-" + step}></div>
+            {!!(step % 2) && <div id={"H-" + step}></div>}
+            {!(step % 2) && <div id={"I-" + step}></div>}
+            <div id={"J-" + step}></div>
+          </div>
+        </div>
+        <div id={"C-" + step}></div>
+        <div id="L">
+          {!(step % 2) && <div key="M" id={"M-" + step}></div>}
+          <div key="N" id={"N-" + step}></div>
+          {!!(step % 2) && <div key="M" id={"M-" + step}></div>}
+        </div>
       </div>
     );
   }

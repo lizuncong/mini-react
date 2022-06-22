@@ -17822,6 +17822,7 @@
  
  
    var finishedWork = root.current.alternate;
+   printEffectList(finishedWork)
    root.finishedWork = finishedWork;
    root.finishedLanes = lanes;
    commitRoot(root); // Before exiting, make sure there's a callback scheduled for the next
@@ -17830,7 +17831,32 @@
    ensureRootIsScheduled(root, now());
    return null;
  }
- 
+ function printEffectList(finishedWork){
+	let nextEffect = finishedWork.firstEffect;
+	while(nextEffect){
+		const id = nextEffect.memoizedProps.id
+		const label = nextEffect.type + '#' + id
+		let flagOperate = ''
+		if((nextEffect.flags & Placement) !== NoFlags){
+			flagOperate += '插入'
+		}
+		if((nextEffect.flags & Update) !== NoFlags){
+			flagOperate += '更新'
+		}
+		if((nextEffect.flags & Deletion) !== NoFlags){
+			flagOperate += '删除'
+		}
+		if((nextEffect.flags & ContentReset) !== NoFlags){
+			flagOperate += '重置文本内容'
+		}
+		if((nextEffect.flags & Callback) !== NoFlags){
+			flagOperate += '回调'
+		}
+		console.log(flagOperate + label)
+		nextEffect = nextEffect.nextEffect
+	}
+ }
+
  function flushRoot(root, lanes) {
    markRootExpired(root, lanes);
    ensureRootIsScheduled(root, now());
