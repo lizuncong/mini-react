@@ -28,6 +28,8 @@
   - [【TODO】组件名称首字母为啥一定要大写](https://github.com/lizuncong/mini-react/blob/master/docs/%E8%AF%91%E6%96%87/component-identifiers-must-be-capitalized-in-react.md)
   - [深入概述 React 初次渲染及状态更新主流程](https://github.com/lizuncong/mini-react/blob/master/docs/render/%E6%B7%B1%E5%85%A5%E6%A6%82%E8%BF%B0%20React%E5%88%9D%E6%AC%A1%E6%B8%B2%E6%9F%93%E5%8F%8A%E7%8A%B6%E6%80%81%E6%9B%B4%E6%96%B0%E4%B8%BB%E6%B5%81%E7%A8%8B.md)
 
+  - [React17 与 React18 源码之间的差别]()
+
 - React 合成事件原理
 
   - [JavaScript 事件基础](https://github.com/lizuncong/mini-react/blob/master/docs/%E5%90%88%E6%88%90%E4%BA%8B%E4%BB%B6/JavaScript%E4%BA%8B%E4%BB%B6%E5%9F%BA%E7%A1%80.md)
@@ -51,7 +53,7 @@
 - Reconciler
 
   - [Dom Diff 算法简介](https://github.com/lizuncong/mini-react/blob/master/docs/reconciler/dom-diff%E7%AE%97%E6%B3%95%E7%AE%80%E4%BB%8B.md)
-  - [构建副作用链表算法，为什么React不采用数组保存具有副作用的Fiber节点？](https://github.com/lizuncong/mini-react/blob/master/docs/reconciler/%E6%9E%84%E5%BB%BA%E5%89%AF%E4%BD%9C%E7%94%A8%E9%93%BE%E8%A1%A8%E7%AE%97%E6%B3%95.md)
+  - [构建副作用链表算法，为什么 React 不采用数组保存具有副作用的 Fiber 节点？](https://github.com/lizuncong/mini-react/blob/master/docs/reconciler/%E6%9E%84%E5%BB%BA%E5%89%AF%E4%BD%9C%E7%94%A8%E9%93%BE%E8%A1%A8%E7%AE%97%E6%B3%95.md)
   - [【TODO】Dom diff 所有场景介绍](https://github.com/lizuncong/mini-react/blob/master/docs/reconciler/%E3%80%90TODO%E3%80%91dom-diff%E6%89%80%E6%9C%89%E7%9A%84%E5%9C%BA%E6%99%AF.md)
 
 - Fiber
