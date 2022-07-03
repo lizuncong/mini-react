@@ -16,8 +16,8 @@ class Index extends React.Component {
     const { step } = this.state;
     return (
       <div id={step} onClick={this.handleClick}>
-        <div>{step}</div>
-        <div>{-step}</div>
+        <span>{step}</span>
+        <p>{-step}</p>
       </div>
     );
   }
