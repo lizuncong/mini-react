@@ -1,7 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom";
 
-class Index extends React.Component {
+class Home extends React.Component {
   constructor(props) {
     super(props);
     this.state = { step: 0 };
@@ -16,11 +16,10 @@ class Index extends React.Component {
     const { step } = this.state;
     return (
       <div id={step} onClick={this.handleClick}>
-        <span>{step}</span>
-        <p>{-step}</p>
+        {step}
       </div>
     );
   }
 }
 
-ReactDOM.render(<Index />, document.getElementById("root"));
+ReactDOM.render(<Home />, document.getElementById("root"));
