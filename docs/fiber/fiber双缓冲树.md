@@ -21,11 +21,14 @@ current 树保存在容器节点的 `root._reactRootContainer._internalRoot.curr
 下图就是 commit 阶段完成后，finishedWork 树赋值给 current tree，同时 finishedWork 置空
 ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/double-fiber-05.jpg)
 
+#### render 阶段构建 workInProgress 树
+
 由于 render 阶段主要逻辑就是在 `performUnitOfWork`，因此我们可以在这个函数处打个断点查看 render 阶段的 workInProgress 树
 ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/double-fiber-06.jpg)
 
+#### render 阶段完成，commit 阶段开始前
+
 render 阶段完成，commit 阶段开始前，workInProgress 树构建完成，此时将 workInProgress 树复制给容器的 finishedWork 属性，这段逻辑在 `performSyncWorkOnRoot` 函数中
-![image](https://github.com/lizuncong/mini-react/blob/master/imgs/double-fiber-07.jpg)
 
 ```js
 function performSyncWorkOnRoot(root) {
@@ -40,6 +43,9 @@ function performSyncWorkOnRoot(root) {
 ```
 
 可以在 `performSyncWorkOnRoot` 处打断点查看这个过程
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/double-fiber-07.jpg)
+
+#### commit 阶段完成后
 
 ### 创建备用节点的方法
 
