@@ -6,7 +6,7 @@
 
 ### 背景
 
-在[React 初次渲染及更新流程](https://github.com/lizuncong/mini-react/blob/master/docs/render/%E6%B7%B1%E5%85%A5%E6%A6%82%E8%BF%B0%20React%E5%88%9D%E6%AC%A1%E6%B8%B2%E6%9F%93%E5%8F%8A%E7%8A%B6%E6%80%81%E6%9B%B4%E6%96%B0%E4%B8%BB%E6%B5%81%E7%A8%8B.md)一文介绍过 React 渲染更新主要分为两个阶段：render 阶段和 commit 阶段。render 阶段主要是将新的 element tree 和 当前的 fiber 树(即 curent tree，当前页面对应的 fiber 树)比较，并构建一棵 workInProgress 树以及收集有副作用的 fiber 节点。render 阶段完成后，我们将得到一棵 finishedWork 树以及一个副作用链表。render 阶段是异步可以中断的
+在[React 初次渲染及更新流程](https://github.com/lizuncong/mini-react/blob/master/docs/render/%E6%B7%B1%E5%85%A5%E6%A6%82%E8%BF%B0%20React%E5%88%9D%E6%AC%A1%E6%B8%B2%E6%9F%93%E5%8F%8A%E7%8A%B6%E6%80%81%E6%9B%B4%E6%96%B0%E4%B8%BB%E6%B5%81%E7%A8%8B.md)一文介绍过 React 渲染更新主要分为两个阶段：render 阶段和 commit 阶段。render 阶段主要是将新的 element tree 和 当前页面对应的 fiber 树(即 curent tree)比较，并构建一棵 workInProgress 树以及收集有副作用的 fiber 节点。render 阶段完成后，我们将得到一棵 finishedWork 树以及一个副作用链表。render 阶段是异步可以中断的
 
 在 commit 阶段主要就是遍历副作用链表，并执行相应的 dom 操作等。commit 阶段是同步且不可中断的
 
@@ -16,19 +16,35 @@
 
 Fiber 双缓冲树包括一棵 current tree 和一棵 workInProgress tree(render 阶段完成后的 workInProgress 树也叫 finishedWork 树)。current tree 保存的是当前浏览器页面对应的 fiber 节点。workInProgress tree 是在 render 阶段，react 基于 current tree 和新的 element tree 进行比较而构建的一棵树，这棵树是在内存中构建，在 commit 阶段将被绘制到浏览器页面上。
 
-current 树保存在容器节点的 `root._reactRootContainer._internalRoot.current` 属性上。在 render 阶段构建 workInProgress 树的过程中，我们可以通过`root._reactRootContainer._internalRoot.current.alternate` 访问到 workInProgress 树。render 阶段完成，commit 阶段开始前，我们会得到一棵 finishedWork 树，实际上这就是 render 过程结束后得到的 workInProgress 树，finishedWork 树可以通过`root._reactRootContainer._internalRoot.finishedWork`属性获取。
+current 树保存在容器节点的 `root._reactRootContainer._internalRoot.current` 属性上。在 render 阶段构建 workInProgress 树的过程中，我们可以通过`root._reactRootContainer._internalRoot.current.alternate` 访问到 workInProgress 树。
 
-下图就是 commit 阶段完成后，finishedWork 树赋值给 current tree，同时 finishedWork 置空
-![image](https://github.com/lizuncong/mini-react/blob/master/imgs/double-fiber-05.jpg)
+下面是各个阶段的 current tree 和 workInProgress tree 的状态
 
-#### render 阶段构建 workInProgress 树
+render 阶段完成，commit 阶段开始前，我们会得到一棵 finishedWork 树，实际上这就是 render 过程结束后得到的 workInProgress 树，finishedWork 树可以通过`root._reactRootContainer._internalRoot.finishedWork`属性获取。
 
-由于 render 阶段主要逻辑就是在 `performUnitOfWork`，因此我们可以在这个函数处打个断点查看 render 阶段的 workInProgress 树
+#### render 阶段
+
+在这个阶段，浏览器页面对应的 fiber 树仍然是 current 树，workInProgress 树正在构建
+
+在 render 阶段构建 workInProgress 树的过程主要逻辑在 `performUnitOfWork`，因此我们可以在这个函数处打个断点查看 render 阶段的 workInProgress 树。
+
+workInProgress 表示当前正在工作的 fiber 节点，这些 workInProgress 节点构成了一棵 workInProgress 树。我们可以通过`root._reactRootContainer._internalRoot.current.alternate`属性访问当前工作中的 workInProgress 树
+
+```js
+function workLoopSync() {
+  while (workInProgress !== null) {
+    performUnitOfWork(workInProgress);
+  }
+}
+```
+
 ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/double-fiber-06.jpg)
 
 #### render 阶段完成，commit 阶段开始前
 
-render 阶段完成，commit 阶段开始前，workInProgress 树构建完成，此时将 workInProgress 树复制给容器的 finishedWork 属性，这段逻辑在 `performSyncWorkOnRoot` 函数中
+在这个阶段，浏览器页面对应的 fiber 树仍然是 current 树，workInProgress 树已经构建完毕，得到 finishedWork 树
+
+render 阶段完成，commit 阶段开始前，workInProgress 树构建完成，我们得到一棵 finishedWork 树，此时将 workInProgress 树复制给容器的 finishedWork 属性，这段逻辑在 `performSyncWorkOnRoot` 函数中
 
 ```js
 function performSyncWorkOnRoot(root) {
@@ -45,7 +61,56 @@ function performSyncWorkOnRoot(root) {
 可以在 `performSyncWorkOnRoot` 处打断点查看这个过程
 ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/double-fiber-07.jpg)
 
-#### commit 阶段完成后
+#### commit 阶段
+
+这个阶段完成后，finishedWork 树就变成了 current 树
+
+可以看出`commitRoot`函数调用的是`commitRootImpl`函数，在 `commitRootImpl` 函数执行的一开始，`root.finishedWork`就已经被置空，所以`finishedWork`属性存在的时间是非常短的。
+
+- commitBeforeMutationEffects。DOM 变更前，主要是调用类组件的`getSnapshotBeforeUpdate`、函数组件的`useEffect`的清除函数等
+- commitMutationEffects。DOM 变更，**这个函数主要是将 finishedWork 树绘制到浏览器页面!!!**
+- commitLayoutEffects。DOM 变更后。
+
+关于 `commitBeforeMutationEffects`、`commitMutationEffects`以及`commitLayoutEffects`这三个函数的主要作用，在[深入概述 React 初次渲染以及 setState 状态更新主流程](https://github.com/lizuncong/mini-react/blob/master/docs/render/%E6%B7%B1%E5%85%A5%E6%A6%82%E8%BF%B0%20React%E5%88%9D%E6%AC%A1%E6%B8%B2%E6%9F%93%E5%8F%8A%E7%8A%B6%E6%80%81%E6%9B%B4%E6%96%B0%E4%B8%BB%E6%B5%81%E7%A8%8B.md)一文中已经有详细介绍，有兴趣的可以看看。
+
+从下面的函数执行可以看出，在`commitMutationEffects`函数执行之前，浏览器页面对应的依旧是 current 树，在`commitMutationEffects`执行完成后，React 已经将 finishedWork 树渲染到浏览器页面上，此时 finishedWork 树就变成了 current 树！！
+
+```js
+function commitRoot(root) {
+  var renderPriorityLevel = getCurrentPriorityLevel();
+  runWithPriority$1(
+    ImmediatePriority$1,
+    commitRootImpl.bind(null, root, renderPriorityLevel)
+  );
+  return null;
+}
+function commitRootImpl(root, renderPriorityLevel) {
+  // 暂存finishedWork树
+  var finishedWork = root.finishedWork;
+  // 注意，在commitRootImpl函数执行的开始，finishedWork属性已经被置空
+  root.finishedWork = null;
+
+  root.callbackNode = null;
+
+  if (firstEffect !== null) {
+    nextEffect = firstEffect;
+
+    commitBeforeMutationEffects();
+
+    nextEffect = firstEffect;
+    commitMutationEffects(root, renderPriorityLevel);
+    // commitMutationEffects执行完成后，将finishedWork树赋值给current tree。
+    root.current = finishedWork;
+    commitLayoutEffects(root, lanes);
+  }
+
+  return null;
+}
+```
+
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/double-fiber-05.jpg)
+
+**如果你看完上面介绍的几个阶段中 Fiber 双缓冲树的状态，还是很蒙的话，那一定是我写的太烂了。下面我会用几个 demo 详细介绍双缓冲树的创建过程。在此之前，你只需要记住 render 阶段和 commit 阶段双缓冲树的区别就行了**
 
 ### 创建备用节点的方法
 
