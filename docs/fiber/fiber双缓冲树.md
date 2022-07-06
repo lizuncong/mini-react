@@ -38,7 +38,7 @@ function workLoopSync() {
 }
 ```
 
-![image](https://github.com/lizuncong/mini-react/blob/master/imgs/double-fiber-06.jpg)
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/double-fiber-01.jpg)
 
 #### render 阶段完成，commit 阶段开始前
 
@@ -59,7 +59,9 @@ function performSyncWorkOnRoot(root) {
 ```
 
 可以在 `performSyncWorkOnRoot` 处打断点查看这个过程
-![image](https://github.com/lizuncong/mini-react/blob/master/imgs/double-fiber-07.jpg)
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/double-fiber-02.jpg)
+
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/double-fiber-03.jpg)
 
 #### commit 阶段
 
@@ -108,30 +110,88 @@ function commitRootImpl(root, renderPriorityLevel) {
 }
 ```
 
-![image](https://github.com/lizuncong/mini-react/blob/master/imgs/double-fiber-05.jpg)
-
-**如果你看完上面介绍的几个阶段中 Fiber 双缓冲树的状态，还是很蒙的话，那一定是我写的太烂了。下面我会用几个 demo 详细介绍双缓冲树的创建过程。在此之前，你只需要记住 render 阶段和 commit 阶段双缓冲树的区别就行了**
-
-### 创建备用节点的方法
-
-如果没有备用节点，则新建一个，否则复用。备用节点会复制当前节点的 child 以及 sibling 等属性
-
-在复用当前节点时，不会复用当前节点与副作用及副作用链表相关属性，比如：flags、firstEffect、nextEffect、lastEffect。
-当前节点的其余节点都会被拷贝到备用节点中去
-
-第一次渲染完成后，此时内存中只有一棵 fiber 树，即 current tree。
-![image](https://github.com/lizuncong/mini-react/blob/master/imgs/double-fiber-01.jpg)
-
-当我们调用 this.setState 触发状态更新，render 阶段完成后，commit 阶段开始前，此时 workInProgress 树构建完成，内存中除了 current tree 以外，还有一棵 workInProgress tree，即 finishedWork tree。
-![image](https://github.com/lizuncong/mini-react/blob/master/imgs/double-fiber-02.jpg)
-
-![image](https://github.com/lizuncong/mini-react/blob/master/imgs/double-fiber-03.jpg)
-
 ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/double-fiber-04.jpg)
 
-```js
-// This is used to create an alternate fiber to do work on.
+**如果你看完上面介绍的几个阶段中 Fiber 双缓冲树的状态，还是很蒙的话，那一定是我写的太烂了。下面我会用几个 demo 详细介绍双缓冲树的创建过程。在此之前，你只需要记住 render 阶段和 commit 阶段双缓冲树的状态就行了**
 
+### 构建 workInProgress 树主要的源码
+
+以下面的 Demo 为例：
+
+```jsx
+import React from "react";
+import ReactDOM from "react-dom";
+class Home extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { step: 0 };
+    this.handleClick = this.handleClick.bind(this);
+  }
+  handleClick() {
+    this.setState({
+      step: this.state.step + 1,
+    });
+  }
+  render() {
+    const { step } = this.state;
+    return (
+      <div id={step} onClick={this.handleClick}>
+        {step}
+      </div>
+    );
+  }
+}
+ReactDOM.render(<Home />, document.getElementById("root"));
+```
+
+这个 Demo 用来演示在 render 阶段如何基于当前的 current 树构建 fiber 节点以及复用节点。
+
+构建 workInProgress 的主要源码如下，我们可以在下面各个函数入口处打个断点调试，可以更好的感受这个过程
+
+```js
+// render阶段
+function workLoopSync() {
+  while (workInProgress !== null) {
+    performUnitOfWork(workInProgress);
+  }
+}
+
+function performUnitOfWork(unitOfWork) {
+  // The current, flushed, state of this fiber is the alternate. Ideally
+  // nothing should rely on this, but relying on it here means that we don't
+  // need an additional field on the work in progress.
+  var current = unitOfWork.alternate;
+
+  next = beginWork$1(current, unitOfWork, subtreeRenderLanes);
+
+  unitOfWork.memoizedProps = unitOfWork.pendingProps;
+
+  if (next === null) {
+    // If this doesn't spawn new work, complete the current work.
+    completeUnitOfWork(unitOfWork);
+  } else {
+    workInProgress = next;
+  }
+}
+
+function reconcileChildren(current, workInProgress, nextChildren, renderLanes) {
+  if (current === null) {
+    workInProgress.child = mountChildFibers(
+      workInProgress,
+      null,
+      nextChildren,
+      renderLanes
+    );
+  } else {
+    workInProgress.child = reconcileChildFibers(
+      workInProgress,
+      current.child,
+      nextChildren,
+      renderLanes
+    );
+  }
+}
+// This is used to create an alternate fiber to do work on.
 function createWorkInProgress(current, pendingProps) {
   var workInProgress = current.alternate;
 
