@@ -116,7 +116,114 @@ function commitRootImpl(root, renderPriorityLevel) {
 
 ### 构建 workInProgress 树主要的源码
 
-以下面的 Demo 为例：
+本节介绍 render 阶段构建 workInProgress 树的主要源码，在阅读本文时，可以在下面介绍的各个函数入口处打断点调试。
+
+render 阶段主要涉及的入口函数
+
+```js
+// render阶段
+var __DEBUG_RENDER_COUNT__ = 0;
+
+function renderRootSync(root, lanes) {
+  __DEBUG_RENDER_COUNT__++;
+
+  prepareFreshStack(root, lanes);
+
+  workLoopSync();
+
+  return workInProgressRootExitStatus;
+}
+function workLoopSync() {
+  while (workInProgress !== null) {
+    performUnitOfWork(workInProgress);
+  }
+}
+
+function performUnitOfWork(unitOfWork) {
+  var current = unitOfWork.alternate;
+  next = beginWork$1(current, unitOfWork, subtreeRenderLanes);
+  unitOfWork.memoizedProps = unitOfWork.pendingProps;
+  if (next === null) {
+    completeUnitOfWork(unitOfWork);
+  } else {
+    workInProgress = next;
+  }
+}
+
+function reconcileChildren(current, workInProgress, nextChildren, renderLanes) {
+  if (current === null) {
+    workInProgress.child = mountChildFibers(workInProgress, null, nextChildren);
+  } else {
+    workInProgress.child = reconcileChildFibers(
+      workInProgress,
+      current.child,
+      nextChildren
+    );
+  }
+}
+```
+
+`beginWork`主要是负责处理各类型 fiber 节点，并调用 `reconcileChildren` 协调子元素。在 `reconcileChildren`的过程中，调用 `useFiber`复用旧的节点或者 `createFiberFromElement` 创建新的节点。fiber 根节点，即 rootFiber 的创建或者复用在`prepareFreshStack`函数中完成。
+
+注意，我在 `renderRootSync` 函数前加了一个`__DEBUG_RENDER_COUNT__`变量，这个变量在 `createWorkInProgress` 使用，方便区分当前的 fiber 以及 workInProgress
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/double-fiber-05.jpg)
+
+```js
+function useFiber(fiber, pendingProps) {
+  // We currently set sibling to null and index to 0 here because it is easy
+  // to forget to do before returning it. E.g. for the single child case.
+  var clone = createWorkInProgress(fiber, pendingProps);
+  clone.index = 0;
+  clone.sibling = null;
+  return clone;
+}
+// This is used to create an alternate fiber to do work on.
+function createWorkInProgress(current, pendingProps) {
+  var workInProgress = current.alternate;
+
+  if (workInProgress === null) {
+    // We use a double buffering pooling technique because we know that we'll
+    // only ever need at most two versions of a tree. We pool the "other" unused
+    // node that we're free to reuse. This is lazily created to avoid allocating
+    // extra objects for things that are never updated. It also allow us to
+    // reclaim the extra memory if needed.
+    workInProgress = createFiber(
+      current.tag,
+      pendingProps,
+      current.key,
+      current.mode
+    );
+    workInProgress.alternate = current;
+    current.alternate = workInProgress;
+  } else {
+    workInProgress.pendingProps = pendingProps;
+    workInProgress.type = current.type;
+    workInProgress.flags = NoFlags;
+    workInProgress.nextEffect = null;
+    workInProgress.firstEffect = null;
+    workInProgress.lastEffect = null;
+  }
+  workInProgress.child = current.child;
+  workInProgress.memoizedProps = current.memoizedProps;
+  workInProgress.memoizedState = current.memoizedState;
+  workInProgress.updateQueue = current.updateQueue;
+  workInProgress.sibling = current.sibling;
+  workInProgress.index = current.index;
+  workInProgress.AAA__DEBUG_RENDER_COUNT__ = __DEBUG_RENDER_COUNT__;
+  return workInProgress;
+}
+```
+
+`createWorkInProgress`用于复用旧的 fiber 节点，并使用 current 的属性覆盖旧的属性。注意在创建新的 fiber 节点时，`alternate`相互指向。
+
+```js
+workInProgress.alternate = current;
+current.alternate = workInProgress;
+```
+
+### 第一次渲染
+
+下面的 Demo 用来演示在 render 阶段如何基于当前的 current 树创建新的 fiber 节点或者复用旧的 fiber 节点，从而构建一棵 workInProgress 树。
 
 ```jsx
 import React from "react";
@@ -144,108 +251,70 @@ class Home extends React.Component {
 ReactDOM.render(<Home />, document.getElementById("root"));
 ```
 
-这个 Demo 用来演示在 render 阶段如何基于当前的 current 树构建 fiber 节点以及复用节点。
+#### 创建 Fiber 树的容器以及 HostRootFiber
 
-构建 workInProgress 的主要源码如下，我们可以在下面各个函数入口处打个断点调试，可以更好的感受这个过程
+第一次渲染时，current 树为空，React 需要构造一棵全新的树。React 在第一次渲染时，首先给 root 容器创建一个`FiberRootNode`节点，该节点用于承载`current`树以及`finishedWork`树，是整个 fiber 树的容器。在创建`FiberRootNode`节点时，同时为 root 节点创建`HostRootFiber`，这也是整个 fiber 树的根节点
 
 ```js
-// render阶段
+function createFiberRoot(containerInfo, tag, hydrate, hydrationCallbacks) {
+  var root = new FiberRootNode(containerInfo, tag, hydrate);
+  // stateNode is any.
+  var uninitializedFiber = createHostRootFiber(tag);
+  root.current = uninitializedFiber;
+  uninitializedFiber.stateNode = root;
+  initializeUpdateQueue(uninitializedFiber);
+  return root;
+}
+```
+
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/double-fiber-06.jpg)
+
+`createFiberRoot`执行完成，此时 fiber 树的容器已经创建完毕。进入 `renderRootSync` 函数，render 阶段开始。
+
+#### 为 HostRootFiber 创建对应的 workInProgress 节点
+
+在 `renderRootSync` 中， `prepareFreshStack`函数调用`createWorkInProgress(root.current, null)` 开始为 HostRootFiber(即容器 root 的 fiber 节点)创建对应的 workInProgress fiber。由于此时的 HostRootFiber 还没有备用节点，即 `root.current.alternate` 为空，因此`createWorkInProgress`会新建一个 fiber 节点，并互相关联 `alternate` 属性
+
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/double-fiber-07.jpg)
+
+接下来进入 `workLoopSync` render 工作循环。
+
+```js
 function workLoopSync() {
   while (workInProgress !== null) {
     performUnitOfWork(workInProgress);
   }
 }
+```
 
-function performUnitOfWork(unitOfWork) {
-  // The current, flushed, state of this fiber is the alternate. Ideally
-  // nothing should rely on this, but relying on it here means that we don't
-  // need an additional field on the work in progress.
-  var current = unitOfWork.alternate;
+#### performUnitOfWork(HostRootFiber)：为 Home 节点创建 workInProgress 节点
 
-  next = beginWork$1(current, unitOfWork, subtreeRenderLanes);
+第一个开始工作的 workInProgress 节点就是新创建的 HostRootFiber 节点。`performUnitOfWork` 为 HostRootFiber 节点协调子元素。在本例中，HostRootFiber 的子元素就是`Home`类对应的元素。第一次渲染时，Home 没有备用的 fiber 节点，因此需要调用 `createFiberFromElement` 为 Home 创建全新的 fiber 节点
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/double-fiber-08.jpg)
 
-  unitOfWork.memoizedProps = unitOfWork.pendingProps;
+#### performUnitOfWork(HomeFiber)：为 div 节点创建对应的 workInProgress 节点
 
-  if (next === null) {
-    // If this doesn't spawn new work, complete the current work.
-    completeUnitOfWork(unitOfWork);
-  } else {
-    workInProgress = next;
-  }
-}
+HostRootFiber 的`performUnitOfWork`执行完成，开始为`Home`执行`performUnitOfWork`，`Home`开始工作。调用 `new Home()` 初始化类组件，并挂载到 `Home fiber` 的`stateNode`属性上。同时为 Home 协调子元素，在本例中，Home 的子元素是 div，为 div 创建 fiber 节点
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/double-fiber-09.jpg)
 
-function reconcileChildren(current, workInProgress, nextChildren, renderLanes) {
-  if (current === null) {
-    workInProgress.child = mountChildFibers(
-      workInProgress,
-      null,
-      nextChildren,
-      renderLanes
-    );
-  } else {
-    workInProgress.child = reconcileChildFibers(
-      workInProgress,
-      current.child,
-      nextChildren,
-      renderLanes
-    );
-  }
-}
-// This is used to create an alternate fiber to do work on.
-function createWorkInProgress(current, pendingProps) {
-  var workInProgress = current.alternate;
+由于 div 没有子节点，因此在为 div 调用`performUnitOfWork`开始工作时，没有子元素协调，至此，workInProgress 树的构建完毕，render 阶段结束
 
-  if (workInProgress === null) {
-    // We use a double buffering pooling technique because we know that we'll
-    // only ever need at most two versions of a tree. We pool the "other" unused
-    // node that we're free to reuse. This is lazily created to avoid allocating
-    // extra objects for things that are never updated. It also allow us to
-    // reclaim the extra memory if needed.
-    workInProgress = createFiber(
-      current.tag,
-      pendingProps,
-      current.key,
-      current.mode
-    );
-    workInProgress.elementType = current.elementType;
-    workInProgress.type = current.type;
-    workInProgress.stateNode = current.stateNode;
+#### render 阶段结束，commit 阶段开始前
 
-    workInProgress.alternate = current;
-    current.alternate = workInProgress;
-  } else {
-    workInProgress.pendingProps = pendingProps;
-    // Needed because Blocks store data on type.
-    workInProgress.type = current.type;
-    // We already have an alternate.
-    // Reset the effect tag.
-    workInProgress.flags = NoFlags;
-    // The effect list is no longer valid.
-    workInProgress.nextEffect = null;
-    workInProgress.firstEffect = null;
-    workInProgress.lastEffect = null;
-  }
+render 阶段结束，workInProgress 树构建完成，此时我们得到一棵 finishedWork 树，将其保存到容器中
 
-  workInProgress.childLanes = current.childLanes;
-  workInProgress.lanes = current.lanes;
-  workInProgress.child = current.child;
-  workInProgress.memoizedProps = current.memoizedProps;
-  workInProgress.memoizedState = current.memoizedState;
-  workInProgress.updateQueue = current.updateQueue;
-  // Clone the dependencies object. This is mutated during the render phase, so
-  // it cannot be shared with the current fiber.
-  var currentDependencies = current.dependencies;
-  workInProgress.dependencies =
-    currentDependencies === null
-      ? null
-      : {
-          lanes: currentDependencies.lanes,
-          firstContext: currentDependencies.firstContext,
-        };
-  // These will be overridden during the parent's reconciliation
-  workInProgress.sibling = current.sibling;
-  workInProgress.index = current.index;
-  workInProgress.ref = current.ref;
-  return workInProgress;
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/double-fiber-10.jpg)
+
+主要逻辑在这里：
+
+```js
+function performSyncWorkOnRoot(root) {
+  //...
+  renderRootSync(root, lanes); // render阶段，构建workInProgress树
+  // ...render阶段结束
+  var finishedWork = root.current.alternate;
+  root.finishedWork = finishedWork; // 将workInProgress树赋值给finishedWork属性
+  commitRoot(root); // commit阶段，将finishedWork树更新到浏览器页面
+  // ...
 }
 ```
