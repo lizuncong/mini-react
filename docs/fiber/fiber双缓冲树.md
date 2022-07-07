@@ -228,6 +228,7 @@ current.alternate = workInProgress;
 ```jsx
 import React from "react";
 import ReactDOM from "react-dom";
+
 class Home extends React.Component {
   constructor(props) {
     super(props);
@@ -241,13 +242,18 @@ class Home extends React.Component {
   }
   render() {
     const { step } = this.state;
-    return (
+    return step < 3 ? (
       <div id={step} onClick={this.handleClick}>
         {step}
       </div>
+    ) : (
+      <p id={step} onClick={this.handleClick}>
+        {step}
+      </p>
     );
   }
 }
+
 ReactDOM.render(<Home />, document.getElementById("root"));
 ```
 
@@ -271,7 +277,7 @@ function createFiberRoot(containerInfo, tag, hydrate, hydrationCallbacks) {
 
 `createFiberRoot`执行完成，此时 fiber 树的容器已经创建完毕。进入 `renderRootSync` 函数，render 阶段开始。
 
-#### 为 HostRootFiber 创建对应的 workInProgress 节点
+#### prepareFreshStack：为 HostRootFiber 创建对应的 workInProgress 节点
 
 在 `renderRootSync` 中， `prepareFreshStack`函数调用`createWorkInProgress(root.current, null)` 开始为 HostRootFiber(即容器 root 的 fiber 节点)创建对应的 workInProgress fiber。由于此时的 HostRootFiber 还没有备用节点，即 `root.current.alternate` 为空，因此`createWorkInProgress`会新建一个 fiber 节点，并互相关联 `alternate` 属性
 
@@ -317,4 +323,160 @@ function performSyncWorkOnRoot(root) {
   commitRoot(root); // commit阶段，将finishedWork树更新到浏览器页面
   // ...
 }
+```
+
+#### commit 阶段结束
+
+`commitMutationEffects`函数执行完成后，finisheWork 树已经更新到浏览器屏幕上，finishedWork 树就变成了 current 树，因此将 finishedWork 树赋值给 root.current，同时重置 root.finishedWork 为 null
+
+```js
+function commitRootImpl(root, renderPriorityLevel) {
+  // 暂存finishedWork树
+  var finishedWork = root.finishedWork;
+  // 注意，在commitRootImpl函数执行的开始，finishedWork属性已经被置空
+  root.finishedWork = null;
+
+  root.callbackNode = null;
+
+  if (firstEffect !== null) {
+    nextEffect = firstEffect;
+
+    commitBeforeMutationEffects();
+
+    nextEffect = firstEffect;
+    commitMutationEffects(root, renderPriorityLevel);
+    // commitMutationEffects执行完成后，将finishedWork树赋值给current tree。
+    root.current = finishedWork;
+    commitLayoutEffects(root, lanes);
+  }
+
+  return null;
+}
+```
+
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/double-fiber-11.jpg)
+
+### 第二次渲染
+
+在第一次渲染完成后，我们已经有一棵 current 树。现在让我们点击按钮，触发页面更新。由于是第二次渲染，不需要在创建 Fiber 树的容器。render 阶段直接从 `renderRootSync`函数开始
+
+#### prepareFreshStack：为 current HostRootFiber 创建对应的 workInProgress 节点
+
+`prepareFreshStack` 调用 `createWorkInProgress` 为 `HostRootFiber` 创建 workInProgress 节点。`createWorkInProgress`中发现当前的 HostRootFiber 存在备用的节点，即`current.alternate`存在，则直接复用备用节点
+
+```js
+var workInProgress = current.alternate;
+```
+
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/double-fiber-12.jpg)
+
+#### performUnitOfWork(New HostRootFiber)：为 current Home 节点创建 workInProgress 节点
+
+首先进入工作循环的是新创建的 workInProgress HostRootFiber。在 performUnitOfWork 执行期间，React 为 HostRootFiber 的子元素 Home 创建对应的 workInProgress 节点，这一步工作在 `bailoutOnAlreadyFinishedWork` 函数中的 `cloneChildFibers` 完成。`cloneChildFibers` 调用 `createWorkInProgress`
+方法为 Home 创建对应的 workInProgress 节点。由于 current Home fiber 没有备用节点，即 current home fiber 的 alternate 不存在，因此 `createWorkInProgress`为 Home 创建全新的 workInProgress 节点。创建完成后，HostRootFiber 的 child 指针指向新的 Home fiber。
+
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/double-fiber-13.jpg)
+
+#### performUnitOfWork(New HomeFiber)：为 current div 节点创建对应的 workInProgress 节点
+
+下一步就是为新创建的 HomeFiber 执行工作。在为 HomeFiber 协调子元素的过程中，发现 新的 element(即 div)的 tag 及 type 和 current div 节点的相同，因此可以调用`useFiber`复用当前的 fiber 节点
+
+```js
+function useFiber(fiber, pendingProps) {
+  // We currently set sibling to null and index to 0 here because it is easy
+  // to forget to do before returning it. E.g. for the single child case.
+  var clone = createWorkInProgress(fiber, pendingProps);
+  clone.index = 0;
+  clone.sibling = null;
+  return clone;
+}
+```
+
+调用 `createWorkInProgress` 为新的子元素 div 创建新的 workInProgress 节点。由于 current div fiber 的 alternate 属性为 null，没有备用的节点，因此创建一个全新的 fiber 节点，并互相关联 `alternate`
+
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/double-fiber-14.jpg)
+
+由于新的 div 没有子节点，因此 render 阶段结束
+
+#### render 阶段结束，commit 阶段开始前
+
+render 阶段结束，workInProgress 树构建完成，此时我们得到一棵 finishedWork 树。在 `performSyncWorkOnRoot` 函数中，我们将 finishedWork 树保存到容器的 finishedWork 属性上。
+
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/double-fiber-15.jpg)
+
+#### commit 阶段结束
+
+`commitMutationEffects`函数执行完成后，finisheWork 树已经更新到浏览器屏幕上，finishedWork 树就变成了 current 树，因此将 finishedWork 树赋值给 root.current，同时重置 root.finishedWork 为 null
+
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/double-fiber-16.jpg)
+
+**第二次渲染完成后，第二次渲染 render 阶段构建的 finishedWork 树就变成了 current 树，第一次渲染的树就变成了备用树，因此上图我将第一次渲染的树全部用虚线表示。此时内存中同时存在两棵树，一棵 current 树，一棵旧的备用树**
+
+### 第三次渲染
+
+在第二次渲染完成后，内存中同时存在一棵 current 树和一棵旧的 alternate 备用树。现在让我们点击按钮，触发页面更新，看看第三次渲染，React 是如何复用旧的 alternate 备用树上的节点。同样的，由于是第三次渲染，不需要在创建 Fiber 树的容器。render 阶段直接从 `renderRootSync`函数开始
+
+**注意，右图中，虚线表示还没复用的旧的 fiber 节点。实现表示当前复用的节点**
+
+#### prepareFreshStack：为 current HostRootFiber 创建对应的 workInProgress 节点
+
+`prepareFreshStack` 调用 `createWorkInProgress` 为 `HostRootFiber` 创建 workInProgress 节点。`createWorkInProgress`中发现当前的 HostRootFiber 存在备用的节点，即`current.alternate`存在，则直接复用备用节点
+
+```js
+var workInProgress = current.alternate;
+```
+
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/double-fiber-17.jpg)
+
+#### performUnitOfWork(New HostRootFiber)：为 current Home 节点创建 workInProgress 节点
+
+和第二次渲染一样，React 也是在 `cloneChildFibers` 中调用 `createWorkInProgress` 为当前的 Home fiber 创建新的 workInProgress 节点。
+由于 current Home fiber 的 alternate 属性不为空，存在旧的备用节点，因此 `createWorkInProgress` 直接复用旧的备用节点，并将当前 current home fiber 的属性全部复制到旧的备用节点。
+
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/double-fiber-18.jpg)
+
+#### performUnitOfWork(New HomeFiber)：为 current div 节点创建对应的 workInProgress 节点
+
+和第二次渲染一样，在协调 Home Fiber 子元素时，React 发现可以复用 current div 节点，因此调用 `useFiber` 复用 current div 节点。
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/double-fiber-19.jpg)
+
+#### render 阶段结束，commit 阶段开始前
+
+render 阶段结束，workInProgress 树构建完成，此时我们得到一棵 finishedWork 树。在 `performSyncWorkOnRoot` 函数中，我们将 finishedWork 树保存到容器的 finishedWork 属性上。
+
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/double-fiber-20.jpg)
+
+#### commit 阶段结束
+
+`commitMutationEffects`函数执行完成后，finisheWork 树已经更新到浏览器屏幕上，finishedWork 树就变成了 current 树，因此将 finishedWork 树赋值给 root.current，同时重置 root.finishedWork 为 null
+
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/double-fiber-21.jpg)
+
+### 小结
+
+从前面三次渲染更新过程可以看出，内存中最多存在两棵树，一棵 current 树，一棵备用的 alternate 树，备用的树在 render 阶段用于构造 workInProgress 树。一个元素最多存在两个版本的 fiber 节点，一个 current 版本，和当前浏览器页面对应，一个 alternate 版本，alternate 版本是备用节点，用于在 render 阶段复用，以构建 workInProgress 节点。
+
+**那为什么 React 要复用备用的节点，而不是新创建一个呢？最大的原因是节省内存开销，通过复用旧的备用节点，React 不需要额外申请内存空间，在复用时可以直接将 current fiber 的属性复制到旧的备用节点**
+
+通过上面三次渲染更新过程也可以看出，React 在渲染时，会在 current 树和 alternate 树之间交替进行，倒来倒去。比如第四次渲染时，第二次渲染完成的 alternate 树又变成了 current 树，而第三次渲染完成的树又变成了 alternate 树。
+
+看完了渲染更新流程，下面我们看下删除节点的情况又是怎样的。
+
+### 第四次渲染：节点删除
+
+继续点击按钮，根据我们的 demo，此时 div 节点将会被删除，新的 p 节点将被插入。我们看下这个过程，React 是如何删除节点以及复用节点的。
+
+```jsx
+  render() {
+    const { step } = this.state;
+    return step < 3 ? (
+      <div id={step} onClick={this.handleClick}>
+        {step}
+      </div>
+    ) : (
+      <p id={step} onClick={this.handleClick}>
+        {step}
+      </p>
+    );
+  }
 ```

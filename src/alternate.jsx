@@ -14,10 +14,14 @@ class Home extends React.Component {
   }
   render() {
     const { step } = this.state;
-    return (
+    return step < 3 ? (
       <div id={step} onClick={this.handleClick}>
         {step}
       </div>
+    ) : (
+      <p id={step} onClick={this.handleClick}>
+        {step}
+      </p>
     );
   }
 }
