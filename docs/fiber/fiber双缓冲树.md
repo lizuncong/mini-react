@@ -462,9 +462,9 @@ render 阶段结束，workInProgress 树构建完成，此时我们得到一棵 
 
 看完了渲染更新流程，下面我们看下删除节点的情况又是怎样的。
 
-### 第四次渲染：节点删除
+### 第四次渲染：节点删除的场景
 
-继续点击按钮，根据我们的 demo，此时 div 节点将会被删除，新的 p 节点将被插入。我们看下这个过程，React 是如何删除节点以及复用节点的。
+继续点击按钮，触发第四次渲染。根据我们的 demo，此时 div 节点将会被删除，新的 p 节点将被插入。我们看下这个过程，React 是如何删除节点、创建新的 p 节点以及复用旧的 home 节点的。
 
 ```jsx
   render() {
@@ -479,4 +479,70 @@ render 阶段结束，workInProgress 树构建完成，此时我们得到一棵 
       </p>
     );
   }
+```
+
+同样的，由于是第四次渲染，不需要再创建 Fiber 树的容器。render 阶段直接从 `renderRootSync`函数开始
+
+#### prepareFreshStack：为 current HostRootFiber 创建对应的 workInProgress 节点
+
+`prepareFreshStack` 调用 `createWorkInProgress` 为 `HostRootFiber` 创建 workInProgress 节点。`createWorkInProgress`中发现当前的 HostRootFiber 存在备用的节点，即`current.alternate`存在，则直接复用备用节点
+
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/double-fiber-22.jpg)
+
+#### performUnitOfWork(New HostRootFiber)：为 current Home 节点创建 workInProgress 节点
+
+和第三次渲染一样，React 也是在 `cloneChildFibers` 中调用 `createWorkInProgress` 为当前的 Home fiber 创建新的 workInProgress 节点。
+由于 current Home fiber 的 alternate 属性不为空，存在旧的备用节点，因此 `createWorkInProgress` 直接复用旧的备用节点，并将当前 current home fiber 的属性全部复制到旧的备用节点。
+
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/double-fiber-23.jpg)
+
+#### performUnitOfWork(New HomeFiber)：删除 div 节点，新建 p 节点
+
+轮到为新的 home fiber 协调子元素。这次，我们需要删除 div fiber 节点，新建一个 p 节点
+
+- 调用 deleteRemainingChildren 删除当前的 div fiber 节点，将 div 添加到父节点，即 home fiber 的副作用链表中
+- 调用 createFiberFromElement 为 p 元素创建对应的 fiber 节点。
+- 将新的 home fiber 的 child 指针指向 p 节点。
+
+到这里，home fiber 的工作就已经完成，此时 div 处于被即将被删除的状态，这里使用虚线表示
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/double-fiber-24.jpg)
+
+#### render 阶段结束，commit 阶段开始前
+
+render 阶段结束，workInProgress 树构建完成，此时我们得到一棵 finishedWork 树。在 `performSyncWorkOnRoot` 函数中，我们将 finishedWork 树保存到容器的 finishedWork 属性上。
+
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/double-fiber-25.jpg)
+
+#### commit 阶段
+
+commit 阶段需要删除旧的 div 节点，然后创建新的 p 节点。这两个过程都发生在`commitMutationEffects`阶段，这个阶段操作真实的 dom 节点，并释放掉 fiber 的内存。
+
+- 首先调用 `commitDeletion` 删除真实的 div dom 节点，其次调用`detachFiberMutation`释放 fiber 内存
+
+```js
+function detachFiberMutation(fiber) {
+  // Cut off the return pointers to disconnect it from the tree. Ideally, we
+  // should clear the child pointer of the parent alternate to let this
+  // get GC:ed but we don't know which for sure which parent is the current
+  // one so we'll settle for GC:ing the subtree of this child. This child
+  // itself will be GC:ed when the parent updates the next time.
+  // Note: we cannot null out sibling here, otherwise it can cause issues
+  // with findDOMNode and how it requires the sibling field to carry out
+  // traversal in a later effect. See PR #16820. We now clear the sibling
+  // field after effects, see: detachFiberAfterEffects.
+  //
+  // Don't disconnect stateNode now; it will be detached in detachFiberAfterEffects.
+  // It may be required if the current component is an error boundary,
+  // and one of its descendants throws while unmounting a passive effect.
+  fiber.alternate = null;
+  fiber.child = null;
+  fiber.dependencies = null;
+  fiber.firstEffect = null;
+  fiber.lastEffect = null;
+  fiber.memoizedProps = null;
+  fiber.memoizedState = null;
+  fiber.pendingProps = null;
+  fiber.return = null;
+  fiber.updateQueue = null;
+}
 ```
