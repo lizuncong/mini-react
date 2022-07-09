@@ -509,15 +509,28 @@ render 阶段结束，workInProgress 树构建完成，此时我们得到一棵 
 
 #### render 阶段结束，commit 阶段开始前
 
-render 阶段结束，workInProgress 树构建完成，此时我们得到一棵 finishedWork 树。在 `performSyncWorkOnRoot` 函数中，我们将 finishedWork 树保存到容器的 finishedWork 属性上。
+render 阶段结束，workInProgress 树构建完成，此时我们得到一棵 finishedWork 树，以及一个副作用链表。在 `performSyncWorkOnRoot` 函数中，我们将 finishedWork 树保存到容器的 finishedWork 属性上。
+
+实际上，React 在每次 render 阶段都会收集副作用节点，并构建副作用链表，我在前三次渲染中省略了这个步骤。第四次渲染介绍一下副作用链表的构建，因为这涉及到后面 commit 阶段遍历副作用链表，删除节点，插入节点的情况，可以查看[React 构建副作用链表算法](https://github.com/lizuncong/mini-react/blob/master/docs/reconciler/%E6%9E%84%E5%BB%BA%E5%89%AF%E4%BD%9C%E7%94%A8%E9%93%BE%E8%A1%A8%E7%AE%97%E6%B3%95.md)了解 React 如何构建副作用链表
+
+render 阶段结束后，我们最终得到的 finishedWork 树和辅作用链表(图中红线所示)如下图：
 
 ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/double-fiber-25.jpg)
 
 #### commit 阶段
 
-commit 阶段需要删除旧的 div 节点，然后创建新的 p 节点。这两个过程都发生在`commitMutationEffects`阶段，这个阶段操作真实的 dom 节点，并释放掉 fiber 的内存。
+commit 阶段遍历副作用节点，根据对应的副作用标志`fiber.flags`执行对应的操作。在我们的案例中，相应的副作用就是删除 div 节点，插入 p 节点。这两个过程都发生在`commitMutationEffects`阶段，这个阶段操作真实的 dom 节点，并释放掉 fiber 的内存。
 
-- 首先调用 `commitDeletion` 删除真实的 div dom 节点，其次调用`detachFiberMutation`释放 fiber 内存
+`commitMutationEffects`遍历副作用链表，第一个节点是 div 节点，这个节点需要删除，调用 `commitDeletion` 删除节点
+
+`commitDeletion`主要工作如下：
+
+- 调用 `unmountHostComponents` 删除真实的 dom 节点
+
+- 其次调用`detachFiberMutation`重置 div 节点(AAA_DEBUG_RENDER_COUNT 属性为 3)的各种属性，以释放内存。重点关注 div fiber 的 return、child、alternate 指针的重置，同时需要注意，sibling 属性和 stateNode 属性不是在这个时候释放掉的。
+- 然后调用 `detachFiberMutation`重置 div 节点(AAA_DEBUG_RENDER_COUNT 属性为 3)的备用节点，即 AAA_DEBUG_RENDER_COUNT 属性为 2 的 div 节点的属性，以释放内存。此时内存中已经没有节点引用这个备用节点，但是这个备用节点还是会引用 stateNode，
+
+`detachFiberMutation` 函数如下：
 
 ```js
 function detachFiberMutation(fiber) {
@@ -546,3 +559,141 @@ function detachFiberMutation(fiber) {
   fiber.updateQueue = null;
 }
 ```
+
+至此，对于 div 节点的删除工作已经完成，下一个需要执行的副作用节点是 p 节点，调用`commitPlacement`插入真实的 p dom 节点。
+
+`commitMutationEffects` 函数执行完成后，此时的双缓冲树如下：
+
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/double-fiber-26.jpg)
+
+`commitMutationEffects` 函数执行完成，finishedWork 树已经变成了 current 树
+
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/double-fiber-27.jpg)
+
+`commitLayoutEffects` 执行完成后，此时副作用链表已经没有用处，需要释放掉副作用链表的内存，这段逻辑在 `commitRootImpl` 函数中
+
+```js
+function commitRootImpl(root, renderPriorityLevel) {
+  var finishedWork = root.finishedWork;
+  root.finishedWork = null;
+  //....
+  commitBeforeMutationEffects();
+  //....
+  commitMutationEffects(root, renderPriorityLevel);
+  //....
+  commitLayoutEffects(root, lanes);
+  //....
+  // We are done with the effect chain at this point so let's clear the
+  // nextEffect pointers to assist with GC. If we have passive effects, we'll
+  // clear this in flushPassiveEffects.
+  nextEffect = firstEffect;
+  while (nextEffect !== null) {
+    var nextNextEffect = nextEffect.nextEffect;
+    nextEffect.nextEffect = null;
+    if (nextEffect.flags & Deletion) {
+      detachFiberAfterEffects(nextEffect);
+    }
+    nextEffect = nextNextEffect;
+  }
+  //...
+}
+function detachFiberAfterEffects(fiber) {
+  fiber.sibling = null;
+  fiber.stateNode = null;
+}
+```
+
+- 首先重置副作用节点的 nextEffect 为 null
+- 其次判断如果节点是被删除的，则调用 detachFiberAfterEffects 函数重置 sibling 和 stateNode 为 null
+
+整个 commit 阶段已经结束，此时内存中的双缓冲树状态如下：
+
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/double-fiber-28.jpg)
+
+**根据图中可以看出，左边的 div fiber 节点(AAA_DEBUG_RENDER_COUNT 属性为 2)已经没有任何节点引用它了，可以被 GC 回收内存。但是我们看右边的 div fiber 节点(AAA_DEBUG_RENDER_COUNT 属性为 3)的节点还有 child 以及 firstEffect 指针引用着，因此这个节点不会在本次 GC 期间被回收，而是等下一次渲染更新完成后才会被 GC 回收**
+
+### 子树删除的场景
+
+这次我们使用下面的 demo，看看删除子树的时候，React 是怎么释放内存的
+
+```jsx
+import React from "react";
+import ReactDOM from "react-dom";
+
+class Home extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { step: 0 };
+    this.handleClick = this.handleClick.bind(this);
+  }
+  handleClick() {
+    this.setState({
+      step: this.state.step + 1,
+    });
+  }
+  render() {
+    const { step } = this.state;
+    return step < 3 ? (
+      <div id={step} onClick={this.handleClick}>
+        <div id="test">{step}</div>
+      </div>
+    ) : (
+      <p id={step} onClick={this.handleClick}>
+        {step}
+      </p>
+    );
+  }
+}
+
+ReactDOM.render(<Home />, document.getElementById("root"));
+```
+
+这里我们直接从第四次点击按钮出发页面更新开始，当 render 阶段结束，commit 阶段开始前，我们将得到下面一棵 finishedWork 树以及副作用链表。这里我使用蓝色标记需要释放内存的 fiber 节点
+
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/double-fiber-29.jpg)
+
+`commitMutationEffects`阶段调用 `commitDeletetion` 方法删除 div fiber 节点，并重置 div fiber 的属性为 null
+
+下面就是整个 commit 阶段完成后，内存中双缓冲树的状态
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/double-fiber-30.jpg)
+这里我将需要删除的节点标记为蓝色并添加 `A`、`B`、`C`、`D`，方便后续的描述
+
+#### 内存泄漏风险分析
+
+从图中可以看出，A，B，C，D 都是需要被删除的节点。
+
+先来看 B，B 节点所有的属性已经被重置为 null，但是此时还有 home 的 child 以及 firstEffect 等属性引用着 B 节点。在本次更新完成，可想而知 B 节点的内存不会被释放。等到下一次更新完成时，由于 child 及 firstEffect 不再指向 B 节点，B 节点内存得到释放
+
+再来看 A 节点， A 节点(stateNode 属性)还引用着已经被删除的 div 真实 dom，这个 div 真实 dom 的`__reactFiber` 属性还引用着 A 节点。因此这里有一对循环引用，即
+
+```js
+fiberA.stateNode = div。
+div.__reactFiber = fiberA
+```
+
+再来看 C 和 D，C 和 D 的 stateNode 都没有被清空，同时 div#test 这个真实的 dom 节点的`__reactFiber`属性还引用着 C，C 和 D 通过 alternate 属性相互引用，这里的引用情况如下：
+
+```js
+fiberC.stateNode = div#test
+fiberC.return = fiberB
+div#test.__reactFiber = fiberC
+
+fiberD.stateNode = div#test
+fiberD.return = fiberA
+
+fiberD.alternate = fiberC.alternate
+```
+
+**综上可以看出，如果在采用引用计数的浏览器中，由于这些节点之间存在循环引用的情况，在垃圾回收期间不会被回收，因此有内存泄漏的风险。而在采用标记清除法的浏览器中，这些节点内存会被回收。这也是为什么在谷歌浏览器中并没有内存泄漏的风险**
+
+第四次渲染后内存中的 FiberNode 节点
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/double-fiber-31.jpg)
+
+第五次渲染后内存中的 FiberNode 节点
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/double-fiber-32.jpg)
+
+第六次渲染后，被删除的节点的内存已经被全部回收，因此从第六次开始，FiberNode 节点的数量都保持在 6 个
+
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/double-fiber-33.jpg)
+
+**综上也可以看出，被删除的节点至少要在后续两轮渲染更新完成后才能全部回收完毕**

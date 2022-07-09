@@ -15,8 +15,8 @@ class Home extends React.Component {
   render() {
     const { step } = this.state;
     return step < 3 ? (
-      <div id={step} onClick={this.handleClick}>
-        {step}
+      <div id={"parent" + step} onClick={this.handleClick}>
+        <div id={"test" + step}>{step}</div>
       </div>
     ) : (
       <p id={step} onClick={this.handleClick}>
