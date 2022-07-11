@@ -12,12 +12,37 @@ class Home extends React.Component {
       count: this.state.count + 1,
     });
   }
+  //  <ul key="ul">
+  //   <li key="A" id="A">
+  //     A
+  //   </li>
+  //   <li key="B" id="B">
+  //     B
+  //   </li>
+  //   <li key="C" id="C">
+  //     C
+  //   </li>
+  // </ul>
   render() {
     const { count } = this.state;
     return !count ? (
-      [<span>1</span>, <h1 onClick={this.handleClick}>{count}</h1>, <h3>2</h3>]
+      <ul key="ul" onClick={this.handleClick}>
+        <li key="A" id="A">
+          A
+        </li>
+      </ul>
     ) : (
-      <h1 onClick={this.handleClick}>{count}</h1>
+      <ul key="ul" onClick={this.handleClick}>
+        <li key="A" id="A2">
+          A
+        </li>
+        <p key="B" id="B2">
+          B2
+        </p>
+        <li key="C" id="C2">
+          C2
+        </li>
+      </ul>
     );
   }
 }
