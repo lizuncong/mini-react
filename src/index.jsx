@@ -30,17 +30,26 @@ class Home extends React.Component {
         <li key="A" id="A">
           A
         </li>
+        <p key="B" id="B">
+          B
+        </p>
+        <li key="C" id="C">
+          C
+        </li>
+        <li key="D" id="D">
+          D
+        </li>
       </ul>
     ) : (
       <ul key="ul" onClick={this.handleClick}>
-        <li key="A2" id="A2">
+        <li key="A" id="A2">
           A
         </li>
-        <p key="B" id="B2">
-          B2
-        </p>
+        <li key="B" id="B2">
+          B
+        </li>
         <li key="C" id="C2">
-          C2
+          C
         </li>
       </ul>
     );
