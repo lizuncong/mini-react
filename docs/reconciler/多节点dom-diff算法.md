@@ -2,9 +2,37 @@
 
 ### 多节点 DOM Diff 算法介绍
 
+- 第一轮 for 循环同时遍历旧的 fiber 节点以及新的 react element 节点
+  - 如果 key 不同，则退出第一轮循环
+
+```js
+for (; oldFiber !== null && newIdx < newChildren.length; newIdx++) {
+  nextOldFiber = oldFiber.sibling;
+  // ...
+  oldFiber = nextOldFiber;
+}
+```
+
+- 第一轮循环完成后，需要判断新的 react element 元素是否已经遍历完成
+
+  - 如果新的 react element 已经遍历完成，则不需要再继续协调，调用 deleteRemainingChildren 删除剩余的旧 fiber 节点，并终止函数
+
+- 第二轮循环。如果第一轮循环新的 react element 没有遍历完成，同时旧的 fiber 节点已经遍历完成，则开始第二轮循环。第二轮循环就是为剩下的新的 react element 元素创建对应的 fiber 节点
+
+```js
+if (oldFiber === null) {
+  for (; newIdx < newChildren.length; newIdx++) {
+    var _newFiber = createChild(returnFiber, newChildren[newIdx], lanes);
+  }
+  return resultingFirstChild;
+}
+```
+
 ### 多节点 DOM Diff 主要源码
 
 Dom Diff 协调从 `reconcileChildFibers` 函数开始，而多节点的协调算法在`reconcileChildrenArray`函数中
+
+`reconcileChildFibers` 函数，Dom Diff 的入口。
 
 ```js
 function reconcileChildFibers(returnFiber, currentFirstChild, newChild, lanes) {
@@ -17,7 +45,11 @@ function reconcileChildFibers(returnFiber, currentFirstChild, newChild, lanes) {
     );
   }
 }
+```
 
+`reconcileChildrenArray` 函数，多节点 Dom Diff 的逻辑都在这个函数里面
+
+```js
 function reconcileChildrenArray(
   returnFiber,
   currentFirstChild,
@@ -30,7 +62,7 @@ function reconcileChildrenArray(
   var lastPlacedIndex = 0;
   var newIdx = 0;
   var nextOldFiber = null;
-
+  // 第一轮循环 存在旧的fiber节点
   for (; oldFiber !== null && newIdx < newChildren.length; newIdx++) {
     // Q1：什么场景下，oldFiber.index > newIdx
     if (oldFiber.index > newIdx) {
@@ -61,33 +93,28 @@ function reconcileChildrenArray(
     if (oldFiber && newFiber.alternate === null) {
       deleteChild(returnFiber, oldFiber);
     }
-
+    // 为newFiber设置新的索引newIdx，同时判断是否需要移动
+    // 如果oldindex 小于 lastPlacedIndex，说明需要移动
     lastPlacedIndex = placeChild(newFiber, lastPlacedIndex, newIdx);
 
     if (previousNewFiber === null) {
-      // TODO: Move out of the loop. This only happens for the first run.
       resultingFirstChild = newFiber;
     } else {
-      // TODO: Defer siblings if we're not at the right index for this slot.
-      // I.e. if we had null values before, then we want to defer this
-      // for each null value. However, we also don't want to call updateSlot
-      // with the previous one.
       previousNewFiber.sibling = newFiber;
     }
 
     previousNewFiber = newFiber;
     oldFiber = nextOldFiber;
   }
-
+  // 如果新的react element元素已经遍历完成，则将剩余的旧的fiber节点删除
   if (newIdx === newChildren.length) {
-    // We've reached the end of the new children. We can delete the rest.
     deleteRemainingChildren(returnFiber, oldFiber);
     return resultingFirstChild;
   }
 
+  // oldFiber为null，说明旧的fiber节点已经遍历完成，因此我们只需要为剩下的新的react element创建
+  // 新的fiber节点即可
   if (oldFiber === null) {
-    // If we don't have any more existing children we can choose a fast path
-    // since the rest will all be insertions.
     for (; newIdx < newChildren.length; newIdx++) {
       var _newFiber = createChild(returnFiber, newChildren[newIdx], lanes);
 
@@ -108,9 +135,10 @@ function reconcileChildrenArray(
     }
 
     return resultingFirstChild;
-  } // Add all children to a key map for quick lookups.
-
-  var existingChildren = mapRemainingChildren(returnFiber, oldFiber); // Keep scanning and use the map to restore deleted items as moves.
+  }
+  // 将剩下的旧的fiber节点存到map中，方便快速查找
+  var existingChildren = mapRemainingChildren(returnFiber, oldFiber);
+  // Keep scanning and use the map to restore deleted items as moves.
 
   for (; newIdx < newChildren.length; newIdx++) {
     var _newFiber2 = updateFromMap(
@@ -146,15 +174,37 @@ function reconcileChildrenArray(
     }
   }
 
-  if (shouldTrackSideEffects) {
-    // Any existing children that weren't consumed above were deleted. We need
-    // to add them to the deletion list.
-    existingChildren.forEach(function (child) {
-      return deleteChild(returnFiber, child);
-    });
-  }
+  // Any existing children that weren't consumed above were deleted. We need
+  // to add them to the deletion list.
+  existingChildren.forEach(function (child) {
+    return deleteChild(returnFiber, child);
+  });
 
   return resultingFirstChild;
+}
+```
+
+`updateSlot`函数判断如果可以复用当前节点，则复用。否则创建新的 fiber 节点并返回
+
+```js
+// key不同或者当前fiber不存在，返回null
+// 如果key相同，但是当前fiber节点为null，则创建新的fiber节点
+// 如果key相同，type不同，则创建新的fiber节点
+// 如果key相同，type相同，则复用当前的fiber节点
+function updateSlot(returnFiber, oldFiber, newChild, lanes) {
+  var key = oldFiber !== null ? oldFiber.key : null;
+  if (typeof newChild === "object" && newChild !== null) {
+    switch (newChild.$$typeof) {
+      case REACT_ELEMENT_TYPE: {
+        if (newChild.key === key) {
+          return updateElement(returnFiber, oldFiber, newChild, lanes);
+        } else {
+          return null;
+        }
+      }
+    }
+  }
+  return null;
 }
 function useFiber(fiber, pendingProps) {
   // 重置index以及sibling
@@ -177,26 +227,25 @@ function updateElement(returnFiber, current, element, lanes) {
   created.return = returnFiber;
   return created;
 }
-// key不同或者当前fiber不存在，返回null
-// 如果key相同，但是当前fiber节点为null，则创建新的fiber节点
-// 如果key相同，type不同，则创建新的fiber节点
-// 如果key相同，type相同，则复用当前的fiber节点
-function updateSlot(returnFiber, oldFiber, newChild, lanes) {
-  var key = oldFiber !== null ? oldFiber.key : null;
-  if (typeof newChild === "object" && newChild !== null) {
-    switch (newChild.$$typeof) {
-      case REACT_ELEMENT_TYPE: {
-        if (newChild.key === key) {
-          return updateElement(returnFiber, oldFiber, newChild, lanes);
-        } else {
-          return null;
-        }
-      }
-    }
-  }
+```
 
+`deleteRemainingChildren`将`currentFirstChild`以及其后面的所有兄弟节点都标记为删除，并全部添加到父节点的副作用链表中
+
+```js
+// 删除其余的fiber节点
+function deleteRemainingChildren(returnFiber, currentFirstChild) {
+  var childToDelete = currentFirstChild;
+  while (childToDelete !== null) {
+    deleteChild(returnFiber, childToDelete);
+    childToDelete = childToDelete.sibling;
+  }
   return null;
 }
+```
+
+`deleteChild` 将单个节点标记为删除，并且添加到父节点的副作用链表中
+
+```js
 // 将fiber节点标记为删除，并添加到父节点的副作用链表中
 function deleteChild(returnFiber, childToDelete) {
   var last = returnFiber.lastEffect;
@@ -209,15 +258,50 @@ function deleteChild(returnFiber, childToDelete) {
   childToDelete.nextEffect = null;
   childToDelete.flags = Deletion;
 }
+```
 
-// 删除其余的fiber节点
-function deleteRemainingChildren(returnFiber, currentFirstChild) {
-  var childToDelete = currentFirstChild;
-  while (childToDelete !== null) {
-    deleteChild(returnFiber, childToDelete);
-    childToDelete = childToDelete.sibling;
+`placeChild`函数为新的节点计算索引。新插入的节点返回 lastPlacedIndex，如果是复用当前 fiber 节点，则需要比较
+
+```js
+function placeChild(newFiber, lastPlacedIndex, newIndex) {
+  newFiber.index = newIndex;
+  var current = newFiber.alternate;
+
+  if (current !== null) {
+    var oldIndex = current.index;
+
+    if (oldIndex < lastPlacedIndex) {
+      // This is a move.
+      newFiber.flags = Placement;
+      return lastPlacedIndex;
+    } else {
+      // This item can stay in place.
+      return oldIndex;
+    }
+  } else {
+    // This is an insertion.
+    newFiber.flags = Placement;
+    return lastPlacedIndex;
+  }
+}
+```
+
+`mapRemainingChildren` 将剩下的旧的 fiber 节点添加到 map 中，方便快速查找。如果 key 为 null，则使用节点的 index 作为键
+
+```js
+function mapRemainingChildren(returnFiber, currentFirstChild) {
+  var existingChildren = new Map();
+  var existingChild = currentFirstChild;
+  while (existingChild !== null) {
+    if (existingChild.key !== null) {
+      existingChildren.set(existingChild.key, existingChild);
+    } else {
+      existingChildren.set(existingChild.index, existingChild);
+    }
+
+    existingChild = existingChild.sibling;
   }
 
-  return null;
+  return existingChildren;
 }
 ```

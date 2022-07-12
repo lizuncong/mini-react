@@ -33,7 +33,7 @@ class Home extends React.Component {
       </ul>
     ) : (
       <ul key="ul" onClick={this.handleClick}>
-        <li key="A" id="A2">
+        <li key="A2" id="A2">
           A
         </li>
         <p key="B" id="B2">
