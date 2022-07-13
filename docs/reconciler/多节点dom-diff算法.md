@@ -41,8 +41,13 @@ function reconcileChildrenArray(returnFiber, currentFirstChild, newChildren) {
 
   for (; newIdx < newChildren.length; newIdx++) {
     // 从map中查找是否能复用旧的fiber节点
-    var _newFiber2 = updateFromMap(existingChildren,returnFiber,newIdx,newChildren[newIdx]);
-    if(_newFiber2.alternate){
+    var _newFiber2 = updateFromMap(
+      existingChildren,
+      returnFiber,
+      newIdx,
+      newChildren[newIdx]
+    );
+    if (_newFiber2.alternate) {
       // 如果可以复用，则将旧的fiber从existingChildren中删除
       existingChildren.delete(
         _newFiber2.key === null ? newIdx : _newFiber2.key
@@ -57,17 +62,20 @@ function reconcileChildrenArray(returnFiber, currentFirstChild, newChildren) {
   return resultingFirstChild;
 }
 ```
-从以上伪代码可以看出，React在对多节点的dom diff过程中：
 
+从以上伪代码可以看出，React 在对多节点的 dom diff 过程中：
 
-首先进行一轮for循环，同时遍历新旧节点
-  + 如果key都相同，则需要判断新的元素优先遍历完成，还是旧的fiber节点优先遍历完成
-  + 如果key不同，则提前结束当前for循环，将剩下的fiber节点存入map中，继续遍历剩下的新的element，从map中查找是否能复用
+首先进行一轮 for 循环，同时遍历新旧节点
 
-**注意：type不同并不会导致第一步的for循环提前结束。**
+- 如果 key 都相同，则需要判断新的元素优先遍历完成，还是旧的 fiber 节点优先遍历完成
+- 如果 key 不同，则提前结束当前 for 循环，将剩下的 fiber 节点存入 map 中，继续遍历剩下的新的 element，从 map 中查找是否能复用
 
-### 新的 React Element 优先遍历完成，同时存在type不同的节点
-type不同，则将当前fiber节点标记为删除，继续遍历
+**注意：type 不同并不会导致第一步的 for 循环提前结束。**
+
+### 新的 React Element 优先遍历完成，同时存在 type 不同的节点
+
+type 不同，则将当前 fiber 节点标记为删除，继续遍历
+
 ```js
 // 更新前
 <ul key="ul">
@@ -83,11 +91,13 @@ type不同，则将当前fiber节点标记为删除，继续遍历
   <li key="C" id="C2">C2</li>
 </ul>
 ```
+
 删除 `p#B`、`li#D` 节点，复用 `li#A`、`li#C`节点，创建新的`li#B`节点
 
-**注意，在比较`li#B`和`p#B`时，发现 key 不同，但是 type 不同，React 不会提前退出第一步的for循环。而是继续遍历。只有在 key 不同的时候才会提前退出循环**
+**注意，在比较`li#B`和`p#B`时，发现 key 不同，但是 type 不同，React 不会提前退出第一步的 for 循环。而是继续遍历。只有在 key 不同的时候才会提前退出循环**
 
 ### 旧的 fiber 节点优先遍历完成
+
 ```js
 // 更新前
 <ul key="ul">
@@ -104,10 +114,82 @@ type不同，则将当前fiber节点标记为删除，继续遍历
 </ul>
 ```
 
-## 多节点Dom Diff复杂场景：节点删除、新增、移动
-```js
+## 多节点 Dom Diff 复杂场景：节点删除、新增、移动
 
+```js
+// 更新前
+<ul key="ul">
+  <li key="A" id="A">A</li>
+  <li key="B" id="B">B</li>
+  <li key="C" id="C">C</li>
+  <li key="D" id="D">D</li>
+  <li key="E" id="E">E</li>
+  <li key="F" id="F">F</li>
+</ul>
+// 更新后
+<ul key="ul" onClick={this.handleClick}>
+  <li key="A" id="A2">A2</li>
+  <li key="B2" id="B2">B2</li>
+  <li key="D" id="D2">D2</li>
+  <li key="H" id="H">H</li>
+  <li key="C" id="C2">C2</li>
+  <li key="F" id="F2">F2</li>
+  <li key="G" id="G2">G2</li>
+</ul>
 ```
+
+dom diff 过程如下：
+
+- 第一步：首先 for 循环同时遍历旧的 fiber 节点和新的 element 节点，当遍历到 `li#B` 和 `li#B2` 时发现 `key不同`，于是结束当前 for 循环
+- 第二步：判断新的 element 节点还没遍历完成
+- 第三步：判断旧的 fiber 节点还没遍历完成
+- 第四步：将剩下的 fiber 节点(即 `li#B` 到 `li#F`) 存入 map 中，即 existingChildren，`key` 做键。如果`key`不存在，则使用当前 fiber 的 index 做为键
+
+```js
+var existingChildren = {
+  B: fiberB, // li#B
+  C: fiberC, // li#C
+  D: fiberD, // li#D
+  E: fiberE, // li#E
+  F: fiberF, // li#F
+};
+```
+
+- 第五步：遍历剩下的 element 节点(即 `li#B2` 到 `li#G2`)，尝试着从 existingChildren 中复用 fiber 节点，如果不能复用，则创建新的 fiber 节点
+
+经过上面的步骤，existingChildren 最终只剩下两个 fiber 节点没有被复用
+
+```js
+{
+  "B": fiberB, // li#B
+  "E": fiberE, // li#E
+}
+```
+
+调用`deleteChild`将`existingChildren`里面的没有被复用的节点删除
+
+```js
+existingChildren.forEach(function (child) {
+  return deleteChild(returnFiber, child);
+});
+```
+
+最终，我们得到下面的副作用链表，如果对 React 构建副作用链表不熟悉的，可以看这篇文章[构建副作用链表算法](https://github.com/lizuncong/mini-react/blob/master/docs/reconciler/%E6%9E%84%E5%BB%BA%E5%89%AF%E4%BD%9C%E7%94%A8%E9%93%BE%E8%A1%A8%E7%AE%97%E6%B3%95.md)
+
+- 删除 li#B
+- 删除 li#E
+- 更新 li#A2
+- 插入 li#B2
+- 更新 li#D2
+- 插入 li#H
+- 插入更新 li#C2
+- 更新 li#F2
+- 插入 li#G2
+
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/dom-diff-01.jpg)
+
+在 commit 阶段，React 遍历副作用链表并执行对应的操作。**问题是，React 是基于什么规则移动节点的？**
+
 ## 多节点 DOM Diff 主要源码
 
 Dom Diff 协调从 `reconcileChildFibers` 函数开始，而多节点的协调算法在`reconcileChildrenArray`函数中
