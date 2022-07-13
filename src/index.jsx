@@ -12,45 +12,26 @@ class Home extends React.Component {
       count: this.state.count + 1,
     });
   }
-  //  <ul key="ul">
-  //   <li key="A" id="A">
-  //     A
-  //   </li>
-  //   <li key="B" id="B">
-  //     B
-  //   </li>
-  //   <li key="C" id="C">
-  //     C
-  //   </li>
-  // </ul>
   render() {
     const { count } = this.state;
     return !count ? (
       <ul key="ul" onClick={this.handleClick}>
-        <li key="A" id="A">
-          A
-        </li>
-        <p key="B" id="B">
-          B
-        </p>
-        <li key="C" id="C">
-          C
-        </li>
-        <li key="D" id="D">
-          D
-        </li>
+        <li key="A" id="A">A</li>
+        <li key="B" id="B">B</li>
+        <li key="C" id="C">C</li>
+        <li key="D" id="D">D</li>
+        <li key="E" id="E">E</li>
+        <li key="F" id="F">F</li>
       </ul>
     ) : (
       <ul key="ul" onClick={this.handleClick}>
-        <li key="A" id="A2">
-          A
-        </li>
-        <li key="B" id="B2">
-          B
-        </li>
-        <li key="C" id="C2">
-          C
-        </li>
+        <li key="A" id="A2">A2</li>
+        <li key="B2" id="B2">B2</li>
+        <li key="D" id="D2">D2</li>
+        <li key="H" id="H">H</li>
+        <li key="C" id="C2">C2</li>
+        <li key="F" id="F2">F2</li>
+        <li key="G" id="G2">G2</li>
       </ul>
     );
   }
