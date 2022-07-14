@@ -180,20 +180,6 @@ existingChildren.forEach(function (child) {
 
 ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/dom-diff-01.jpg)
 
-在 commit 阶段，React 遍历副作用链表并执行对应的操作。最终，执行的操作如下：
-
-- 删除 li#B
-- 删除 li#E
-- 更新 li#A2
-- 插入新节点 li#B2
-- 更新 li#D2
-- 插入新节点 li#H
-- 移动(插入)更新 li#C2
-- 更新 li#F2
-- 插入 li#G2
-
-**问题是，React 是基于什么规则移动节点的？** 下面我们来详细看下
-
 ### render 阶段：多节点 Dom Diff 节点移动规则详解
 
 **一句话概括就是：以新的 element 元素顺序为主，先复用的在前，后复用的在后(需要移动)。需要移动的节点在 reconcile 阶段将会被标记为 Placement(插入)，对应的 flags 为 2**
@@ -254,7 +240,7 @@ lastPlacedIndex = placeChild(_newFiber, lastPlacedIndex, newIdx);
 
 `placeChild` 方法比较的是旧节点的索引
 
-以上面的为例，依次调用 `placeChild` 方法，其中，遍历到以下节点时
+以上面的为例，对于新的节点依次调用 `placeChild` 方法，其中，遍历到以下节点时
 
 1. 当遍历到新的节点 `li#D2` 时
 
@@ -286,60 +272,39 @@ render 阶段我们将得到一个副作用链表，commit 阶段遍历副作用
 
 ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/dom-diff-02.jpg)
 
+commit 阶段操作真实 dom 的逻辑都在`commitMutationEffects` 函数中，这个函数从头开始遍历副作用链表，其中 `commitPlacement` 执行的是插入的逻辑。`commitWork`执行的是更新的逻辑。`commitDeletion` 执行的是删除的逻辑。
+
 ```js
 function commitMutationEffects(root, renderPriorityLevel) {
   while (nextEffect !== null) {
     var flags = nextEffect.flags;
-    // The following switch statement is only concerned about placement,
-    // updates, and deletions. To avoid needing to add a case for every possible
-    // bitmap value, we remove the secondary effects from the effect tag and
-    // switch on that value.
-
     var primaryFlags = flags & (Placement | Update | Deletion | Hydrating);
 
     switch (primaryFlags) {
+      // 插入
       case Placement: {
-        commitPlacement(nextEffect); // Clear the "placement" from effect tag so that we know that this is
-        // inserted, before any life-cycles like componentDidMount gets called.
-        // TODO: findDOMNode doesn't rely on this any more but isMounted does
-        // and isMounted is deprecated anyway so we should be able to kill this.
-
+        commitPlacement(nextEffect);
         nextEffect.flags &= ~Placement;
         break;
       }
-
+      // 插入并更新，针对节点移动的情况
       case PlacementAndUpdate: {
         // Placement
-        commitPlacement(nextEffect); // Clear the "placement" from effect tag so that we know that this is
-        // inserted, before any life-cycles like componentDidMount gets called.
-
-        nextEffect.flags &= ~Placement; // Update
-
+        commitPlacement(nextEffect);
+        nextEffect.flags &= ~Placement;
         var _current = nextEffect.alternate;
+        // 更新
         commitWork(_current, nextEffect);
         break;
       }
-
-      case Hydrating: {
-        nextEffect.flags &= ~Hydrating;
-        break;
-      }
-
-      case HydratingAndUpdate: {
-        nextEffect.flags &= ~Hydrating; // Update
-
-        var _current2 = nextEffect.alternate;
-        commitWork(_current2, nextEffect);
-        break;
-      }
-
       case Update: {
+        // 更新
         var _current3 = nextEffect.alternate;
         commitWork(_current3, nextEffect);
         break;
       }
-
       case Deletion: {
+        // 删除
         commitDeletion(root, nextEffect);
         break;
       }
@@ -348,6 +313,94 @@ function commitMutationEffects(root, renderPriorityLevel) {
   }
 }
 ```
+
+`commitMutationEffects`执行前，旧节点如下：
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/dom-diff-03.jpg)
+下面我们开始依次遍历副作用链表：
+
+1. 第一步：删除 li#B 节点
+   ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/dom-diff-04.jpg)
+
+2. 第二步：删除 li#E 节点
+   ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/dom-diff-05.jpg)
+
+3. 第三步：更新 li#A 节点
+   ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/dom-diff-06.jpg)
+
+4. 第四步：插入新节点 li#B2
+
+`commitPlacement`执行的是节点的插入操作，插入操作相对复杂，我们来拆解一下这个过程
+
+```js
+function commitPlacement(finishedWork) {
+  // 找出当前节点的父节点
+  var parentFiber = getHostParentFiber(finishedWork);
+  // 获取父节点的真实的dom
+  var parentStateNode = parentFiber.stateNode;
+  // 为finishedWork查找第一个没有插入副作用(即不用执行插入操作)的兄弟节点
+  var before = getHostSibling(finishedWork);
+
+  insertOrAppendPlacementNode(finishedWork, before, parent);
+}
+function getHostSibling(fiber) {
+  var node = fiber;
+
+  while (true) {
+    // 没有兄弟节点
+    while (node.sibling === null) {
+      // 如果父节点是个真实dom的话，则返回null
+      if (isHostParent(node.return)) {
+        return null;
+      }
+      node = node.return;
+    }
+    node = node.sibling;
+
+    // 查找最近的不用执行插入操作的兄弟节点
+    if (!(node.flags & Placement)) {
+      return node.stateNode;
+    }
+  }
+}
+
+function insertOrAppendPlacementNode(node, before, parent) {
+  var stateNode = node.stateNode;
+  if (before) {
+    // 如果getHostSibling找到第一个没有插入副作用的兄弟节点，则在兄弟节点前插入新的节点
+    parent.insertBefore(stateNode, before);
+  } else {
+    // 如果getHostSibling没有找到不带插入副作用的兄弟节点，则直接将节点追加到父节点的子节点后面
+    parent.appendChild(stateNode);
+  }
+}
+```
+
+首先获取当前节点的父节点，其次调用`getHostSibling`查找第一个**没有插入副作用，即!(node.flags & Placement)为 true**的兄弟节点，如果该兄弟节点存在，则在该兄弟节点前插入新的节点，否则直接追加到父节点的子节点后面。
+
+在我们的例子中，`li#B2` 后面第一个没有插入副作用的节点是 `li#D2`，因此 React 在 `li#D` 前面插入 `li#B2`
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/dom-diff-07.jpg)
+
+5. 第五步：更新 li#D 节点
+   ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/dom-diff-08.jpg)
+
+6. 第六步：插入新节点 li#H
+
+   和第四步一样，我们需要找到第一个没有插入副作用的兄弟节点，对于 `li#H` 来说，第一个没有插入副作用的兄弟节点就是 `li#F2`，因此在`li#F`前面插入`li#H`
+   ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/dom-diff-09.jpg)
+
+7. 第七步：插入并更新节点 li#C2
+
+注意 `li#C2` 的副作用标志是`6`，这是插入并更新的标志，实际上这是旧节点需要移动的意思。首先执行的是插入操作，和第四步一样，我们需要为 `li#C2` 找到第一个没有插入副作用的兄弟节点，这里是 `li#F`，因此在 `li#F` 前面插入 `li#C`
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/dom-diff-10.jpg)
+然后执行更新操作
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/dom-diff-11.jpg)
+
+8. 第八步：更新 li#F 节点
+   ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/dom-diff-12.jpg)
+
+9. 第九步：插入新节点 li#G2
+   和第四步一样，我们需要为`li#G2`找到第一个没有插入副作用的兄弟节点，`li#G2`已经没有兄弟节点了，因此我们直接调用它父节点的`appendChild`方法往后面追加即可
+   ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/dom-diff-13.jpg)
 
 ## 多节点 DOM Diff 主要源码
 
