@@ -116,6 +116,8 @@ type 不同，则将当前 fiber 节点标记为删除，继续遍历
 
 ## 多节点 Dom Diff 复杂场景：节点删除、新增、移动
 
+**节点移动规则：先复用的在前，后复用的在后**
+
 ```js
 // 更新前
 <ul key="ul">
@@ -176,19 +178,176 @@ existingChildren.forEach(function (child) {
 
 最终，我们得到下面的副作用链表，如果对 React 构建副作用链表不熟悉的，可以看这篇文章[构建副作用链表算法](https://github.com/lizuncong/mini-react/blob/master/docs/reconciler/%E6%9E%84%E5%BB%BA%E5%89%AF%E4%BD%9C%E7%94%A8%E9%93%BE%E8%A1%A8%E7%AE%97%E6%B3%95.md)
 
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/dom-diff-01.jpg)
+
+在 commit 阶段，React 遍历副作用链表并执行对应的操作。最终，执行的操作如下：
+
 - 删除 li#B
 - 删除 li#E
 - 更新 li#A2
-- 插入 li#B2
+- 插入新节点 li#B2
 - 更新 li#D2
-- 插入 li#H
-- 插入更新 li#C2
+- 插入新节点 li#H
+- 移动(插入)更新 li#C2
 - 更新 li#F2
 - 插入 li#G2
 
-![image](https://github.com/lizuncong/mini-react/blob/master/imgs/dom-diff-01.jpg)
+**问题是，React 是基于什么规则移动节点的？** 下面我们来详细看下
 
-在 commit 阶段，React 遍历副作用链表并执行对应的操作。**问题是，React 是基于什么规则移动节点的？**
+### render 阶段：多节点 Dom Diff 节点移动规则详解
+
+**一句话概括就是：以新的 element 元素顺序为主，先复用的在前，后复用的在后(需要移动)。需要移动的节点在 reconcile 阶段将会被标记为 Placement(插入)，对应的 flags 为 2**
+
+```js
+// 更新前
+<ul key="ul">
+  <li key="A" id="A">A</li>
+  <li key="B" id="B">B</li>
+  <li key="C" id="C">C</li>
+  <li key="D" id="D">D</li>
+  <li key="E" id="E">E</li>
+  <li key="F" id="F">F</li>
+</ul>
+// 更新后
+<ul key="ul" onClick={this.handleClick}>
+  <li key="A" id="A2">A2</li>
+  <li key="B2" id="B2">B2</li>
+  <li key="D" id="D2">D2</li>
+  <li key="H" id="H">H</li>
+  <li key="C" id="C2">C2</li>
+  <li key="F" id="F2">F2</li>
+  <li key="G" id="G2">G2</li>
+</ul>
+```
+
+在这个例子中，存在节点更新、移动、新节点插入的情况，**那么对于移动的节点，React 采用什么算法来识别需要移动的节点并标记呢？这个算法在 placeChild 方法中**，如下所示：
+
+```js
+var lastPlacedIndex = 0; // 记录上一个复用的，不需要移动的旧节点的索引(这个索引是指在旧的节点列表中的顺序)
+function placeChild(newFiber, lastPlacedIndex, newIndex) {
+  newFiber.index = newIndex;
+
+  var current = newFiber.alternate;
+  if (current !== null) {
+    var oldIndex = current.index;
+
+    if (oldIndex < lastPlacedIndex) {
+      // 需要移动的节点，标记为插入
+      newFiber.flags = Placement;
+      return lastPlacedIndex;
+    } else {
+      // 旧节点不需要移动
+      return oldIndex;
+    }
+  } else {
+    //新的节点，标记为插入
+    newFiber.flags = Placement;
+    return lastPlacedIndex;
+  }
+}
+
+// 调用
+lastPlacedIndex = placeChild(_newFiber, lastPlacedIndex, newIdx);
+```
+
+`lastPlacedIndex` 记录的是**上一个被复用的、同时不需要移动的节点的索引，这个索引对应的是旧节点的顺序，以确定哪个节点需要移动，如果需要移动，则标记为插入。**
+
+`placeChild` 方法比较的是旧节点的索引
+
+以上面的为例，依次调用 `placeChild` 方法，其中，遍历到以下节点时
+
+1. 当遍历到新的节点 `li#D2` 时
+
+```js
+lastPlacedIndex = placeChild(li#D2, lastPlacedIndex, newIdx);
+```
+
+由于 `li#D2` 可以复用旧的`li#D` fiber 节点并且不需要移动，因此将 `lastPlacedIndex` 更新为 `li#D` 的索引，即`3`
+
+2. 当遍历到新的节点 `li#C2` 时
+
+```js
+lastPlacedIndex = placeChild(li#C2, lastPlacedIndex, newIdx);
+```
+
+由于 `li#C2` 可以复用旧的 `li#C` fiber 节点，同时由于 `li#C` 的索引小于`li#D`的，因此`li#C2`需要移动，标记为插入，lastPlacedIndex 保持不变
+
+3. 当遍历到新的节点 `li#F2` 时
+
+```js
+lastPlacedIndex = placeChild(li#F2, lastPlacedIndex, newIdx);
+```
+
+由于 `li#F2` 可以复用旧的 `li#F` fiber 节点，同时由于 `li#F` 的索引大于`li#D`的(即原本 F 的位置就是在 D 后面)，因此`li#F`不需要移动，lastPlacedIndex 更新为 `li#F` 的索引，即 `5`
+
+### commit 阶段：多节点 Dom Diff 节点删除、更新、插入(移动)
+
+render 阶段我们将得到一个副作用链表，commit 阶段遍历副作用链表上的节点，并执行对应的操作。副作用链表如下
+
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/dom-diff-02.jpg)
+
+```js
+function commitMutationEffects(root, renderPriorityLevel) {
+  while (nextEffect !== null) {
+    var flags = nextEffect.flags;
+    // The following switch statement is only concerned about placement,
+    // updates, and deletions. To avoid needing to add a case for every possible
+    // bitmap value, we remove the secondary effects from the effect tag and
+    // switch on that value.
+
+    var primaryFlags = flags & (Placement | Update | Deletion | Hydrating);
+
+    switch (primaryFlags) {
+      case Placement: {
+        commitPlacement(nextEffect); // Clear the "placement" from effect tag so that we know that this is
+        // inserted, before any life-cycles like componentDidMount gets called.
+        // TODO: findDOMNode doesn't rely on this any more but isMounted does
+        // and isMounted is deprecated anyway so we should be able to kill this.
+
+        nextEffect.flags &= ~Placement;
+        break;
+      }
+
+      case PlacementAndUpdate: {
+        // Placement
+        commitPlacement(nextEffect); // Clear the "placement" from effect tag so that we know that this is
+        // inserted, before any life-cycles like componentDidMount gets called.
+
+        nextEffect.flags &= ~Placement; // Update
+
+        var _current = nextEffect.alternate;
+        commitWork(_current, nextEffect);
+        break;
+      }
+
+      case Hydrating: {
+        nextEffect.flags &= ~Hydrating;
+        break;
+      }
+
+      case HydratingAndUpdate: {
+        nextEffect.flags &= ~Hydrating; // Update
+
+        var _current2 = nextEffect.alternate;
+        commitWork(_current2, nextEffect);
+        break;
+      }
+
+      case Update: {
+        var _current3 = nextEffect.alternate;
+        commitWork(_current3, nextEffect);
+        break;
+      }
+
+      case Deletion: {
+        commitDeletion(root, nextEffect);
+        break;
+      }
+    }
+    nextEffect = nextEffect.nextEffect;
+  }
+}
+```
 
 ## 多节点 DOM Diff 主要源码
 
