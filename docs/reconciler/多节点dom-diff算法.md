@@ -182,7 +182,7 @@ existingChildren.forEach(function (child) {
 
 ### render 阶段：多节点 Dom Diff 节点移动规则详解
 
-**一句话概括就是：以新的 element 元素顺序为主，先复用的在前，后复用的在后(需要移动)。需要移动的节点在 reconcile 阶段将会被标记为 Placement(插入)，对应的 flags 为 2**
+**一句话概括就是：以新的 element 元素顺序为主，先复用的在前，后复用的在后(需要移动)。需要移动的节点在 reconcile 阶段将会被标记为 Placement(插入)副作用，对应的 flags 为 2**
 
 ```js
 // 更新前
