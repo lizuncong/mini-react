@@ -55,8 +55,6 @@
   - [Dom Diff 算法简介](https://github.com/lizuncong/mini-react/blob/master/docs/reconciler/dom-diff%E7%AE%97%E6%B3%95%E7%AE%80%E4%BB%8B.md)
   - [单节点Dom Diff算法简介](https://github.com/lizuncong/mini-react/blob/master/docs/reconciler/%E5%8D%95%E8%8A%82%E7%82%B9dom-diff%E7%AE%97%E6%B3%95.md)
   - [多节点Dom Diff算法及Commit阶段节点移动插入更新删除等源码剖析](https://github.com/lizuncong/mini-react/blob/master/docs/reconciler/%E5%A4%9A%E8%8A%82%E7%82%B9dom-diff%E7%AE%97%E6%B3%95.md)
-  - [Dom Diff 算法简介](https://github.com/lizuncong/mini-react/blob/master/docs/reconciler/dom-diff%E7%AE%97%E6%B3%95%E7%AE%80%E4%BB%8B.md)
-  - [Dom Diff 算法简介](https://github.com/lizuncong/mini-react/blob/master/docs/reconciler/dom-diff%E7%AE%97%E6%B3%95%E7%AE%80%E4%BB%8B.md)
   - [构建副作用链表算法，为什么 React 不采用数组保存具有副作用的 Fiber 节点？](https://github.com/lizuncong/mini-react/blob/master/docs/reconciler/%E6%9E%84%E5%BB%BA%E5%89%AF%E4%BD%9C%E7%94%A8%E9%93%BE%E8%A1%A8%E7%AE%97%E6%B3%95.md)
   - [Dom diff 所有场景介绍](https://github.com/lizuncong/mini-react/blob/master/docs/reconciler/dom-diff%E6%89%80%E6%9C%89%E5%9C%BA%E6%99%AF.md)
 
