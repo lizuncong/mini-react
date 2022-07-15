@@ -31,7 +31,7 @@ React.createElement(
 }
 ```
 
-我们设置可以在代码中这样直接写：
+我们甚至可以在代码中这样直接写：
 
 ```jsx
 render() {
@@ -82,7 +82,7 @@ messageEl.innerHTML = "<p>" + message + "</p>";
 
 为了解决类似的 XSS 攻击方法，我们可以使用一些安全的 API，比如：
 
-- 使用 `document.createTextNode()` 插入文本节点。
+- 使用 `document.createTextNode('hello world')` 插入文本节点。
 - 或者使用 `textContent` 而不是 `innerHTML` 设置文本内容。
 - 对于一些特殊字符，比如 `<`、`>`，我们可以进行转义，将其转换为 `&#60;` 以及 `&#62;`
 - 对于富文本内容，我们可以设置黑名单，过滤一些属性，比如 `onerror` 等。
@@ -127,7 +127,7 @@ var setTextContent = function (node, text) {
 
 ### dangerouslySetInnerHTML 处理富文本节点
 
-有时候我们确实需要显示富文本的内容，React 提供了`dangerouslySetInnerHTML`方便我们显示的插入富文本内容
+有时候我们确实需要显示富文本的内容，React 提供了`dangerouslySetInnerHTML`方便我们显式的插入富文本内容
 
 ```jsx
 render() {
