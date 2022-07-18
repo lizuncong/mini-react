@@ -97,23 +97,142 @@ ReactDOM.hydrate(<Home />, document.getElementById("root"));
 
 ## hydrate 源码剖析
 
-### updateHostRoot
+### beginWork
+
+和 `hydrate` 有关的只有 `HostRoot(root节点)`、`HostComponent`、`HostText` 三种类型的节点。
 
 ```js
 function beginWork(current, workInProgress, renderLanes) {
   switch (workInProgress.tag) {
     case HostRoot:
       return updateHostRoot(current, workInProgress, renderLanes);
+    case HostComponent:
+      return updateHostComponent(current, workInProgress, renderLanes);
+    case HostText:
+      return updateHostText(current, workInProgress);
   }
 }
+function completeUnitOfWork(unitOfWork) {
+  var completedWork = unitOfWork;
+  do {
+    var current = completedWork.alternate;
+    var returnFiber = completedWork.return;
+    next = completeWork(current, completedWork, subtreeRenderLanes);
+    var siblingFiber = completedWork.sibling;
+    if (siblingFiber !== null) {
+      workInProgress = siblingFiber;
+      return;
+    }
+    completedWork = returnFiber;
+    workInProgress = completedWork;
+  } while (completedWork !== null);
+}
+function completeWork(current, workInProgress, renderLanes) {
+  switch (workInProgress.tag) {
+    case HostComponent:
+      // 第一次渲染
+      if (current === null) {
+        var _wasHydrated = popHydrationState(workInProgress);
+        if (_wasHydrated) {
+          // 如果存在差异的属性，则将fiber副作用标记为更新
+          if (
+            prepareToHydrateHostInstance(
+              workInProgress,
+              rootContainerInstance,
+              currentHostContext
+            )
+          ) {
+            markUpdate(workInProgress);
+          }
+        } else {
+        }
+      }
+  }
+}
+function popHydrationState(fiber) {
+  if (fiber !== hydrationParentFiber) {
+    return false;
+  }
+
+  if (!isHydrating) {
+    return false;
+  }
+
+  var type = fiber.type;
+  popToNextHostParent(fiber);
+
+  nextHydratableInstance = hydrationParentFiber
+    ? getNextHydratableSibling(fiber.stateNode)
+    : null;
+
+  return true;
+}
+function popToNextHostParent(fiber) {
+  var parent = fiber.return;
+
+  while (
+    parent !== null &&
+    parent.tag !== HostComponent &&
+    parent.tag !== HostRoot
+  ) {
+    parent = parent.return;
+  }
+
+  hydrationParentFiber = parent;
+}
+function prepareToHydrateHostInstance(
+  fiber,
+  rootContainerInstance,
+  hostContext
+) {
+  var instance = fiber.stateNode;
+  var updatePayload = hydrateInstance(
+    instance,
+    fiber.type,
+    fiber.memoizedProps,
+    rootContainerInstance,
+    hostContext,
+    fiber
+  ); // TODO: Type this specific to this type of component.
+
+  fiber.updateQueue = updatePayload; // If the update payload indicates that there is a change or if there
+  // is a new ref we mark this as an update.
+
+  if (updatePayload !== null) {
+    return true;
+  }
+
+  return false;
+}
+function hydrateInstance(
+  instance,
+  type,
+  props,
+  rootContainerInstance,
+  hostContext,
+  internalInstanceHandle
+) {
+  instance.__reactFiber$vhm3qckg74k = internalInstanceHandle
+  instance.__reactProps$vhm3qckg74k = props
+
+  // 比较 domElement.attributes以及props的属性差异，特别是，在比较 children 属性时，会用domElement.textContent和props.children进行全等判断，如果不匹配，则控制台提示：Text content did not match. Server: "%s" Client: "%s"'。当然还有其他属性的比较。如果客户端和服务端的属性不匹配，就提示对应的内容。
+  // 有差异的属性会被保存到updatePayload =[key，value]数组中并返回
+  return diffHydratedProperties(instance, type, props, parentNamespace);
+}
+```
+
+### updateHostRoot
+
+`enterHydrationState` 初始化三个全局变量，表明当前第一次渲染处于`hydrating`的过程
+
+- isHydrating。布尔值，全局变量。指示当前第一次渲染处于`hydrating`过程
+- nextHydratableInstance。dom 实例，全局变量。保存的是下一个可以被混合(hydrate)的 dom 实例，只有`nodeType`为`ELEMENT_NODE`或者`TEXT_NODE`的真实 dom 实例才可以被混合
+- hydrationParentFiber。fiber 实例，全局变量。保存的是当前正在混合的 fiber
+
+```js
 function updateHostRoot(current, workInProgress, renderLanes) {
   if (root.hydrate && enterHydrationState(workInProgress)) {
-    var child = mountChildFibers(
-      workInProgress,
-      null,
-      nextChildren,
-      renderLanes
-    );
+    var child = mountChildFibers(workInProgress, null, nextChildren);
     workInProgress.child = child;
     var node = child;
 
@@ -138,12 +257,6 @@ function enterHydrationState() {
 ### updateHostComponent
 
 ```js
-function beginWork(current, workInProgress, renderLanes) {
-  switch (workInProgress.tag) {
-    case HostComponent:
-      return updateHostComponent(current, workInProgress, renderLanes);
-  }
-}
 function updateHostComponent(current, workInProgress, renderLanes) {
   if (current === null) {
     tryToClaimNextHydratableInstance(workInProgress);
@@ -156,12 +269,6 @@ function updateHostComponent(current, workInProgress, renderLanes) {
 ### updateHostText
 
 ```js
-function beginWork(current, workInProgress, renderLanes) {
-  switch (workInProgress.tag) {
-    case HostText:
-      return updateHostText(current, workInProgress);
-  }
-}
 function updateHostText(current, workInProgress) {
   if (current === null) {
     tryToClaimNextHydratableInstance(workInProgress);
@@ -172,19 +279,11 @@ function updateHostText(current, workInProgress) {
 
 ### tryToClaimNextHydratableInstance
 
+`tryToClaimNextHydratableInstance` 主要做了几件事：
+
+- 调用 `tryHydrate` 为当前正在工作的 `fiber` 尝试`hydrate`，如果满足`hydrate`的条件，则将 dom 实例赋值给`fiber.stateNode`
+
 ```js
-function getNextHydratable(node) {
-  // Skip non-hydratable nodes.
-  for (; node != null; node = node.nextSibling) {
-    var nodeType = node.nodeType;
-
-    if (nodeType === ELEMENT_NODE || nodeType === TEXT_NODE) {
-      break;
-    }
-  }
-
-  return node;
-}
 function tryToClaimNextHydratableInstance(fiber) {
   if (!isHydrating) {
     return;
@@ -202,60 +301,37 @@ function tryToClaimNextHydratableInstance(fiber) {
 function tryHydrate(fiber, nextInstance) {
   switch (fiber.tag) {
     case HostComponent: {
-      var type = fiber.type;
-      var props = fiber.pendingProps;
-      var instance = canHydrateInstance(nextInstance, type);
-
-      if (instance !== null) {
-        fiber.stateNode = instance;
+      if (
+        nextInstance.nodeType === ELEMENT_NODE &&
+        fiber.type.toLowerCase() === nextInstance.nodeName.toLowerCase()
+      ) {
+        fiber.stateNode = nextInstance;
         return true;
       }
-
       return false;
     }
-
     case HostText: {
       var text = fiber.pendingProps;
-      var textInstance = canHydrateTextInstance(nextInstance, text);
-
-      if (textInstance !== null) {
-        fiber.stateNode = textInstance;
+      if (text !== "" && nextInstance.nodeType === TEXT_NODE) {
+        fiber.stateNode = nextInstance;
         return true;
       }
-
       return false;
     }
-
     default:
       return false;
   }
 }
-function canHydrateInstance(instance, type, props) {
-  if (
-    instance.nodeType !== ELEMENT_NODE ||
-    type.toLowerCase() !== instance.nodeName.toLowerCase()
-  ) {
-    return null;
-  } // This has now been refined to an element node.
+function getNextHydratable(node) {
+  // Skip non-hydratable nodes.
+  for (; node != null; node = node.nextSibling) {
+    var nodeType = node.nodeType;
 
-  return instance;
-}
-function canHydrateTextInstance(instance, text) {
-  if (text === "" || instance.nodeType !== TEXT_NODE) {
-    // Empty strings are not parsed by HTML so there won't be a correct match here.
-    return null;
-  } // This has now been refined to a text node.
-
-  return instance;
-}
-```
-
-## completeUnitOfWork
-
-```js
-function completeWork(current, workInProgress, renderLanes) {
-  switch (workInProgress.tag) {
-    case HostComponent:
+    if (nodeType === ELEMENT_NODE || nodeType === TEXT_NODE) {
+      break;
+    }
   }
+
+  return node;
 }
 ```
