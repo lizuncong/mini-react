@@ -13,8 +13,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
   </head>
   <body>
-    <div id="root">
-      <div id="container"><div id="text">hello world</div><div id="count">0</div></div>
+    <div id="root"><div id="container"><div id="text">hello world</div><div id="count">0</div></div>
     </div>
   </body>
 </html>
@@ -212,8 +211,8 @@ function hydrateInstance(
   hostContext,
   internalInstanceHandle
 ) {
-  instance.__reactFiber$vhm3qckg74k = internalInstanceHandle
-  instance.__reactProps$vhm3qckg74k = props
+  instance.__reactFiber$vhm3qckg74k = internalInstanceHandle;
+  instance.__reactProps$vhm3qckg74k = props;
 
   // 比较 domElement.attributes以及props的属性差异，特别是，在比较 children 属性时，会用domElement.textContent和props.children进行全等判断，如果不匹配，则控制台提示：Text content did not match. Server: "%s" Client: "%s"'。当然还有其他属性的比较。如果客户端和服务端的属性不匹配，就提示对应的内容。
   // 有差异的属性会被保存到updatePayload =[key，value]数组中并返回
