@@ -90,6 +90,9 @@ ReactDOM.hydrate(<Home />, document.getElementById("root"));
 
 - 对于 nodeType 为 ELEMENT_NODE 的 DOM 实例，如果当前真实的 DOM 树上的节点和当前的 fiber 节点的`type`相同，即`fiber.type === dom.nodeName.toLowerCase()`，那么说明当前的 dom 可以`hydrate`
 
+- 对于文本节点，即`nodeType === TEXT_NODE`的节点，只要文本不为空，说明当前的dom可以`hydrate`
+
+
 **`hydrate`的终极目标就是，在构造 workInProgress 树的过程中，尽可能的复用当前浏览器已经存在的 DOM 实例以及 DOM 上的属性，这样就无需再为 fiber 节点创建 DOM 实例，同时对比现有的 DOM 的`attribute`以及 fiber 的`pendingProps`，找出差异的属性。然后将 dom 实例和 fiber 节点相互关联(通过 dom 实例的`__reactFiber$`以及`__reactProps$`，fiber 的 stateNode 相互关联)**
 
 `hydrate`过程只针对两类 fiber 节点：`HostComponent` 以及 `HostText`。在 render 阶段为这两类型的 fiber 节点协调子元素时，首先会调用`tryToClaimNextHydratableInstance`尝试着`hydrate`。

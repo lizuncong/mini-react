@@ -1,6 +1,5 @@
 import React from "react";
 import ReactDOM from "react-dom";
-import Counter from "./count";
 class Home extends React.Component {
   constructor(props) {
     super(props);
@@ -13,8 +12,13 @@ class Home extends React.Component {
     const { count } = this.state;
     return (
       <div id="container">
-        <div id="text">hello world</div>
-        <Counter />
+        <p id="A">
+          {count}
+          <div id="A2">A2</div>
+        </p>
+        <p id="B">
+          <div id="B1">B1</div>
+        </p>
       </div>
     );
   }
