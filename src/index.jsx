@@ -12,12 +12,12 @@ class Home extends React.Component {
     const { count } = this.state;
     return (
       <div id="container">
-        <p id="A">
+        <div id="A">
           {count}
           <div id="A2">A2</div>
-        </p>
+        </div>
         <p id="B">
-          <div id="B1">B1</div>
+          <span id="B1">B1</span>
         </p>
       </div>
     );
