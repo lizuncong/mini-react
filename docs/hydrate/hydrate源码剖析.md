@@ -254,16 +254,16 @@ function updateHostText(current, workInProgress) {
 
 ### tryToClaimNextHydratableInstance
 
-假设当前 fiber 对应位置的 dom 为 domA，`tryToClaimNextHydratableInstance` 会首先调用`tryHydrate`判断 fiber 和 domA 是否满足混合的条件：
+假设当前 fiberA 对应位置的 dom 为 domA，`tryToClaimNextHydratableInstance` 会首先调用`tryHydrate`判断 fiberA 和 domA 是否满足混合的条件：
 
-- 如果 fiber 和 domA 满足混合的条件，则将`hydrationParentFiber = fiber;`。并且获取 domA 的第一个子元素赋值给`nextHydratableInstance`
-- 如果 fiber 和 domA 不满足混合的条件，则获取 domA 的兄弟节点，即 domB，调用`tryHydrate`判断 fiber 和 domB 是否满足混合条件：
-  - 如果 domB 满足和 fiber 混合的条件，则将 domA 标记为删除，并获取 domB 的第一个子元素赋值给`nextHydratableInstance`
-  - 如果 domB 不满足和 fiber 混合的条件，则调用`insertNonHydratedInstance`提示错误："Warning: Expected server HTML to contain a matching"，同时将`isHydrating`标记为 false 退出。
+- 如果 fiberA 和 domA 满足混合的条件，则将`hydrationParentFiber = fiberA;`。并且获取 domA 的第一个子元素赋值给`nextHydratableInstance`
+- 如果 fiberA 和 domA 不满足混合的条件，则获取 domA 的兄弟节点，即 domB，调用`tryHydrate`判断 fiberA 和 domB 是否满足混合条件：
+  - 如果 domB 满足和 fiberA 混合的条件，则将 domA 标记为删除，并获取 domB 的第一个子元素赋值给`nextHydratableInstance`
+  - 如果 domB 不满足和 fiberA 混合的条件，则调用`insertNonHydratedInstance`提示错误："Warning: Expected server HTML to contain a matching"，同时将`isHydrating`标记为 false 退出。
 
-这里可以看出，`tryToClaimNextHydratableInstance`最多比较两个 dom 节点，如果两个 dom 节点都无法满足和 fiber 混合的条件，则说明当前 fiber 及其所有的子孙节点都无需再进行混合的过程，因此将`isHydrating`标记为 false。等到当前节点及其子节点都完成了工作，即都执行了`completeWork`，`isHydrating`才会被设置为 true，以便继续比较 fiber 的兄弟节点
+这里可以看出，`tryToClaimNextHydratableInstance`最多比较两个 dom 节点，如果两个 dom 节点都无法满足和 fiberA 混合的条件，则说明当前 fiberA 及其所有的子孙节点都无需再进行混合的过程，因此将`isHydrating`标记为 false。等到当前 fiberA 节点及其子节点都完成了工作，即都执行了`completeWork`，`isHydrating`才会被设置为 true，以便继续比较 fiberA 的兄弟节点
 
-这里还需要注意一点，如果两个 dom 都无法满足和 fiber 混合，那么`nextHydratableInstance`依然保存的是 domA，domA 会继续和 fiber 的兄弟节点比对。
+这里还需要注意一点，如果两个 dom 都无法满足和 fiberA 混合，那么`nextHydratableInstance`依然保存的是 domA，domA 会继续和 fiberA 的兄弟节点比对。
 
 ```js
 function tryToClaimNextHydratableInstance(fiber) {
@@ -380,3 +380,109 @@ function completeWork(current, workInProgress, renderLanes) {
 ```
 
 ### popHydrationState
+
+```js
+function popHydrationState(fiber) {
+  if (fiber !== hydrationParentFiber) {
+    return false;
+  }
+
+  if (!isHydrating) {
+    popToNextHostParent(fiber);
+    isHydrating = true;
+    return false;
+  }
+
+  var type = fiber.type;
+
+  if (
+    fiber.tag !== HostComponent ||
+    !shouldSetTextContent(type, fiber.memoizedProps)
+  ) {
+    var nextInstance = nextHydratableInstance;
+
+    while (nextInstance) {
+      deleteHydratableInstance(fiber, nextInstance);
+      nextInstance = getNextHydratableSibling(nextInstance);
+    }
+  }
+
+  popToNextHostParent(fiber);
+
+  nextHydratableInstance = hydrationParentFiber
+    ? getNextHydratableSibling(fiber.stateNode)
+    : null;
+
+  return true;
+}
+```
+
+以下图为例：
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/hydrate-03.jpg)
+
+在 beginWork 阶段对 `p#B` fiber 工作时，发现 dom 树中同一位置的`h1#B`不满足混合的条件，于是继续对比`h1#B`的兄弟节点，即`div#C`，仍然无法混合，经过最多两轮对比后发现`p#B`这个 fiber 没有可以混合的 dom 节点，于是将 `isHydrating` 标记为 false，`hydrationParentFiber = fiberP#B`。`p#B`的子孙节点都不再进行混合的过程。
+
+`div#B1`fiber 没有子节点，因此它可以调用`completeUnitOfWork`完成工作，`completeUnitOfWork` 阶段调用 `popHydrationState` 方法，在`popHydrationState`方法内部，首先判断 `fiber !== hydrationParentFiber`，由于此时的`hydrationParentFiber`等于`p#B`，因此条件成立，不用往下执行。
+
+由于`p#B` fiber 的子节点都已经完成了工作，因此它也可以调用`completeUnitOfWork`完成工作。同样的，在`popHydrationState`函数内部，第一个判断`fiber !== hydrationParentFiber`不成立，两者是相等的。第二个条件`!isHydrating`成立，进入条件语句，首先调用`popToNextHostParent`将`hydrationParentFiber`设置为`p#B`的第一个类型为`HostComponent`的祖先元素，这里是`div#A` fiber，然后将`isHydrating`设置为 true，指示可以为`p#B`的兄弟节点进行混合。
+
+如果服务端返回的 DOM 有多余的情况，则调用`deleteHydratableInstance`将其删除，比如下图中`div#D`节点将会在`div#A`fiber 的`completeUnitOfWork`阶段删除
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/hydrate-04.jpg)
+
+### prepareToHydrateHostInstance
+
+对于`HostComponent`类型的fiber会调用这个方法，这里只要是关联 dom 和 fiber：
+
+- 设置`domInstance.__reactFiber$w63z5ormsqk = fiber`
+- 设置`domInstance.__reactProps$w63z5ormsqk = props`
+- 对比服务端和客户端的属性
+
+```js
+function prepareToHydrateHostInstance(fiber) {
+  var domInstance = fiber.stateNode;
+  var updatePayload = hydrateInstance(
+    domInstance,
+    fiber.type,
+    fiber.memoizedProps,
+    fiber
+  );
+
+  fiber.updateQueue = updatePayload;
+  if (updatePayload !== null) {
+    return true;
+  }
+
+  return false;
+}
+function hydrateInstance(domInstance, type, props, fiber) {
+  precacheFiberNode(fiber, domInstance); // domInstance.__reactFiber$w63z5ormsqk = fiber
+  updateFiberProps(domInstance, props); // domInstance.__reactProps$w63z5ormsqk = props
+
+  // 比较dom.attributes和props的差异，如果dom.attributes的属性比props多，说明服务端添加了额外的属性，此时控制台提示。
+  // 注意，在对比过程中，只有服务端和客户端的children属性(即文本内容)不同时，控制台才会提示错误，同时在commit阶段，客户端会纠正这个错误，以客户端的文本为主。
+  // 但是，如果是id不同，则客户端并不会纠正。
+  return diffHydratedProperties(domInstance, type, props);
+}
+```
+
+这里重点讲下`diffHydratedProperties`，以下面的demo为例：
+```js
+// 服务端对应的dom
+<div id="root"><div extra="server attr" id="server">客户端的文本</div></div>
+// 客户端
+render() {
+  const { count } = this.state;
+  return <div id="client">客户端的文本</div>;
+}
+```
+在`diffHydratedProperties`的过程中发现，服务端返回的id和客户端的id不同，控制台提示id不匹配，但是客户端并不会纠正这个，可以看到浏览器的id依然是`server`。
+
+同时，服务端多返回了一个`extra`属性，因此需要控制台提示，但由于已经提示了id不同的错误，这个错误就不会提示。
+
+最后，客户端的文本和服务端的children不同，即文本内容不同，也需要提示错误，同时，客户端会纠正这个文本，以客户端的为主。
+
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/hydrate-05.jpg)
+
+
+### prepareToHydrateHostTextInstance
+对于`HostText`类型的fiber会调用这个方法，这个方法逻辑比较简单，就不详细介绍了

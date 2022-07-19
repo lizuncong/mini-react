@@ -10,17 +10,7 @@ class Home extends React.Component {
 
   render() {
     const { count } = this.state;
-    return (
-      <div id="container">
-        <div id="A">
-          {count}
-          <div id="A2">A2</div>
-        </div>
-        <p id="B">
-          <span id="B1">B1</span>
-        </p>
-      </div>
-    );
+    return <div id="client">客户端的文本</div>;
   }
 }
 
