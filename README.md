@@ -59,13 +59,15 @@
   - [Dom diff 所有场景介绍](https://github.com/lizuncong/mini-react/blob/master/docs/reconciler/dom-diff%E6%89%80%E6%9C%89%E5%9C%BA%E6%99%AF.md)
 
 - Fiber
-  - [【TODO】updateQueue 在不同类型的 Fiber 节点的含义](https://github.com/lizuncong/mini-react/blob/master/docs/fiber/fiber.updateQueue.md)
+  - [updateQueue 在不同类型的 Fiber 节点的含义](https://github.com/lizuncong/mini-react/blob/master/docs/fiber/fiber.updateQueue.md)
   - [盘点 fiber 中常见的副作用标志 flags](https://github.com/lizuncong/mini-react/blob/master/docs/fiber/%E7%9B%98%E7%82%B9fiber%E4%B8%AD%E5%B8%B8%E8%A7%81%E7%9A%84%E5%89%AF%E4%BD%9C%E7%94%A8%E6%A0%87%E5%BF%97flags.md)
   - [Fiber 双缓冲树机制详解](https://github.com/lizuncong/mini-react/blob/master/docs/fiber/fiber%E5%8F%8C%E7%BC%93%E5%86%B2%E6%A0%91.md)
 
 - Hydrate 服务端渲染
   - [React Hydrate原理及源码剖析](https://github.com/lizuncong/mini-react/blob/master/docs/hydrate/hydrate%E6%BA%90%E7%A0%81%E5%89%96%E6%9E%90.md)
 
+- 异常捕获
+  - [【TODO】React异常捕获]
 ### 参考链接
 
 - [React 作者 Dan Abramov 的博客](https://overreacted.io/)

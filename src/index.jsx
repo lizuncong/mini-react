@@ -1,5 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom";
+import Counter from "./count";
 class Home extends React.Component {
   constructor(props) {
     super(props);
@@ -10,8 +11,23 @@ class Home extends React.Component {
 
   render() {
     const { count } = this.state;
-    return <div id="client">客户端的文本</div>;
+    return (
+      <div id={count + 1}>
+        <div
+          onClick={() => {
+            this.setState({ count: count + 1 }, () => {
+              console.log("类组件set state回调");
+            });
+          }}
+        >
+          hello world
+        </div>
+        <Counter />
+      </div>
+    );
   }
 }
 
-ReactDOM.hydrate(<Home />, document.getElementById("root"));
+ReactDOM.render(<Home />, document.getElementById("root"), () => {
+  console.log("render 回调....");
+});
