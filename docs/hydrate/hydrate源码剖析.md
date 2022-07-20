@@ -168,6 +168,43 @@ render 阶段，按以下顺序：
 - 判断当前 fiber 节点和同一位置的 dom 实例是否满足混合的条件。
 - 如果当前位置的 dom 实例不满足混合条件，则继续比较当前 dom 的兄弟元素，如果兄弟元素和当前的 fiber 也不能混合，则当前 fiber 及其所有子孙节点都不能混合，后续 render 过程将会跳过混合。直到当前 fiber 节点的兄弟节点 render，才会继续混合的过程。
 
+
+### 事件绑定
+React在初次渲染时，不论是`ReactDOM.render`还是`ReactDOM.hydrate`，会调用`createRootImpl`函数创建fiber的容器，在这个函数中调用`listenToAllSupportedEvents`注册所有原生的事件。
+```js
+function createRootImpl(container, tag, options) {
+  // ...
+  var root = createContainer(container, tag, hydrate);
+  // ...
+  listenToAllSupportedEvents(container);
+  // ...
+  return root;
+}
+```
+这里`container`就是`div#root`节点。`listenToAllSupportedEvents`会给`div#root`节点注册浏览器支持的所有原生事件，比如`onclick`等。[React合成事件](https://github.com/lizuncong/mini-react/blob/master/docs/%E5%90%88%E6%88%90%E4%BA%8B%E4%BB%B6/%E4%BB%8E0%E5%88%B01%E6%A8%A1%E6%8B%9F%E5%90%88%E6%88%90%E4%BA%8B%E4%BB%B6.md)一文介绍过，React采用的是事件委托的机制，将所有事件代理到`div#root`节点上。以下面的为例：
+```jsx
+<div id="A" onClick={this.handleClick}>
+button
+<div>
+```
+我们知道React在渲染时，会将fiber的props关联到真实的dom的`__reactProps$`属性上，此时
+```js
+div#A.__reactProps$ = {
+  onClick: this.handleClick
+}
+```
+当我们点击按钮时，会触发`div#root`上的事件监听器：
+```js
+function onclick(e){
+  const target = e.target
+  const fiberProps = target.__reactProps$
+  const clickhandle = fiberProps.onClick
+  if(clickhandle){
+    clickhandle(e)
+  }
+}
+```
+这样我们就可以实现事件的委托。这其中**最重要的就是将fiber的props挂载到真实的dom实例的__reactProps$属性上**。因此，只要我们在`hydrate`阶段能够成功关联dom和fiber，就自然也实现了事件的“绑定”
 ## hydrate 源码剖析
 
 hydrate 的过程发生在 render 阶段，commit 阶段几乎没有和 hydrate 相关的逻辑。render 阶段又分为两个小阶段：`beginWork` 和 `completeUnitOfWork`。只有`HostRoot`、`HostComponent`、`HostText`三种类型的 fiber 节点才需要 hydrate，因此源码只针对这三种类型的 fiber 节点剖析
