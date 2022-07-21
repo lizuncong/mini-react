@@ -7,7 +7,7 @@
 - 在 FunctionComponent Fiber 中，`updateQueue`存的是`useEffect`或者`useLayoutEffect`的监听函数，是个环状链表
 - 在 HostComponent Fiber 中，`updateQueue`存的是在更新期间有变更的属性的键值对，是个数组
 
-下面我会从`render阶段和`commit 阶段`介绍对`updateQueue`的处理。
+下面我会从`render阶段和`commit 阶段介绍对`updateQueue`的处理。
 
 render 阶段主要是为 updateQueue 赋值，并计算 updateQueue。commit 阶段遍历 updateQueue 执行相应的操作
 
