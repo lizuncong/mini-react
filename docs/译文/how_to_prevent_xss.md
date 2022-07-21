@@ -1,6 +1,6 @@
 ## JSX
 
-JSX 是`React.createElement的语法糖`
+先来简单复习一下 JSX 的基础知识。JSX 是`React.createElement的语法糖`
 
 ```js
 <div id="container">hello</div>
@@ -31,7 +31,9 @@ React.createElement(
 }
 ```
 
-我们甚至可以在代码中这样直接写：
+这就是一个 React element 对象。
+
+我们甚至可以在代码中直接写 React element 对象，React 照样能正常渲染我们的内容：
 
 ```jsx
 render() {
@@ -54,7 +56,7 @@ render() {
 
 可以复制这段代码本地运行一下，可以发现浏览器弹出一个弹窗，并且`img`已经插入了 dom 中。
 
-这里，`$$typeof` 的作用是啥？为什么使用 `Symbol()` 作为值？
+**这里，`$$typeof` 的作用是啥？为什么使用 `Symbol()` 作为值？**
 
 在了解之前，我们先来简单看下 `XSS` 攻击
 
@@ -78,9 +80,11 @@ messageEl.innerHTML = "<p>" + message + "</p>";
 
 此时页面就会弹出一个弹窗，弹窗内容显示为 1
 
+**因此，直接使用 innerHTML 插入文本内容，存在 XSS 攻击的风险**
+
 ### 防止 XSS 攻击的方法
 
-为了解决类似的 XSS 攻击方法，我们可以使用一些安全的 API，比如：
+为了解决类似的 XSS 攻击方法，我们可以使用一些安全的 API 添加文本内容，比如：
 
 - 使用 `document.createTextNode('hello world')` 插入文本节点。
 - 或者使用 `textContent` 而不是 `innerHTML` 设置文本内容。
@@ -123,7 +127,7 @@ var setTextContent = function (node, text) {
 };
 ```
 
-**综上，对于普通的文本节点来说，是不会存在 XSS 攻击的，即使上面示例中，count 的值为 `'<img src="x" onerror="alert(1)">'`也不会有被攻击的风险**
+**综上，对于普通的文本节点来说，由于 React 是采用 textContent 或者 createTextNode 的方式添加的，因此是不会存在 XSS 攻击的，即使上面示例中，count 的值为 `'<img src="x" onerror="alert(1)">'`也不会有被攻击的风险**
 
 ### dangerouslySetInnerHTML 处理富文本节点
 
@@ -181,7 +185,7 @@ render() {
 }
 ```
 
-假设这个`text`是从后端返回来的，同时后端允许用户存储 JSON 对象，如果用户传入下面这样的一个对象：
+假设这个`text`是从后端返回来的，同时后端允许用户存储 JSON 对象，如果用户传入下面这样的一个类似 React element 的对象：
 
 ```js
 {
@@ -195,7 +199,9 @@ render() {
 }
 ```
 
-在这种情况下，在`React0.13`版本时，这是一个潜在的`XSS`攻击，这个漏洞源于服务端。但是 React 可以采取措施预防这种攻击。
+别忘了前面说过，我们在 JSX 中直接插入 React element 对象也是能够正常渲染的。
+
+在这种情况下，在`React0.13`版本时，这是一个潜在的`XSS`攻击，这个漏洞源于服务端。如果攻击者恶意伪造一个类似 React element 对象的数据返回给前端，React 就会执行恶意代码。但是 React 可以采取措施预防这种攻击。
 
 从`React0.14`版本开始，React 为每个 element 都添加了一个`Symbol`标志：
 

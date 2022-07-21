@@ -43,7 +43,7 @@
 
   - [React.useReducer 原理及源码主流程](https://github.com/lizuncong/mini-react/blob/master/docs/hooks/how_useReducer_work.md)
   - [从源码的角度分析 useLayoutEffect 及 useEffect 的区别](https://github.com/lizuncong/mini-react/blob/master/docs/hooks/%E4%BB%8E%E6%BA%90%E7%A0%81%E7%9A%84%E8%A7%92%E5%BA%A6%E7%90%86%E8%A7%A3useEffect%E4%BB%A5%E5%8F%8AuseLayoutEffect%E7%9A%84%E5%8C%BA%E5%88%AB.md)
-  - [彻底搞懂函数组件 hook 链表]()
+  - [彻底搞懂函数组件 hook 链表](https://github.com/lizuncong/mini-react/blob/master/docs/hooks/%E5%BD%BB%E5%BA%95%E6%90%9E%E6%87%82%E5%87%BD%E6%95%B0%E7%BB%84%E4%BB%B6hook%E9%93%BE%E8%A1%A8.md)
 
 - Class Component
 
