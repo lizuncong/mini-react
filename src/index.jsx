@@ -15,6 +15,7 @@ class Home extends React.Component {
       <div id={count + 1}>
         <div
           onClick={() => {
+            debugger
             this.setState({ count: count + 1 }, () => {
               console.log("类组件set state回调");
             });
