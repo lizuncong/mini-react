@@ -1,34 +1,42 @@
-import React from "react";
+import React, {
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useContext,
+  useMemo,
+  useCallback,
+} from "react";
 import ReactDOM from "react-dom";
-import Counter from "./count";
-class Home extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      count: 1,
-    };
-  }
+const themes = {
+    foreground: "red",
+    background: "#eeeeee",
+};
+const ThemeContext = React.createContext(themes);
 
-  render() {
-    const { count } = this.state;
-    return (
-      <div id={count + 1}>
-        <div
-          onClick={() => {
-            debugger
-            this.setState({ count: count + 1 }, () => {
-              console.log("类组件set state回调");
-            });
-          }}
-        >
-          hello world
-        </div>
-        <Counter />
-      </div>
-    );
-  }
-}
+const Home = () => {
+  const [count, setCount] = useState(0);
+  const myRef = useRef(null);
+  const theme = useContext(ThemeContext);
+  useEffect(() => {
+    console.log("useEffect", count);
+  }, [count]);
+  useLayoutEffect(() => {
+    console.log("useLayoutEffect...", myRef);
+  });
+  const res = useMemo(() => {
+    console.log("useMemo");
+    return count * count;
+  }, [count]);
+  console.log("res...", res);
+  const onClick = useCallback(() => {
+    setCount(count + 1);
+  }, [count]);
+  return (
+    <div style={{ color: theme.foreground }} ref={myRef} onClick={onClick}>
+      {count}
+    </div>
+  );
+};
 
-ReactDOM.render(<Home />, document.getElementById("root"), () => {
-  console.log("render 回调....");
-});
+ReactDOM.render(<Home />, document.getElementById("root"));
