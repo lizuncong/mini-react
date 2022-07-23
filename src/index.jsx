@@ -1,20 +1,22 @@
 import React, {
   useState,
   useEffect,
-  useLayoutEffect,
-  useRef,
   useContext,
-  useMemo,
   useCallback,
+  useMemo,
+  useRef,
+  useImperativeHandle,
+  useLayoutEffect,
+  forwardRef,
 } from "react";
 import ReactDOM from "react-dom";
 const themes = {
-    foreground: "red",
-    background: "#eeeeee",
+  foreground: "red",
+  background: "#eeeeee",
 };
 const ThemeContext = React.createContext(themes);
 
-const Home = () => {
+const Home = forwardRef((props, ref) => {
   const [count, setCount] = useState(0);
   const myRef = useRef(null);
   const theme = useContext(ThemeContext);
@@ -29,6 +31,12 @@ const Home = () => {
     return count * count;
   }, [count]);
   console.log("res...", res);
+  useImperativeHandle(ref, () => ({
+    focus: () => {
+      myRef.current.focus();
+    },
+  }));
+
   const onClick = useCallback(() => {
     setCount(count + 1);
   }, [count]);
@@ -37,6 +45,6 @@ const Home = () => {
       {count}
     </div>
   );
-};
+});
 
 ReactDOM.render(<Home />, document.getElementById("root"));
