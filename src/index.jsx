@@ -38,7 +38,10 @@ const Home = forwardRef((props, ref) => {
   }));
 
   const onClick = useCallback(() => {
+    debugger;
     setCount(count + 1);
+    setCount(2);
+    setCount(3);
   }, [count]);
   return (
     <div style={{ color: theme.foreground }} ref={myRef} onClick={onClick}>
