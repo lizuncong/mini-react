@@ -1,53 +1,29 @@
-import React, {
-  useState,
-  useEffect,
-  useContext,
-  useCallback,
-  useMemo,
-  useRef,
-  useImperativeHandle,
-  useLayoutEffect,
-  forwardRef,
-} from "react";
+import React from "react";
 import ReactDOM from "react-dom";
-const themes = {
-  foreground: "red",
-  background: "#eeeeee",
-};
-const ThemeContext = React.createContext(themes);
+import Counter from "./counter";
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
 
-const Home = forwardRef((props, ref) => {
-  const [count, setCount] = useState(0);
-  const myRef = useRef(null);
-  const theme = useContext(ThemeContext);
-  useEffect(() => {
-    console.log("useEffect", count);
-  }, [count]);
-  useLayoutEffect(() => {
-    console.log("useLayoutEffect...", myRef);
-  });
-  const res = useMemo(() => {
-    console.log("useMemo");
-    return count * count;
-  }, [count]);
-  console.log("res...", res);
-  useImperativeHandle(ref, () => ({
-    focus: () => {
-      myRef.current.focus();
-    },
-  }));
+  static getDerivedStateFromError(error) {
+    // 更新 state 使下一次渲染能够显示降级后的 UI
+    return { hasError: true };
+  }
 
-  const onClick = useCallback(() => {
-    debugger;
-    setCount(count + 1);
-    setCount(2);
-    setCount(3);
-  }, [count]);
-  return (
-    <div style={{ color: theme.foreground }} ref={myRef} onClick={onClick}>
-      {count}
-    </div>
-  );
-});
+  componentDidCatch(error, errorInfo) {
+    // 你同样可以将错误日志上报给服务器
+    console.log(error, errorInfo);
+  }
 
-ReactDOM.render(<Home />, document.getElementById("root"));
+  render() {
+    if (this.state.hasError) {
+      // 你可以自定义降级后的 UI 并渲染
+      return <h1>Something went wrong.</h1>;
+    }
+
+    return <Counter />;
+  }
+}
+ReactDOM.render(<Counter />, document.getElementById("root"));
