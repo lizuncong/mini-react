@@ -4,7 +4,7 @@
 
 - 在 HostRoot Fiber 中，`updateQueue`存的是`ReactDOM.render/ReactDOM.hydrate`的第三个回调参数，是个环状链表
 - 在 ClassComponent Fiber 中，`updateQueue`存的是`this.setState`的更新队列，是个环状链表
-- 在 FunctionComponent Fiber 中，`updateQueue`存的是`useEffect`或者`useLayoutEffect`的监听函数，是个环状链表
+- 在 FunctionComponent Fiber 中，`updateQueue`存的是`useEffect`、`useLayoutEffect`以及`useImperativeHandle`的监听函数，是个环状链表
 - 在 HostComponent Fiber 中，`updateQueue`存的是在更新期间有变更的属性的键值对，是个数组
 
 下面我会从`render阶段和`commit 阶段介绍对`updateQueue`的处理。
