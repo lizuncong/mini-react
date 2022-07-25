@@ -70,7 +70,7 @@
   - [React Hydrate 原理及源码剖析](https://github.com/lizuncong/mini-react/blob/master/docs/hydrate/hydrate%E6%BA%90%E7%A0%81%E5%89%96%E6%9E%90.md)
 
 - 异常捕获
-  - [【TODO】React 异常捕获]
+  - [React 异常捕获机制](https://github.com/lizuncong/mini-react/blob/master/docs/%E5%BC%82%E5%B8%B8/%E5%BC%82%E5%B8%B8%E6%8D%95%E8%8E%B7.md)
 
 ### 参考链接
 
