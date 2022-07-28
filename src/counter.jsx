@@ -1,21 +1,27 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useLayoutEffect, useEffect } from "react";
 
 const Counter = () => {
   const [count, setCount] = useState(0);
-  useEffect(() => {
-    // console.log("use effect", aa);
-
-    setTimeout(() => {
-      console.log("use effect", aa);
-    }, 1000);
+  useLayoutEffect(() => {
+    // console.log(aaadd);
   }, []);
   return (
     <div
       onClick={() => {
-        console.log("onclick...", click);
+        // Promise.resolve()
+        //   .then(() => {
+        //     setCount({ a: 1 });
+        //   })
+        //   .catch(() => {
+        //     console.log("Swallowed!");
+        //   });
+        setTimeout(() => {
+          setCount(4);
+          // setCount({ a: 1 });
+        }, 1000);
       }}
     >
-      12
+      {count}
     </div>
   );
 };
