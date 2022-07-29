@@ -130,3 +130,36 @@ new Promise((resolve, reject) => {
 ## 小结
 
 window.onerror 和 window.onunhandledrejection 都是只会捕获那些未被捕获的全局异常
+
+## 如何利用谷歌 devtool 在异常代码处打断点？
+
+### Pause on exceptions
+
+定位到抛出异常的代码位置，只能定位到那些未捕获的异常的位置，比如
+
+```js
+function render() {
+  console.log(aa);
+}
+
+render();
+```
+
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/devtool-01.jpg)
+
+### Pause On Caught Exceptions
+
+定位到抛出异常的代码位置，只能定位到那些未捕获的异常的位置，比如
+
+```js
+function render() {
+  console.log(aa);
+}
+try {
+  render();
+} catch (e) {
+  console.log("捕获异常...", e);
+}
+```
+
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/devtool-02.jpg)

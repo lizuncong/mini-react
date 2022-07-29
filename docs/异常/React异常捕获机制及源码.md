@@ -2,29 +2,9 @@
 
 React 16 使用了更具弹性的错误处理策略：错误边界。默认情况下，如果在组件的渲染或生命周期方法中抛出错误，整个组件树将从根目录卸载。这可以防止显示损坏的数据。但是，这可能不是理想的用户体验。
 
-- [JS异常捕获基础]()
-## 错误边界
-
-关于错误边界的定义，可以看[React 官方文档](https://reactjs.org/docs/error-boundaries.html)
-
-错误边界可以只会捕获下列几种异常，这也是 React 能够处理的异常：
-
-- 子组件树渲染期间的错误
-- 生命周期方法中的错误
-- 构造函数中的错误
-
-错误边界无法捕获以下场景中产生的错误：
-
-- 事件处理
-- 异步代码，例如 setTimeout 或 requestAnimationFrame 回调函数
-- 服务端渲染
-- 错误边界组件自身抛出来的错误
-
-错误边界只能是 Class 组件，如果一个 class 组件中定义了 static getDerivedStateFromError() 或 componentDidCatch() 这两个生命周期方法中的任意一个（或两个）时，那么它就变成一个错误边界
-
-**自 React 16 起，任何未被错误边界捕获的错误将会导致整个 React 组件树被卸载。这里所说的错误指的是 render 阶段抛出的错误，包括 render 函数、生命周期方法、构造函数等。事件处理，异步代码里未被捕获的异常并不会导致页面崩溃**
-
-React 不需要错误边界来捕获事件处理器中的错误。与 render 方法和生命周期方法不同，事件处理器不会在渲染期间触发。因此，如果它们抛出异常，React 仍然能够知道需要在屏幕上显示什么。
+- [JS 异常捕获基础](https://github.com/lizuncong/mini-react/blob/master/docs/%E5%BC%82%E5%B8%B8/JS%E5%BC%82%E5%B8%B8%E6%8D%95%E8%8E%B7%E5%9F%BA%E7%A1%80.md)
+- [dispatchEvent 基础知识]()
+- [React 错误边界]()
 
 ## React 是怎么捕获已经被吞噬的异常的？
 
