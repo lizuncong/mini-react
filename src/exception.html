@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Exception</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1"
+    />
+  </head>
+
+  <body>
+    <div id="root">
+      <button id="btn">click me</button>
+    </div>
+    <script>
+      let hasError = false;
+      let caughtError = null;
+      var reporter = {
+        onError: function (error) {
+          hasError = true;
+          caughtError = error;
+        },
+      };
+      let workInProgress = 0;
+      function renderRootSync(root) {
+        do {
+          try {
+            workLoopSync();
+            break;
+          } catch (thrownValue) {
+            debugger;
+            console.log("renderRootSync catch error======", thrownValue);
+            // handleError(root, thrownValue);
+          }
+        } while (true);
+      }
+
+      renderRootSync();
+
+      function workLoopSync() {
+        while (workInProgress < 5) {
+          performUnitOfWork(workInProgress);
+        }
+      }
+      function performUnitOfWork(unitOfWork) {
+        beginWork$1(unitOfWork);
+        workInProgress++;
+      }
+
+      function beginWork$1(current, unitOfWork) {
+        try {
+          return beginWork(current, unitOfWork);
+        } catch (originalError) {
+          console.log("beginWork catch error ====", originalError);
+          invokeGuardedCallback(null, beginWork, null, current, unitOfWork);
+        }
+      }
+      function beginWork() {
+        console.log("beginwork...", workInProgress);
+        // 模拟render阶段抛出的异常
+        if (workInProgress === 3) {
+          throw Error("抛出一个错误");
+        }
+      }
+
+      // a: current
+      // b: unitofwork
+      // c: lanes
+      // 调用函数func，同时防止func里面发生的错误，如果func内部抛出错误，则返回错误，否则返回null
+      // 在生产模式下，直接使用 try catch
+      function invokeGuardedCallback(name, func, context, a, b, c, d, e, f) {
+        hasError = false;
+        caughtError = null;
+        // invokeGuardedCallbackImpl$1.apply(reporter, arguments);
+      }
+      invokeGuardedCallbackImpl = function invokeGuardedCallbackDev(
+        name,
+        func,
+        context,
+        a,
+        b,
+        c,
+        d,
+        e,
+        f
+      ) {
+        // If document doesn't exist we know for sure we will crash in this method
+        // when we call document.createEvent(). However this can cause confusing
+        // errors: https://github.com/facebookincubator/create-react-app/issues/3482
+        // So we preemptively throw with a better message instead.
+        if (!(typeof document !== "undefined")) {
+          {
+            throw Error(
+              "The `document` global was defined when React was initialized, but is not defined anymore. This can happen in a test environment if a component schedules an update from an asynchronous callback, but the test has already finished running. To solve this, you can either unmount the component at the end of your test (and ensure that any asynchronous operations get canceled in `componentWillUnmount`), or you can change the test itself to be asynchronous."
+            );
+          }
+        }
+
+        var evt = document.createEvent("Event");
+        var didCall = false; // Keeps track of whether the user-provided callback threw an error. We
+        // set this to true at the beginning, then set it to false right after
+        // calling the function. If the function errors, `didError` will never be
+        // set to false. This strategy works even if the browser is flaky and
+        // fails to call our global error handler, because it doesn't rely on
+        // the error event at all.
+
+        var didError = true; // Keeps track of the value of window.event so that we can reset it
+        // during the callback to let user code access window.event in the
+        // browsers that support it.
+
+        var windowEvent = window.event; // Keeps track of the descriptor of window.event to restore it after event
+        // dispatching: https://github.com/facebook/react/issues/13688
+
+        var windowEventDescriptor = Object.getOwnPropertyDescriptor(
+          window,
+          "event"
+        );
+
+        function restoreAfterDispatch() {
+          // We immediately remove the callback from event listeners so that
+          // nested `invokeGuardedCallback` calls do not clash. Otherwise, a
+          // nested call would trigger the fake event handlers of any call higher
+          // in the stack.
+          fakeNode.removeEventListener(evtType, callCallback, false); // We check for window.hasOwnProperty('event') to prevent the
+          // window.event assignment in both IE <= 10 as they throw an error
+          // "Member not found" in strict mode, and in Firefox which does not
+          // support window.event.
+
+          if (
+            typeof window.event !== "undefined" &&
+            window.hasOwnProperty("event")
+          ) {
+            window.event = windowEvent;
+          }
+        } // Create an event handler for our fake event. We will synchronously
+        // dispatch our fake event using `dispatchEvent`. Inside the handler, we
+        // call the user-provided callback.
+
+        var funcArgs = Array.prototype.slice.call(arguments, 3);
+
+        function callCallback() {
+          didCall = true;
+          restoreAfterDispatch();
+          func.apply(context, funcArgs);
+          didError = false;
+        } // Create a global error event handler. We use this to capture the value
+        // that was thrown. It's possible that this error handler will fire more
+        // than once; for example, if non-React code also calls `dispatchEvent`
+        // and a handler for that event throws. We should be resilient to most of
+        // those cases. Even if our error event handler fires more than once, the
+        // last error event is always used. If the callback actually does error,
+        // we know that the last error event is the correct one, because it's not
+        // possible for anything else to have happened in between our callback
+        // erroring and the code that follows the `dispatchEvent` call below. If
+        // the callback doesn't error, but the error event was fired, we know to
+        // ignore it because `didError` will be false, as described above.
+
+        var error; // Use this to track whether the error event is ever called.
+
+        var didSetError = false;
+        var isCrossOriginError = false;
+
+        function handleWindowError(event) {
+          error = event.error;
+          didSetError = true;
+
+          if (error === null && event.colno === 0 && event.lineno === 0) {
+            isCrossOriginError = true;
+          }
+
+          if (event.defaultPrevented) {
+            // Some other error handler has prevented default.
+            // Browsers silence the error report if this happens.
+            // We'll remember this to later decide whether to log it or not.
+            if (error != null && typeof error === "object") {
+              try {
+                error._suppressLogging = true;
+              } catch (inner) {
+                // Ignore.
+              }
+            }
+          }
+        } // Create a fake event type.
+
+        var evtType = "react-" + (name ? name : "invokeguardedcallback"); // Attach our event handlers
+
+        window.addEventListener("error", handleWindowError);
+        fakeNode.addEventListener(evtType, callCallback, false); // Synchronously dispatch our fake event. If the user-provided function
+        // errors, it will trigger our global error handler.
+
+        evt.initEvent(evtType, false, false);
+        fakeNode.dispatchEvent(evt);
+
+        if (windowEventDescriptor) {
+          Object.defineProperty(window, "event", windowEventDescriptor);
+        }
+
+        if (didCall && didError) {
+          if (!didSetError) {
+            // The callback errored, but the error event never fired.
+            error = new Error(
+              "An error was thrown inside one of your components, but React " +
+                "doesn't know what it was. This is likely due to browser " +
+                'flakiness. React does its best to preserve the "Pause on ' +
+                'exceptions" behavior of the DevTools, which requires some ' +
+                "DEV-mode only tricks. It's possible that these don't work in " +
+                "your browser. Try triggering the error in production mode, " +
+                "or switching to a modern browser. If you suspect that this is " +
+                "actually an issue with React, please file an issue."
+            );
+          } else if (isCrossOriginError) {
+            error = new Error(
+              "A cross-origin error was thrown. React doesn't have access to " +
+                "the actual error object in development. " +
+                "See https://reactjs.org/link/crossorigin-error for more information."
+            );
+          }
+
+          this.onError(error);
+        } // Remove our event listeners
+
+        window.removeEventListener("error", handleWindowError);
+
+        if (!didCall) {
+          // Something went really wrong, and our event was not dispatched.
+          // https://github.com/facebook/react/issues/16734
+          // https://github.com/facebook/react/issues/16585
+          // Fall back to the production implementation.
+          restoreAfterDispatch();
+          return invokeGuardedCallbackProd.apply(this, arguments);
+        }
+      };
+    </script>
+  </body>
+</html>
