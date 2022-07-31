@@ -3,8 +3,8 @@
 React 16 使用了更具弹性的错误处理策略：错误边界。默认情况下，如果在组件的渲染或生命周期方法中抛出错误，整个组件树将从根目录卸载。这可以防止显示损坏的数据。但是，这可能不是理想的用户体验。
 
 - [JS 异常捕获基础](https://github.com/lizuncong/mini-react/blob/master/docs/%E5%BC%82%E5%B8%B8/JS%E5%BC%82%E5%B8%B8%E6%8D%95%E8%8E%B7%E5%9F%BA%E7%A1%80.md)
-- [dispatchEvent 基础知识]()
-- [React 错误边界]()
+- [自定义事件以及 dispatchEvent 基础知识](https://github.com/lizuncong/mini-react/blob/master/docs/%E5%BC%82%E5%B8%B8/dispatchEvent%E5%9F%BA%E7%A1%80.md)
+- [React 错误边界](https://github.com/lizuncong/mini-react/blob/master/docs/%E5%BC%82%E5%B8%B8/React%E9%94%99%E8%AF%AF%E8%BE%B9%E7%95%8C.md)
 
 ## React 是怎么捕获已经被吞噬的异常的？
 
