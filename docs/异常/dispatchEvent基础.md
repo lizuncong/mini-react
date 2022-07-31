@@ -153,4 +153,5 @@ window.onerror = (e) => {
 
 可以看出，自定义事件监听器中的异常只会终止自身的执行，而不会影响到其他事件监听器的执行。
 
+**注意！！！btn 的第一个监听器中抛出的异常，会立即被全局异常捕获监听器捕获到，并且立即执行，全局异常监听器执行完成后，才接着执行 btn 的第 2 个监听器...**
 ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/custom-event-03.jpg)

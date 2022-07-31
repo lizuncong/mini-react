@@ -135,31 +135,72 @@ window.onerror 和 window.onunhandledrejection 都是只会捕获那些未被捕
 
 ### Pause on exceptions
 
-定位到抛出异常的代码位置，只能定位到那些未捕获的异常的位置，比如
+比如下面的代码
 
 ```js
-function render() {
-  console.log(aa);
-}
-
-render();
+useLayoutEffect(() => {
+  console.log(aaadd);
+}, []);
 ```
+
+这个异常我们并没有使用 try catch 捕获，因此如果我们勾上 `Pause on exceptions`，那么浏览器会自动定位到抛出异常的位置，即 console.log(aaadd)这里
 
 ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/devtool-01.jpg)
 
-### Pause On Caught Exceptions
+使用 `window.onerror` 全局捕获的异常，`Pause on exceptions`还是起作用的。
+比如，我们在 `index.html`中注册一个全局的异常捕获监听器
 
-定位到抛出异常的代码位置，只能定位到那些未捕获的异常的位置，比如
+```html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Mini React</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      window.addEventListener("error", (e) => {
+        console.log("全局捕获的异常888...", e);
+      });
+    </script>
+  </body>
+</html>
+```
 
 ```js
-function render() {
-  console.log(aa);
-}
-try {
-  render();
-} catch (e) {
-  console.log("捕获异常...", e);
-}
+useLayoutEffect(() => {
+  console.log(aaadd);
+}, []);
+```
+
+即使异常被全局捕获了，`Pause on exceptions`仍然会自动定位到抛出异常的位置
+
+而下面的代码中，由于我们使用了 try catch 捕获了异常，因此 `Pause on exceptions` 不会自动定位到抛出异常的位置，但是我们可以使用 `Pause On Caught Exceptions`
+
+```js
+useLayoutEffect(() => {
+  try {
+    console.log(aaadd);
+  } catch (e) {
+    console.log("捕获异常...", e);
+  }
+}, []);
+```
+
+### Pause On Caught Exceptions
+
+定位到抛出异常的代码位置，只能定位到那些被捕获的异常的位置，比如
+
+```js
+useLayoutEffect(() => {
+  try {
+    console.log(aaadd);
+  } catch (e) {
+    console.log("捕获异常...", e);
+  }
+}, []);
 ```
 
 ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/devtool-02.jpg)

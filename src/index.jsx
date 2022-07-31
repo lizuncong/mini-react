@@ -10,16 +10,11 @@ class Home extends React.Component {
       count: 0,
     };
   }
-  componentDidUpdate() {
-    console.log("didmount...", ad);
-  }
+  // componentDidMount() {
+  //   console.log("did mount", add);
+  // }
   render() {
-    return (
-      <div onClick={() => this.setState({ count: this.state.count + 1 })}>
-        <Counter />
-        <Product count={this.state.count} />
-      </div>
-    );
+    return <Counter />;
   }
 }
 ReactDOM.render(<Home />, document.getElementById("root"));
