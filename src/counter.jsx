@@ -8,16 +8,18 @@ const Counter = () => {
   return (
     <div
       onClick={() => {
-        Promise.resolve()
-          .then(() => {
-            debugger;
-            setCount({ a: 1 });
-            console.log("after setCount");
-            debugger;
-          })
-          .catch((e) => {
-            console.log("Swallowed!");
-          });
+        console.log("after setCount");
+        setCount({ a: 1 });
+        // Promise.resolve()
+        //   .then(() => {
+        //     // debugger;
+        //     setCount({ a: 1 });
+        //     console.log("after setCount");
+        //     // debugger;
+        //   })
+        //   .catch((e) => {
+        //     console.log("Swallowed!");
+        //   });
       }}
     >
       {count}
