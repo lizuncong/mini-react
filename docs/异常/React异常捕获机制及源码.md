@@ -34,27 +34,76 @@ useLayoutEffect(() => {
 
 `useLayoutEffect`内部的逻辑是用户自己实现的，由于用户没有自己实现 try catch 捕获异常，那么理论上`useLayoutEffect`内部抛出的异常应该可以被浏览器的`Pause on exceptions`自动定位到。
 
-在生产环境中，`invokeGuardedCallback` 使用 try catch，因此所有的用户代码异常都被视为已经捕获的异常，当然用户也可以通过开启 `Pause On Caught Exceptions` 自动定位到被捕获的异常代码位置。
+在生产环境中，`invokeGuardedCallback` 使用 try catch，因此所有的用户代码异常都被视为已经捕获的异常，不会被`Pause on exceptions`自动定位到，当然用户也可以通过开启 `Pause On Caught Exceptions` 自动定位到被捕获的异常代码位置。
 
-但是这并不直观，因为即使 React 已经捕获了错误，从开发者的角度来说，错误是没有捕获的，**因此为了保持预期的 `Pause on exceptions` 行为，React 不会在 Dev 中使用 try catch**，而是使用 [custom event](https://developer.mozilla.org/en-US/docs/Web/API/Document/createEvent)以及[dispatchEvent](https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/dispatchEvent)模拟 try catch 的行为。
+但是这并不直观，因为即使 React 已经捕获了错误，从开发者的角度来说，错误是没有捕获的(毕竟用户没有自行捕获这个异常，而 React 作为库，不应该吞没异常)，**因此为了保持预期的 `Pause on exceptions` 行为，React 不会在 Dev 中使用 try catch**，而是使用 [custom event](https://developer.mozilla.org/en-US/docs/Web/API/Document/createEvent)以及[dispatchEvent](https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/dispatchEvent)模拟 try catch 的行为。
 
 ### 使用 dispatchEvent 模拟 try catch，同时又能保持 Pause on exceptions 的预期行为
 
-dispatchEvent 能够模拟 try catch，是基于下面的前提条件：
+dispatchEvent 能够模拟 try catch，是基于下面的特性：
 
 - 通过 dispatchEvent 触发的事件监听器是按顺序同步执行的，具体例子可以看[这里](https://github.com/lizuncong/mini-react/blob/master/docs/%E5%BC%82%E5%B8%B8/dispatchEvent%E5%9F%BA%E7%A1%80.md#%E5%90%8C%E6%AD%A5%E8%B0%83%E7%94%A8%E4%BA%8B%E4%BB%B6%E5%A4%84%E7%90%86%E7%A8%8B%E5%BA%8F%E6%98%AF%E4%BB%80%E4%B9%88%E6%84%8F%E6%80%9D)
 - 自定义事件监听器内部抛出的异常可以被全局异常监听器监听到并且会**立即执行!!!!!**，具体例子可以看[这里](https://github.com/lizuncong/mini-react/blob/master/docs/%E5%BC%82%E5%B8%B8/dispatchEvent%E5%9F%BA%E7%A1%80.md#%E5%A6%82%E6%9E%9C%E8%87%AA%E5%AE%9A%E4%B9%89%E4%BA%8B%E4%BB%B6%E7%9B%91%E5%90%AC%E5%99%A8%E6%8A%9B%E5%87%BA%E5%BC%82%E5%B8%B8%E4%BC%9A%E6%80%8E%E6%A0%B7)
 
-在开发环境中，React 将自定义事件(fake event)**同步派发**到自定义 dom(fake dom noe)上，
+这么说有点抽象，我们再来复习一个简单的例子：
 
-React 将所有用户提供的函数包装在 invokeGuardedCallback 中，并且 invokeGuardedCallback 的生产版本使用 try-catch，所以所有用户异常都被视为捕获的异常，除非开发人员采取额外的步骤来启用 pause on，否则 DevTools 不会暂停捕获的异常。然而，这是不直观的，因为即使 React 已经捕获了错误，从开发人员的角度来看，错误是未被捕获的。为了保持预期的“异常暂停”行为，我们不在 DEV 中使用 try-catch。相反，我们将假事件同步分派到假 DOM 节点，并从事件处理程序内部为该假事件调用用户提供的回调。如果回调抛出，则使用全局事件处理程序“捕获”错误。但是因为错误发生在不同的事件循环上下文中，所以它不会中断正常的程序流程。实际上，这为我们提供了 try-catch 行为，而无需实际使用 try-catch。整洁的！检查浏览器是否支持我们需要实现我们的特殊 DEV 版本的 invokeGuardedCallback 的 API
+```html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>dispatchEvent</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1"
+    />
+  </head>
+  <body>
+    <div id="root">
+      <button id="btn">click me</button>
+    </div>
+    <script>
+      window.onerror = (e) => {
+        console.log("全局异常监听器...", e);
+      };
+      const event = new Event("MyCustomEvent", { bubbles: true });
+      root.addEventListener("MyCustomEvent", function (e) {
+        console.log("root第一个事件监听器", e);
+      });
+      btn.addEventListener("MyCustomEvent", function (e) {
+        console.log("btn第一个事件监听器", e);
+        throw Error("btn事件监听器抛出的异常");
+        console.log("这一句不会被执行到，因此不会被打印");
+      });
+      btn.addEventListener("MyCustomEvent", function (e) {
+        console.log("btn第2个事件监听器", e);
+      });
+      console.log("开始触发自定义事件");
+      btn.dispatchEvent(event);
+      console.log("自定义事件监听函数执行完毕");
+    </script>
+  </body>
+</html>
+```
 
-在[React 错误边界]()React 需要处理
+这个例子首先注册一个全局异常监听器，然后创建自定义的事件，给 btn、root 添加监听自定义事件的监听器，其中 btn 的第一个监听器抛出一个异常。最后通过 `dispatchEvent` 触发自定义事件监听器的执行。执行结果如下所示：
 
-子组件树渲染期间的错误，比如调用类组件的 render 方法，执行函数组件等
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/exception-02.jpg)
 
-- 生命周期方法中的错误，比如类组件的所有生命周期方法，函数组件的 useEffect、useLayoutEffect 等 hook
-- 构造函数中的错误
+**从图中的执行结果可以看出，btn 的第一个事件监听器抛出的异常会立即被全局异常监听器捕获到，并立即执行。**这个效果和 try catch 完全一致！！！同时，即使自定义事件监听器的异常被全局异常监听器捕获到了，仍然可以被`Pause on exceptions`自动定位到，这就是 React 想要的效果！！！
+
+```js
+console.log("开始");
+try {
+  console.log("aaaa", dd);
+} catch (e) {
+  console.log("捕获异常...", e);
+}
+console.log("结束");
+```
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/exception-03.jpg)
+
+在开发环境中，React 将自定义事件(fake event)**同步派发**到自定义 dom(fake dom noe)上，并在自定义事件监听器内调用用户的回调函数，如果用户的回调函数抛出错误，则使用全局异常监听器捕获错误。这为我们提供了 try catch的行为，而无需实际使用 try catch。
 
 ## React 是怎么捕获已经被吞噬的异常的？
 
