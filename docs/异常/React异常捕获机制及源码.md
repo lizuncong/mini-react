@@ -227,10 +227,3 @@ beginWork$1 = function (current, unitOfWork, lanes) {
 };
 ```
 
-## 链接
-
-- [React16 错误处理](https://zh-hans.reactjs.org/blog/2017/07/26/error-handling-in-react-16.html)
-- [服务端渲染的一篇文章](https://medium.com/@aickin/whats-new-with-server-side-rendering-in-react-16-9b0d78585d67)
-- [Fiber 架构](https://code.facebook.com/posts/1716776591680069/react-16-a-look-inside-an-api-compatible-rewrite-of-our-frontend-ui-library/)
-
-- [issue](https://github.com/facebook/react/issues/4982)
