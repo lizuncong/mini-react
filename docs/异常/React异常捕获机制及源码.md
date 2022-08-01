@@ -38,12 +38,14 @@ useLayoutEffect(() => {
 
 但是这并不直观，因为即使 React 已经捕获了错误，从开发者的角度来说，错误是没有捕获的(毕竟用户没有自行捕获这个异常，而 React 作为库，不应该吞没异常)，**因此为了保持预期的 `Pause on exceptions` 行为，React 不会在 Dev 中使用 try catch**，而是使用 [custom event](https://developer.mozilla.org/en-US/docs/Web/API/Document/createEvent)以及[dispatchEvent](https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/dispatchEvent)模拟 try catch 的行为。
 
-### 使用 dispatchEvent 模拟 try catch，同时又能保持 Pause on exceptions 的预期行为
+> 这同时也告诉我们一个道理，作为一个库工具开发者，我们不应该吞没用户的异常
+
+### 使用 dispatchEvent 模拟 try catch，同时又能保持浏览器开发者工具 Pause on exceptions 的预期行为
 
 dispatchEvent 能够模拟 try catch，是基于下面的特性：
 
 - 通过 dispatchEvent 触发的事件监听器是按顺序同步执行的，具体例子可以看[这里](https://github.com/lizuncong/mini-react/blob/master/docs/%E5%BC%82%E5%B8%B8/dispatchEvent%E5%9F%BA%E7%A1%80.md#%E5%90%8C%E6%AD%A5%E8%B0%83%E7%94%A8%E4%BA%8B%E4%BB%B6%E5%A4%84%E7%90%86%E7%A8%8B%E5%BA%8F%E6%98%AF%E4%BB%80%E4%B9%88%E6%84%8F%E6%80%9D)
-- 自定义事件监听器内部抛出的异常可以被全局异常监听器监听到并且会**立即执行!!!!!**，具体例子可以看[这里](https://github.com/lizuncong/mini-react/blob/master/docs/%E5%BC%82%E5%B8%B8/dispatchEvent%E5%9F%BA%E7%A1%80.md#%E5%A6%82%E6%9E%9C%E8%87%AA%E5%AE%9A%E4%B9%89%E4%BA%8B%E4%BB%B6%E7%9B%91%E5%90%AC%E5%99%A8%E6%8A%9B%E5%87%BA%E5%BC%82%E5%B8%B8%E4%BC%9A%E6%80%8E%E6%A0%B7)
+- 自定义事件监听器内部抛出的异常可以被全局异常监听器监听到并且会**立即执行!!!!!同时仍然可以被 Pause on exceptions 自动定位到**，具体例子可以看[这里](https://github.com/lizuncong/mini-react/blob/master/docs/%E5%BC%82%E5%B8%B8/dispatchEvent%E5%9F%BA%E7%A1%80.md#%E5%A6%82%E6%9E%9C%E8%87%AA%E5%AE%9A%E4%B9%89%E4%BA%8B%E4%BB%B6%E7%9B%91%E5%90%AC%E5%99%A8%E6%8A%9B%E5%87%BA%E5%BC%82%E5%B8%B8%E4%BC%9A%E6%80%8E%E6%A0%B7)
 
 这么说有点抽象，我们再来复习一个简单的例子：
 
@@ -90,7 +92,7 @@ dispatchEvent 能够模拟 try catch，是基于下面的特性：
 
 ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/exception-02.jpg)
 
-**从图中的执行结果可以看出，btn 的第一个事件监听器抛出的异常会立即被全局异常监听器捕获到，并立即执行。**这个效果和 try catch 完全一致！！！同时，即使自定义事件监听器的异常被全局异常监听器捕获到了，仍然可以被`Pause on exceptions`自动定位到，这就是 React 想要的效果！！！
+**从图中的执行结果可以看出，btn 的第一个事件监听器抛出的异常会立即被全局异常监听器捕获到，并立即执行。** 这个效果和 try catch 完全一致！！！同时，即使自定义事件监听器的异常被全局异常监听器捕获到了，仍然可以被`Pause on exceptions`自动定位到，这就是 React 想要的效果！！！
 
 ```js
 console.log("开始");
@@ -101,9 +103,10 @@ try {
 }
 console.log("结束");
 ```
+
 ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/exception-03.jpg)
 
-在开发环境中，React 将自定义事件(fake event)**同步派发**到自定义 dom(fake dom noe)上，并在自定义事件监听器内调用用户的回调函数，如果用户的回调函数抛出错误，则使用全局异常监听器捕获错误。这为我们提供了 try catch的行为，而无需实际使用 try catch。
+在开发环境中，React 将自定义事件(fake event)**同步派发**到自定义 dom(fake dom noe)上，并在自定义事件监听器内调用用户的回调函数，如果用户的回调函数抛出错误，则使用全局异常监听器捕获错误。这为我们提供了 try catch 的行为，而无需实际使用 try catch。
 
 ## React 是怎么捕获已经被吞噬的异常的？
 
