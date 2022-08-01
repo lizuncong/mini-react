@@ -106,7 +106,7 @@ console.log("结束");
 
 ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/exception-03.jpg)
 
-在开发环境中，React 将自定义事件(fake event)**同步派发**到自定义 dom(fake dom noe)上，并在自定义事件监听器内调用用户的回调函数，如果用户的回调函数抛出错误，则使用全局异常监听器捕获错误。这为我们提供了 try catch 的行为，而无需实际使用 try catch。
+在开发环境中，React 将自定义事件(fake event)**同步派发**到自定义 dom(fake dom noe)上，并在自定义事件监听器内调用用户的回调函数，如果用户的回调函数抛出错误，则使用全局异常监听器捕获错误。这为我们提供了 try catch 的行为，而无需实际使用 try catch，又能保持浏览器 `Pause on exceptions` 的预期行为。
 
 ## React 是怎么捕获已经被吞噬的异常的？
 
