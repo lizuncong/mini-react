@@ -16,108 +16,59 @@
     <script>
       let hasError = false;
       let caughtError = null;
-      var reporter = {
-        onError: function (error) {
-          hasError = true;
-          caughtError = error;
-        },
-      };
       let workInProgress = 0;
-      function renderRootSync(root) {
-        do {
-          try {
-            workLoopSync();
-            break;
-          } catch (thrownValue) {
-            debugger;
-            console.log("renderRootSync catch error======", thrownValue);
-            // handleError(root, thrownValue);
+      const fakeNode = document.createElement("react");
+
+      function renderRootSync() {
+        // do {
+        try {
+          while (workInProgress < 5) {
+            beginWork$1();
+            workInProgress++;
           }
-        } while (true);
+          // break;
+        } catch (thrownValue) {
+          // debugger;
+          console.log("renderRootSync catch error======", thrownValue);
+          handleError(root, thrownValue);
+        }
+        // } while (true);
       }
 
       renderRootSync();
 
-      function workLoopSync() {
-        while (workInProgress < 5) {
-          performUnitOfWork(workInProgress);
-        }
-      }
-      function performUnitOfWork(unitOfWork) {
-        beginWork$1(unitOfWork);
-        workInProgress++;
-      }
-
-      function beginWork$1(current, unitOfWork) {
+      function beginWork$1() {
         try {
-          return beginWork(current, unitOfWork);
+          return beginWork();
         } catch (originalError) {
           console.log("beginWork catch error ====", originalError);
-          invokeGuardedCallback(null, beginWork, null, current, unitOfWork);
+          invokeGuardedCallback(beginWork);
         }
       }
       function beginWork() {
         console.log("beginwork...", workInProgress);
         // 模拟render阶段抛出的异常
         if (workInProgress === 3) {
-          throw Error("抛出一个错误");
+          throw Error("等于3的时候抛出一个错误");
         }
       }
 
-      // a: current
-      // b: unitofwork
-      // c: lanes
       // 调用函数func，同时防止func里面发生的错误，如果func内部抛出错误，则返回错误，否则返回null
       // 在生产模式下，直接使用 try catch
-      function invokeGuardedCallback(name, func, context, a, b, c, d, e, f) {
+      function invokeGuardedCallback(func) {
         hasError = false;
         caughtError = null;
-        invokeGuardedCallbackImpl.apply(reporter, arguments);
+        invokeGuardedCallbackImpl(func);
       }
-      var fakeNode = document.createElement("react");
-      function invokeGuardedCallbackImpl(
-        name,
-        func,
-        context,
-        a,
-        b,
-        c,
-        d,
-        e,
-        f
-      ) {
+      function invokeGuardedCallbackImpl(func) {
         var evt = document.createEvent("Event");
-        var didCall = false; 
+        var didCall = false;
         // 用于追踪用户代码是否有异常，一旦用户代码有异常，didError就不会再设置成false
-        var didError = true; 
-
-        var windowEvent = window.event; // Keeps track of the descriptor of window.event to restore it after event
-        // dispatching: https://github.com/facebook/react/issues/13688
-
-        var windowEventDescriptor = Object.getOwnPropertyDescriptor(
-          window,
-          "event"
-        );
+        var didError = true;
 
         function restoreAfterDispatch() {
-          // We immediately remove the callback from event listeners so that
-          // nested `invokeGuardedCallback` calls do not clash. Otherwise, a
-          // nested call would trigger the fake event handlers of any call higher
-          // in the stack.
-          fakeNode.removeEventListener(evtType, callCallback, false); // We check for window.hasOwnProperty('event') to prevent the
-          // window.event assignment in both IE <= 10 as they throw an error
-          // "Member not found" in strict mode, and in Firefox which does not
-          // support window.event.
-
-          if (
-            typeof window.event !== "undefined" &&
-            window.hasOwnProperty("event")
-          ) {
-            window.event = windowEvent;
-          }
-        } // Create an event handler for our fake event. We will synchronously
-        // dispatch our fake event using `dispatchEvent`. Inside the handler, we
-        // call the user-provided callback.
+          fakeNode.removeEventListener(evtType, callCallback, false);
+        }
 
         var funcArgs = Array.prototype.slice.call(arguments, 3);
 
@@ -126,17 +77,7 @@
           restoreAfterDispatch();
           func.apply(context, funcArgs);
           didError = false;
-        } // Create a global error event handler. We use this to capture the value
-        // that was thrown. It's possible that this error handler will fire more
-        // than once; for example, if non-React code also calls `dispatchEvent`
-        // and a handler for that event throws. We should be resilient to most of
-        // those cases. Even if our error event handler fires more than once, the
-        // last error event is always used. If the callback actually does error,
-        // we know that the last error event is the correct one, because it's not
-        // possible for anything else to have happened in between our callback
-        // erroring and the code that follows the `dispatchEvent` call below. If
-        // the callback doesn't error, but the error event was fired, we know to
-        // ignore it because `didError` will be false, as described above.
+        }
 
         var error; // Use this to track whether the error event is ever called.
 
