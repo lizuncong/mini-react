@@ -199,7 +199,7 @@ beginWork 阶段主要就是调用类组件的构造函数、部分生命周期�
 
 源码中调用 invokeGuardedCallback 的地方有：
 
-- beginWork 阶段先使用try catch捕获异常，如果beginWork有异常抛出，则将beginWork包裹进invokeGuardedCallback重新执行
+- beginWork 阶段先使用 try catch 捕获异常，如果 beginWork 有异常抛出，则将 beginWork 包裹进 invokeGuardedCallback 重新执行
 
 合成事件
 
@@ -210,6 +210,19 @@ beginWork 阶段主要就是调用类组件的构造函数、部分生命周期�
 - safelyCallComponentWillUnmount，调用 ComponentWillUnmount 生命周期方法
 - safelyDetachRef 当 ref 是个函数的时候，将 ref 包裹进 invokeGuardedCallback 执行
 - safelyCallDestroy 调用 useLayoutEffect 的清除函数
-- 将 commitBeforeMutationEffects、 commitMutationEffects、commitLayoutEffects这三个函数都包裹进invokeGuardedCallback执行
+- 将 commitBeforeMutationEffects、 commitMutationEffects、commitLayoutEffects 这三个函数都包裹进 invokeGuardedCallback 执行
 
-- 将useEffect的监听函数以及清除函数都包裹进invokeGuardedCallback执行
+- 将 useEffect 的监听函数以及清除函数都包裹进 invokeGuardedCallback 执行
+
+React 异常捕获目标还漏了一点，就是防止用户的错误被其他第三方库捕获了，比如 react redux，redux saga 等。例如在 redux saga 中，如果这么调用了 setState：
+
+```js
+Promise.resolve()
+  .then(() => {
+    this.setState({ a: 1 })
+  })
+  .catch((err) => {
+    console.log(err)
+  });
+```
+如果React不经过invokeguardcallback处理，那么setState的触发的render的异常将会被promise.catch捕获，在用户的角度看来，这个异常被吞没了。
