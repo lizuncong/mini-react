@@ -20,9 +20,9 @@
 
 React 将所有用户提供的函数包装在 `invokeGuardedCallback` 函数中执行，用户提供的函数包括以下方法：
 
-- 子组件树渲染期间的错误，比如调用类组件的 render 方法，执行函数组件等
-- 构造函数中的错误
-- 生命周期方法中的错误，比如类组件的所有生命周期方法，函数组件的 useEffect，useLayoutEffect 等 hook 内部的逻辑
+- 子组件树渲染期间，比如调用类组件的 render 方法，执行函数组件等
+- 构造函数
+- 生命周期方法，比如类组件的所有生命周期方法，函数组件的 useEffect，useLayoutEffect 等 hook 内部的逻辑
 
 实际上，这也是[React 错误边界](https://github.com/lizuncong/mini-react/blob/master/docs/%E5%BC%82%E5%B8%B8/React%E9%94%99%E8%AF%AF%E8%BE%B9%E7%95%8C.md)能够处理的异常。**以上函数内部的逻辑是用户自己实现的，并且大部分在 React 的 render 阶段调用，理论上这些方法内部所抛出的任何异常，都应该让用户自行捕获**，比如下面的代码中
 
@@ -37,6 +37,62 @@ useLayoutEffect(() => {
 在生产环境中，`invokeGuardedCallback` 使用 try catch，因此所有的用户代码异常都被视为已经捕获的异常，不会被`Pause on exceptions`自动定位到，当然用户也可以通过开启 `Pause On Caught Exceptions` 自动定位到被捕获的异常代码位置。
 
 但是这并不直观，因为即使 React 已经捕获了错误，从开发者的角度来说，错误是没有捕获的(毕竟用户没有自行捕获这个异常，而 React 作为库，不应该吞没异常)，**因此为了保持预期的 `Pause on exceptions` 行为，React 不会在 Dev 中使用 try catch**，而是使用 [custom event](https://developer.mozilla.org/en-US/docs/Web/API/Document/createEvent)以及[dispatchEvent](https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/dispatchEvent)模拟 try catch 的行为。
+
+### 防止用户业务代码被第三方库吞没
+
+根据这个[issue](https://github.com/facebook/react/issues/6895#issuecomment-281405036)可以知道，React 异常捕获还有一个目标就是防止用户业务代码被其他第三方库的**异步代码**吞没。比如 react redux，redux saga 等。例如在 redux saga 中这么调用了 setState：
+
+```js
+Promise.resolve()
+  .then(() => {
+    this.setState({ a: 1 });
+  })
+  .catch((err) => {
+    console.log(err);
+  });
+```
+
+如果 React 不经过 invokeguardcallback 处理，那么 setState 的触发的 render 的异常将会被 promise.catch 捕获，在用户的角度看来，这个异常被吞没了。
+
+React16 以后由于有了 invokeguardcallback 处理异常，在异步代码中调用 setState 触发的 render 的异常不会被任何 try catch 或者 promise catch 吞没。比如：
+
+```jsx
+<div
+  onClick={() => {
+    Promise.resolve()
+      .then(() => {
+        setCount({ a: 1 });
+      })
+      .catch((e) => {
+        console.log("Swallowed!", e);
+      });
+  }}
+>
+  {count}
+</div>
+```
+
+Promise 的 catch 虽然可以捕获异常，但是 React 还是可以照样抛出异常，控制台还是会打印 Error 信息
+
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/exception-04.jpg)
+
+```jsx
+<div
+  onClick={() => {
+    setTimeout(() => {
+      try {
+        setCount({ a: 1 });
+      } catch (e) {
+        console.log("e...", e);
+      }
+    }, 0);
+  }}
+>
+  {count}
+</div>
+```
+
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/exception-05.jpg)
 
 > 这同时也告诉我们一个道理，作为一个库工具开发者，我们不应该吞没用户的异常
 
@@ -213,16 +269,3 @@ beginWork 阶段主要就是调用类组件的构造函数、部分生命周期�
 - 将 commitBeforeMutationEffects、 commitMutationEffects、commitLayoutEffects 这三个函数都包裹进 invokeGuardedCallback 执行
 
 - 将 useEffect 的监听函数以及清除函数都包裹进 invokeGuardedCallback 执行
-
-React 异常捕获目标还漏了一点，就是防止用户的错误被其他第三方库捕获了，比如 react redux，redux saga 等。例如在 redux saga 中，如果这么调用了 setState：
-
-```js
-Promise.resolve()
-  .then(() => {
-    this.setState({ a: 1 })
-  })
-  .catch((err) => {
-    console.log(err)
-  });
-```
-如果React不经过invokeguardcallback处理，那么setState的触发的render的异常将会被promise.catch捕获，在用户的角度看来，这个异常被吞没了。

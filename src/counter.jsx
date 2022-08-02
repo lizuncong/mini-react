@@ -1,25 +1,23 @@
 import React, { useState, useLayoutEffect, useEffect } from "react";
 
 const Counter = () => {
-  const [count, setCount] = useState({ a: 1 });
+  const [count, setCount] = useState(0);
+  // useLayoutEffect(() => {
+  //   console.log(bb);
+  // });
   // useEffect(() => {
   //   console.log(aaadd);
   // }, []);
   return (
     <div
       onClick={() => {
-        // console.log("after setCount");
-        // setCount({ a: 1 });
-        // Promise.resolve()
-        //   .then(() => {
-        //     // debugger;
-        //     setCount({ a: 1 });
-        //     console.log("after setCount");
-        //     // debugger;
-        //   })
-        //   .catch((e) => {
-        //     console.log("Swallowed!");
-        //   });
+        Promise.resolve()
+          .then(() => {
+            setCount({ a: 1 });
+          })
+          .catch((e) => {
+            console.log("Swallowed!", e);
+          });
       }}
     >
       {count}
