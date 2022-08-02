@@ -108,122 +108,108 @@ console.log("结束");
 
 在开发环境中，React 将自定义事件(fake event)**同步派发**到自定义 dom(fake dom noe)上，并在自定义事件监听器内调用用户的回调函数，如果用户的回调函数抛出错误，则使用全局异常监听器捕获错误。这为我们提供了 try catch 的行为，而无需实际使用 try catch，又能保持浏览器 `Pause on exceptions` 的预期行为。
 
-## React 是怎么捕获已经被吞噬的异常的？
+## Dev 模式下，React 如何实现模拟 try catch 的行为
 
-比如下面中，`setCount({ a: 1 })` 由于 count 是一个对象，在 render 阶段会报错，但按理会被 promise 的 catch 语句捕获，而不会抛出错误，但是 React 是如何做到的呢？
+在 dev 环境下，invokeGuardedCallback 的实现如下所示，这里是精简后的代码，func 是用户提供的回调函数，比如在 render 阶段，func 就是 beginWork 函数。
 
-```jsx
-const Counter = () => {
-  const [count, setCount] = useState(0);
-  return (
-    <div
-      onClick={() => {
-        Promise.resolve()
-          .then(() => {
-            setCount({ a: 1 });
-          })
-          .catch(() => {
-            console.log("Swallowed!");
-          });
-      }}
-    >
-      {count}
-    </div>
-  );
-};
-```
-
-## 如何只捕获 React 渲染过程相关的异常
-
-## 源码
+dev 环境下在自定义事件监听器中执行用户的回调函数，如果用户的回调函数抛出异常，则被全局的异常监听器捕获，并且立即执行全局异常监听器
 
 ```js
-function renderRootSync(root, lanes) {
-  do {
-    try {
-      workLoopSync();
-      break;
-    } catch (thrownValue) {
-      handleError(root, thrownValue);
-    }
-  } while (true);
+let caughtError = null;
+function invokeGuardedCallback(func) {
+  const evt = document.createEvent("Event");
+  const evtType = "react-invokeguardedcallback";
+  const fakeNode = document.createElement("react");
 
-  return workInProgressRootExitStatus;
+  function callCallback() {
+    fakeNode.removeEventListener(evtType, callCallback, false);
+    // 执行回调函数
+    func();
+  }
+
+  function handleWindowError(event) {
+    caughtError = event.error;
+  }
+
+  // 注册全局异常监听器
+  window.addEventListener("error", handleWindowError);
+  // 注册自定义事件监听器，在自定义事件中调用用户提供的回调函数
+  fakeNode.addEventListener(evtType, callCallback, false);
+
+  evt.initEvent(evtType, false, false);
+  fakeNode.dispatchEvent(evt);
+
+  // 移除全局异常监听器
+  window.removeEventListener("error", handleWindowError);
 }
-function workLoopSync() {
-  while (workInProgress !== null) {
-    performUnitOfWork(workInProgress);
-  }
-}
-
-function performUnitOfWork(unitOfWork) {
-  var current = unitOfWork.alternate;
-  var next;
-  if ((unitOfWork.mode & ProfileMode) !== NoMode) {
-    next = beginWork$1(current, unitOfWork, subtreeRenderLanes);
-  } else {
-    next = beginWork$1(current, unitOfWork, subtreeRenderLanes);
-  }
-  unitOfWork.memoizedProps = unitOfWork.pendingProps;
-  if (next === null) {
-    completeUnitOfWork(unitOfWork);
-  } else {
-    workInProgress = next;
-  }
-  ReactCurrentOwner$2.current = null;
-}
-var dummyFiber = null;
-
-beginWork$1 = function (current, unitOfWork, lanes) {
-  // If a component throws an error, we replay it again in a synchronously
-  // dispatched event, so that the debugger will treat it as an uncaught
-  // error See ReactErrorUtils for more information.
-  // Before entering the begin phase, copy the work-in-progress onto a dummy
-  // fiber. If beginWork throws, we'll use this to reset the state.
-  var originalWorkInProgressCopy = assignFiberPropertiesInDEV(
-    dummyFiber,
-    unitOfWork
-  );
-
-  try {
-    return beginWork(current, unitOfWork, lanes);
-  } catch (originalError) {
-    if (
-      originalError !== null &&
-      typeof originalError === "object" &&
-      typeof originalError.then === "function"
-    ) {
-      // Don't replay promises. Treat everything else like an error.
-      throw originalError;
-    } // Keep this code in sync with handleError; any changes here must have
-    // corresponding changes there.
-
-    resetContextDependencies();
-    resetHooksAfterThrow(); // Don't reset current debug fiber, since we're about to work on the
-    // same fiber again.
-    // Unwind the failed stack frame
-
-    unwindInterruptedWork(unitOfWork); // Restore the original properties of the fiber.
-
-    assignFiberPropertiesInDEV(unitOfWork, originalWorkInProgressCopy);
-
-    if (unitOfWork.mode & ProfileMode) {
-      // Reset the profiler timer.
-      startProfilerTimer(unitOfWork);
-    } // Run beginWork again.
-
-    invokeGuardedCallback(null, beginWork, null, current, unitOfWork, lanes);
-
-    if (hasCaughtError()) {
-      var replayError = clearCaughtError(); // `invokeGuardedCallback` sometimes sets an expando `_suppressLogging`.
-      // Rethrow this error instead of the original one.
-
-      throw replayError;
-    } else {
-      // This branch is reachable if the render phase is impure.
-      throw originalError;
-    }
-  }
-};
 ```
 
+在生产环境下，invokeGuardedCallback 的实现如下，使用普通的 try catch 捕获用户提供的函数 func 里面的异常
+
+```js
+function invokeGuardedCallbackProd(func) {
+  try {
+    func();
+  } catch (error) {
+    this.onError(error);
+  }
+}
+```
+
+## React Dev 模式异常捕获
+
+### React 错误边界
+
+经过前面的铺垫，我们已经知道了 Dev 环境下 React 怎么模拟 try catch 的行为。也了解了`invokeGuardedCallback` 的实现。
+
+React 只会捕获以下场景产生的错误，这也是 React 错误边界能够处理的异常情况
+
+- 子组件树渲染期间，比如调用类组件的 render 方法，执行函数组件等
+- 生命周期方法，比如类组件的所有生命周期方法，函数组件的 useEffect、useLayoutEffect 等 hook
+- 构造函数
+
+React 在执行以上方法时，会包裹进`invokeGuardedCallback`中执行。以上的方法都是用户的业务代码，因此 React 不能够吞没用户业务代码的异常。当上述代码发生异常时，React 需要往上找到最近的错误边界组件，如果存在错误边界组件，则渲染错误边界组件的备用 UI，如果没找到，则直接卸载整个组件树，页面白屏
+
+虽然以下代码也是用户自身的业务代码，但是由于下面的代码不会导致页面异常，因此 React 不会处理下面这些场景中的异常
+
+- 事件处理
+- 异步代码，例如 setTimeout 或 requestAnimationFrame 回调函数
+- 服务端渲染
+- 错误边界组件自身抛出来的错误
+
+在[深入概述 React 初次渲染及状态更新主流程](https://github.com/lizuncong/mini-react/blob/master/docs/render/%E6%B7%B1%E5%85%A5%E6%A6%82%E8%BF%B0%20React%E5%88%9D%E6%AC%A1%E6%B8%B2%E6%9F%93%E5%8F%8A%E7%8A%B6%E6%80%81%E6%9B%B4%E6%96%B0%E4%B8%BB%E6%B5%81%E7%A8%8B.md)一文中介绍过，React 渲染可以概括为**两大阶段，五小阶段**
+
+- render 阶段
+  - beginWork
+  - completeUnitOfWork
+- commit 阶段
+  - commitBeforeMutationEffects
+  - commitMutationEffects
+  - commitLayoutEffects
+
+在 beginWork 阶段调用子组件树中类组件的 render 方法或者执行函数组件以协调子元素，调用类组件构造函数，执行部分生命周期函数
+
+因此可以发现，React 错误边界需要处理的异常大部分都在 beginWork 阶段，而有些生命周期方法或者函数组件的 useEffect 等 hook 的执行是在 commit 阶段，我们可以从这两个阶段入手解析 React 如何捕获并且处理异常
+
+## beginWork 阶段异常捕获处理
+
+beginWork 阶段主要就是调用类组件的构造函数、部分生命周期方法、类组件的 render 方法，然后协调子元素。
+
+## TODO
+
+源码中调用 invokeGuardedCallback 的地方有：
+
+- beginWork 阶段先使用try catch捕获异常，如果beginWork有异常抛出，则将beginWork包裹进invokeGuardedCallback重新执行
+
+合成事件
+
+- executeDispatch 触发貌似合成事件也调用了？
+
+以下是 commit 阶段的异常捕获及处理，使用 captureCommitPhaseError 处理异常
+
+- safelyCallComponentWillUnmount，调用 ComponentWillUnmount 生命周期方法
+- safelyDetachRef 当 ref 是个函数的时候，将 ref 包裹进 invokeGuardedCallback 执行
+- safelyCallDestroy 调用 useLayoutEffect 的清除函数
+- 将 commitBeforeMutationEffects、 commitMutationEffects、commitLayoutEffects这三个函数都包裹进invokeGuardedCallback执行
+
+- 将useEffect的监听函数以及清除函数都包裹进invokeGuardedCallback执行

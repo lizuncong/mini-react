@@ -17,7 +17,6 @@
       let hasError = false;
       let caughtError = null;
       let workInProgress = 0;
-      const fakeNode = document.createElement("react");
 
       function renderRootSync() {
         // do {
@@ -30,7 +29,7 @@
         } catch (thrownValue) {
           // debugger;
           console.log("renderRootSync catch error======", thrownValue);
-          handleError(root, thrownValue);
+          //handleError(root, thrownValue);
         }
         // } while (true);
       }
@@ -43,116 +42,45 @@
         } catch (originalError) {
           console.log("beginWork catch error ====", originalError);
           invokeGuardedCallback(beginWork);
+          if (caughtError) {
+            const replayError = caughtError;
+            caughtError = null;
+            throw replayError
+          }
         }
       }
       function beginWork() {
         console.log("beginwork...", workInProgress);
-        // 模拟render阶段抛出的异常
         if (workInProgress === 3) {
           throw Error("等于3的时候抛出一个错误");
         }
       }
 
-      // 调用函数func，同时防止func里面发生的错误，如果func内部抛出错误，则返回错误，否则返回null
-      // 在生产模式下，直接使用 try catch
       function invokeGuardedCallback(func) {
-        hasError = false;
-        caughtError = null;
-        invokeGuardedCallbackImpl(func);
-      }
-      function invokeGuardedCallbackImpl(func) {
-        var evt = document.createEvent("Event");
-        var didCall = false;
-        // 用于追踪用户代码是否有异常，一旦用户代码有异常，didError就不会再设置成false
-        var didError = true;
-
-        function restoreAfterDispatch() {
-          fakeNode.removeEventListener(evtType, callCallback, false);
-        }
-
-        var funcArgs = Array.prototype.slice.call(arguments, 3);
+        const evt = document.createEvent("Event");
+        const evtType = "react-invokeguardedcallback";
+        const fakeNode = document.createElement("react");
 
         function callCallback() {
-          didCall = true;
-          restoreAfterDispatch();
-          func.apply(context, funcArgs);
-          didError = false;
+          fakeNode.removeEventListener(evtType, callCallback, false);
+          // 执行回调函数
+          func();
         }
 
-        var error; // Use this to track whether the error event is ever called.
-
-        var didSetError = false;
-        var isCrossOriginError = false;
-
         function handleWindowError(event) {
-          error = event.error;
-          didSetError = true;
+          caughtError = event.error;
+        }
 
-          if (error === null && event.colno === 0 && event.lineno === 0) {
-            isCrossOriginError = true;
-          }
-
-          if (event.defaultPrevented) {
-            // Some other error handler has prevented default.
-            // Browsers silence the error report if this happens.
-            // We'll remember this to later decide whether to log it or not.
-            if (error != null && typeof error === "object") {
-              try {
-                error._suppressLogging = true;
-              } catch (inner) {
-                // Ignore.
-              }
-            }
-          }
-        } // Create a fake event type.
-
-        var evtType = "react-" + (name ? name : "invokeguardedcallback"); // Attach our event handlers
-
+        // 注册全局异常监听器
         window.addEventListener("error", handleWindowError);
-        fakeNode.addEventListener(evtType, callCallback, false); // Synchronously dispatch our fake event. If the user-provided function
-        // errors, it will trigger our global error handler.
+        // 注册自定义事件监听器，在自定义事件中调用用户提供的回调函数
+        fakeNode.addEventListener(evtType, callCallback, false);
 
         evt.initEvent(evtType, false, false);
         fakeNode.dispatchEvent(evt);
 
-        if (windowEventDescriptor) {
-          Object.defineProperty(window, "event", windowEventDescriptor);
-        }
-
-        if (didCall && didError) {
-          if (!didSetError) {
-            // The callback errored, but the error event never fired.
-            error = new Error(
-              "An error was thrown inside one of your components, but React " +
-                "doesn't know what it was. This is likely due to browser " +
-                'flakiness. React does its best to preserve the "Pause on ' +
-                'exceptions" behavior of the DevTools, which requires some ' +
-                "DEV-mode only tricks. It's possible that these don't work in " +
-                "your browser. Try triggering the error in production mode, " +
-                "or switching to a modern browser. If you suspect that this is " +
-                "actually an issue with React, please file an issue."
-            );
-          } else if (isCrossOriginError) {
-            error = new Error(
-              "A cross-origin error was thrown. React doesn't have access to " +
-                "the actual error object in development. " +
-                "See https://reactjs.org/link/crossorigin-error for more information."
-            );
-          }
-
-          this.onError(error);
-        } // Remove our event listeners
-
+        // 移除全局异常监听器
         window.removeEventListener("error", handleWindowError);
-
-        if (!didCall) {
-          // Something went really wrong, and our event was not dispatched.
-          // https://github.com/facebook/react/issues/16734
-          // https://github.com/facebook/react/issues/16585
-          // Fall back to the production implementation.
-          restoreAfterDispatch();
-          return invokeGuardedCallbackProd.apply(this, arguments);
-        }
       }
     </script>
   </body>
