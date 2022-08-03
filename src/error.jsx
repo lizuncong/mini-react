@@ -1,4 +1,4 @@
-import React from 'react'
+import React from "react";
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -13,7 +13,7 @@ class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, errorInfo) {
     // 你同样可以将错误日志上报给服务器
-    console.log(error, errorInfo);
+    // console.log(error, errorInfo);
   }
 
   render() {
@@ -27,5 +27,4 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-
-export default ErrorBoundary
+export default ErrorBoundary;

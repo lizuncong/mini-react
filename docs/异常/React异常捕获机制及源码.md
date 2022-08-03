@@ -18,13 +18,9 @@
 
 同时结合这个[issue](https://github.com/facebook/react/issues/4982)可以知道，**React 异常处理最重要的目标之一就是保持浏览器的`Pause on exceptions`行为**。如果对`Pause on exceptions`不熟悉的，可以看[这篇文章](https://github.com/lizuncong/mini-react/blob/master/docs/%E5%BC%82%E5%B8%B8/JS%E5%BC%82%E5%B8%B8%E6%8D%95%E8%8E%B7%E5%9F%BA%E7%A1%80.md#%E5%A6%82%E4%BD%95%E5%88%A9%E7%94%A8%E8%B0%B7%E6%AD%8C-devtool-%E5%9C%A8%E5%BC%82%E5%B8%B8%E4%BB%A3%E7%A0%81%E5%A4%84%E6%89%93%E6%96%AD%E7%82%B9)
 
-React 将所有用户提供的函数包装在 `invokeGuardedCallback` 函数中执行，用户提供的函数包括以下方法：
+React 将用户的所有业务代码包装在 `invokeGuardedCallback` 函数中执行，比如构造函数，生命周期方法等。
 
-- 子组件树渲染期间，比如调用类组件的 render 方法，执行函数组件等
-- 构造函数
-- 生命周期方法，比如类组件的所有生命周期方法，函数组件的 useEffect，useLayoutEffect 等 hook 内部的逻辑
-
-实际上，这也是[React 错误边界](https://github.com/lizuncong/mini-react/blob/master/docs/%E5%BC%82%E5%B8%B8/React%E9%94%99%E8%AF%AF%E8%BE%B9%E7%95%8C.md)能够处理的异常。**以上函数内部的逻辑是用户自己实现的，并且大部分在 React 的 render 阶段调用，理论上这些方法内部所抛出的任何异常，都应该让用户自行捕获**，比如下面的代码中
+**这些方法内部的逻辑是用户自己实现的，并且大部分在 React 的 render 阶段调用，理论上这些方法内部所抛出的任何异常，都应该让用户自行捕获**，比如下面的代码中
 
 ```js
 useLayoutEffect(() => {
@@ -212,60 +208,65 @@ function invokeGuardedCallbackProd(func) {
 }
 ```
 
-## React Dev 模式异常捕获
+## React Dev 模式异常捕获及处理
 
-### React 错误边界
+在 Dev 环境下，React 使用 `invokeGuardedCallback` 包裹几乎所有的用户业务代码，我全局搜索了一下 `invokeGuardedCallback` 函数的调用，总共有以下几个地方调用了 `invokeGuardedCallback` 函数捕获异常，涵盖了所有的用户业务代码：
 
-经过前面的铺垫，我们已经知道了 Dev 环境下 React 怎么模拟 try catch 的行为。也了解了`invokeGuardedCallback` 的实现。
+- 合成事件的回调函数，将第一个错误重新抛出
+- 类组件 componentWillUnmount 生命周期方法，避免 componentWillUnmount 中的异常阻断组件卸载。然后在 captureCommitPhaseError 中处理异常
+- DetachRef，释放 Ref。如果 Ref 是一个函数，在组件卸载的时候会执行 ref，用户业务代码的异常(包括生命周期方法和 refs)都不应该打断删除的过程，因此这些方法都会使用 `invokeGuardedCallback` 包括执行。然后 ref 中的异常会在 captureCommitPhaseError 中处理
+- useLayoutEffect 以及 useEffect 的清除函数以及 useEffect 的监听函数，然后使用 captureCommitPhaseError 处理异常
+- commit 阶段的 commitBeforeMutationEffects、commitMutationEffects、commitLayoutEffects 函数，然后使用 captureCommitPhaseError 处理异常
+- render 阶段的 beginWork 方法先使用 try catch 捕获异常，如果 beginWork 有异常抛出，则将 beginWork 包裹进 invokeGuardedCallback 重新执行，并重新抛出异常，然后在 handleError 方法中处理异常
 
-React 只会捕获以下场景产生的错误，这也是 React 错误边界能够处理的异常情况
+可以看出，在 dev 环境中，我们**所有的业务代码**都被`invokeGuardedCallback`包裹并且执行，我们业务代码中的异常都会被 `invokeGuardedCallback` 捕获。除了合成事件中的异常特殊处理外，在 render 阶段调用的方法，比如构造函数，一些生命周期方法中的异常，都在`handleError`中处理。在 commit 阶段调用的方法，比如 useEffect 的监听函数等方法的异常，都在`captureCommitPhaseError`中处理。
 
-- 子组件树渲染期间，比如调用类组件的 render 方法，执行函数组件等
-- 生命周期方法，比如类组件的所有生命周期方法，函数组件的 useEffect、useLayoutEffect 等 hook
-- 构造函数
+**总的来说，React 使用 invokeGuardedCallback 捕获我们业务代码中的异常，然后在`handleError`或者`captureCommitPhaseError`处理异常**
 
-React 在执行以上方法时，会包裹进`invokeGuardedCallback`中执行。以上的方法都是用户的业务代码，因此 React 不能够吞没用户业务代码的异常。当上述代码发生异常时，React 需要往上找到最近的错误边界组件，如果存在错误边界组件，则渲染错误边界组件的备用 UI，如果没找到，则直接卸载整个组件树，页面白屏
+**但是，我们也需要明白一点，并不是所有的用户业务代码中的异常都会被错误边界处理**
 
-虽然以下代码也是用户自身的业务代码，但是由于下面的代码不会导致页面异常，因此 React 不会处理下面这些场景中的异常
+并不是用户的所有业务代码都能被 React 错误边界处理！！！
 
-- 事件处理
-- 异步代码，例如 setTimeout 或 requestAnimationFrame 回调函数
-- 服务端渲染
-- 错误边界组件自身抛出来的错误
+并不是用户的所有业务代码都能被 React 错误边界处理！！！
 
-在[深入概述 React 初次渲染及状态更新主流程](https://github.com/lizuncong/mini-react/blob/master/docs/render/%E6%B7%B1%E5%85%A5%E6%A6%82%E8%BF%B0%20React%E5%88%9D%E6%AC%A1%E6%B8%B2%E6%9F%93%E5%8F%8A%E7%8A%B6%E6%80%81%E6%9B%B4%E6%96%B0%E4%B8%BB%E6%B5%81%E7%A8%8B.md)一文中介绍过，React 渲染可以概括为**两大阶段，五小阶段**
+并不是用户的所有业务代码都能被 React 错误边界处理！！！
 
-- render 阶段
-  - beginWork
-  - completeUnitOfWork
-- commit 阶段
-  - commitBeforeMutationEffects
-  - commitMutationEffects
-  - commitLayoutEffects
+[React 错误边界](https://github.com/lizuncong/mini-react/blob/master/docs/%E5%BC%82%E5%B8%B8/React%E9%94%99%E8%AF%AF%E8%BE%B9%E7%95%8C.md)只能够处理以下业务代码中的异常：
 
-在 beginWork 阶段调用子组件树中类组件的 render 方法或者执行函数组件以协调子元素，调用类组件构造函数，执行部分生命周期函数
+- 子组件树渲染期间的错误，比如调用类组件的 render 方法，执行函数组件等
+- 生命周期方法中的错误，比如类组件的所有生命周期方法，函数组件的 useEffect、useLayoutEffect 等 hook
+- 构造函数中的错误
 
-因此可以发现，React 错误边界需要处理的异常大部分都在 beginWork 阶段，而有些生命周期方法或者函数组件的 useEffect 等 hook 的执行是在 commit 阶段，我们可以从这两个阶段入手解析 React 如何捕获并且处理异常
+事件处理、异步代码、服务端渲染的异常并不能被错误边界处理。
 
-## beginWork 阶段异常捕获处理
+下面，逐一介绍合成事件异常捕获及处理、`handleError`异常处理、`captureCommitPhaseError`异常处理
 
-beginWork 阶段主要就是调用类组件的构造函数、部分生命周期方法、类组件的 render 方法，然后协调子元素。
+### 合成事件回调函数中的异常捕获及处理
 
-## TODO
+合成事件中的异常不会被 React 错误边界处理
 
-源码中调用 invokeGuardedCallback 的地方有：
+React 会捕获合成事件中的错误，但只会将第一个重新抛出，**同时并不会在控制台打印 fiber 栈信息**，举个例子：
 
-- beginWork 阶段先使用 try catch 捕获异常，如果 beginWork 有异常抛出，则将 beginWork 包裹进 invokeGuardedCallback 重新执行
+```jsx
+<div
+  onClick={() => {
+    console.log("b...", b);
+  }}
+>
+  <div
+    onClick={() => {
+      console.log("a..", a);
+    }}
+  >
+    click me
+  </div>
+</div>
+```
 
-合成事件
+当我们点击 'click me' 时，React 会沿着冒泡阶段调用所有的监听函数，并捕获这些错误打印出来。但是，React 只会将第一个错误**重新抛出(rethrowCaughtError)**。可以发现下图中 React 捕获了这两个监听函数中的错误并打印了出来，但 React 只会将第一个监听函数中的错误重新抛出。
 
-- executeDispatch 触发貌似合成事件也调用了？
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/exception-06.jpg)
 
-以下是 commit 阶段的异常捕获及处理，使用 captureCommitPhaseError 处理异常
+### handleError 如何处理异常
 
-- safelyCallComponentWillUnmount，调用 ComponentWillUnmount 生命周期方法
-- safelyDetachRef 当 ref 是个函数的时候，将 ref 包裹进 invokeGuardedCallback 执行
-- safelyCallDestroy 调用 useLayoutEffect 的清除函数
-- 将 commitBeforeMutationEffects、 commitMutationEffects、commitLayoutEffects 这三个函数都包裹进 invokeGuardedCallback 执行
-
-- 将 useEffect 的监听函数以及清除函数都包裹进 invokeGuardedCallback 执行
+handleError 只用于处理 render 阶段在`beginWork`函数中执行的用户业务代码抛出的异常，比如构造函数，类组件的 render 方法、函数组件、生命周期方法等

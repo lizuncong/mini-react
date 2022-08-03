@@ -14,7 +14,11 @@ class Home extends React.Component {
   //   console.log("did mount", add);
   // }
   render() {
-    return <Counter />;
+    return (
+      <ErrorBoundary>
+        <Counter />
+      </ErrorBoundary>
+    );
   }
 }
 ReactDOM.render(<Home />, document.getElementById("root"));

@@ -1,23 +1,17 @@
-import React, { useState, useLayoutEffect, useEffect } from "react";
+import React, { useState, useLayoutEffect, useEffect, useRef } from "react";
 
 const Counter = () => {
   const [count, setCount] = useState(0);
-  // useLayoutEffect(() => {
-  //   console.log(bb);
-  // });
-  // useEffect(() => {
-  //   console.log(aaadd);
-  // }, []);
+  useLayoutEffect(() => {
+    return () => {
+      console.log("清除");
+    };
+  });
+
   return (
     <div
       onClick={() => {
-        Promise.resolve()
-          .then(() => {
-            setCount({ a: 1 });
-          })
-          .catch((e) => {
-            console.log("Swallowed!", e);
-          });
+        setCount(count + 1);
       }}
     >
       {count}
