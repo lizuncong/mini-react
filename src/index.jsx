@@ -14,10 +14,13 @@ class Home extends React.Component {
   //   console.log("did mount", add);
   // }
   render() {
+    // return <Product />;
     return (
-      <ErrorBoundary>
-        <Counter />
-      </ErrorBoundary>
+      <>
+        <ErrorBoundary>
+          <Product />
+        </ErrorBoundary>
+      </>
     );
   }
 }

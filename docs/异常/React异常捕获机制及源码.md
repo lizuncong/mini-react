@@ -270,3 +270,9 @@ React 会捕获合成事件中的错误，但只会将第一个重新抛出，**
 ### handleError 如何处理异常
 
 handleError 只用于处理 render 阶段在`beginWork`函数中执行的用户业务代码抛出的异常，比如构造函数，类组件的 render 方法、函数组件、生命周期方法等
+
+`beginWork` 阶段异常捕获主要逻辑如下：
+
+```js
+
+```

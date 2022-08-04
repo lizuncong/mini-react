@@ -1,11 +1,9 @@
 import React, { useState, useLayoutEffect, useEffect, useRef } from "react";
 
 const Counter = () => {
-  const [count, setCount] = useState(0);
+  const [count, setCount] = useState(11);
   useLayoutEffect(() => {
-    return () => {
-      console.log("清除");
-    };
+    // console.log("effect...", aa);
   });
 
   return (
