@@ -1,5 +1,14 @@
 > React 异常处理最重要的目标之一就是保持浏览器的`Pause on exceptions`行为。这里你不仅能学到 React 异常捕获的知识，还能学到如何模拟 try catch
 
+## 大纲
+
+- React 开发和生产环境捕获异常的实现不同
+- 如何捕获异常，同时不吞没用户业务代码的异常
+- 如何模拟 try catch 捕获异常
+- React 捕获用户所有的业务代码中的异常，除了异步代码无法捕获以外。
+- React 使用 handleError 处理 render 阶段用户业务代码的异常，使用 captureCommitPhaseError 处理 commit 阶段用户业务代码的异常，而事件处理函数中的业务代码异常则简单并特殊处理
+- render 阶段抛出的业务代码异常，会导致 React 从 ErrorBoundary 组件或者 root 节点重新开始执行。而 commit 阶段抛出的业务代码异常，会导致 React 从 root 节点重新开始调度执行！
+
 ## 前置基础知识
 
 如果还不熟悉 JS 异常捕获，比如全局异常捕获，Promise 异常捕获，异步代码异常捕获。自定义事件，以及 dispatchEvent 的用法。React 错误边界等基础知识的，可以参考以下几篇短文。如果已经熟悉了，可以跳过。
@@ -271,8 +280,324 @@ React 会捕获合成事件中的错误，但只会将第一个重新抛出，**
 
 handleError 只用于处理 render 阶段在`beginWork`函数中执行的用户业务代码抛出的异常，比如构造函数，类组件的 render 方法、函数组件、生命周期方法等
 
-`beginWork` 阶段异常捕获主要逻辑如下：
+为了方便演示，我将`renderRootSync`的主要逻辑简化如下，这也是 React render 阶段的主要逻辑，以下代码可以直接复制在浏览器控制台运行：
 
 ```js
+let workInProgress = 0;
+let caughtError;
+function renderRootSync(root, lanes) {
+  do {
+    try {
+      workLoopSync();
+      break;
+    } catch (thrownValue) {
+      console.log("renderRootSync捕获了异常.....", thrownValue);
+      // handleError(root, thrownValue);
+      return;
+    }
+  } while (true);
+}
 
+function workLoopSync() {
+  while (workInProgress !== null) {
+    performUnitOfWork(workInProgress);
+  }
+}
+
+function performUnitOfWork(unitOfWork) {
+  const next = beginWork$1(unitOfWork);
+  if (next > 4) {
+    // 模拟completeUnitOfWork
+    // completeUnitOfWork(unitOfWork);
+  } else {
+    workInProgress = next;
+  }
+}
+function invokeGuardedCallback(func, arg) {
+  const evt = document.createEvent("Event");
+  const evtType = "react-invokeguardedcallback";
+  const fakeNode = document.createElement("react");
+
+  function callCallback() {
+    fakeNode.removeEventListener(evtType, callCallback, false);
+    func(arg);
+  }
+
+  function handleWindowError(event) {
+    caughtError = event.error;
+  }
+
+  window.addEventListener("error", handleWindowError);
+  fakeNode.addEventListener(evtType, callCallback, false);
+
+  evt.initEvent(evtType, false, false);
+  fakeNode.dispatchEvent(evt);
+
+  window.removeEventListener("error", handleWindowError);
+}
+function beginWork(unitOfWork) {
+  console.log("beginWork....", unitOfWork);
+  if (unitOfWork === 2) {
+    throw Error("unitOfWork等于2时抛出错误，模拟异常");
+  }
+  return unitOfWork + 1;
+}
+function beginWork$1(unitOfWork) {
+  const originalWorkInProgressCopy = unitOfWork;
+
+  try {
+    // 先执行一遍beginWork
+    return beginWork(unitOfWork);
+  } catch (originalError) {
+    // 重置unitOfWork
+    unitOfWork = originalWorkInProgressCopy; // assignFiberPropertiesInDEV
+
+    // 重新开始执行beginWork
+    invokeGuardedCallback(beginWork, unitOfWork);
+
+    // 重新抛出错误，这次抛出的错误会被handleError捕获并处理
+    if (caughtError) {
+      throw caughtError;
+    }
+  }
+}
+
+renderRootSync();
+```
+
+从上面代码可以看出，如果`beginWork`函数发生了异常，那么会被 try catch 捕获，并且 React 会在 catch 里面重新将 beginWork 包裹进`invokeGuardedCallback`函数中**重复执行!!!**。前面说过，使用 try catch 捕获异常，会破坏浏览器的`Pause on exceptions`预期的行为，因此如果 beginWork 抛出了异常，则需要将 beginWork 包裹进`Pause on exceptions`重复执行，在`Pause on exceptions`抛出的异常就会保持浏览器的`Pause on exceptions`预期行为
+
+> 其实我不太明白这里为啥需要重复执行，一开始就完全可以将 beginWork 包裹进`invokeGuardedCallback`中执行，这样既能捕获异常，还能保持浏览器的预期行为，详情可以查看这个[issue](https://github.com/facebook/react/issues/25041)，有懂哥可以指教一下。
+
+第二次执行`beginWork`时，如果抛出异常，则会被`handleError`捕获并处理，下面我们详细了解下`handleError`如何处理异常
+
+以下面的代码为例：
+
+```jsx
+import React from "react";
+import ReactDOM from "react-dom";
+import Counter from "./counter";
+import ErrorBoundary from "./error";
+class Home extends React.Component {
+  constructor(props) {
+    super(props);
+  }
+
+  render() {
+    return (
+      <ErrorBoundary>
+        <Counter />
+      </ErrorBoundary>
+    );
+  }
+}
+const Counter = () => {
+  const [count, setCount] = useState({});
+  return <div id="counter">{count}</div>;
+};
+ReactDOM.render(<Home />, document.getElementById("root"));
+```
+
+`renderRootSync`也是一个循环，这里需要注意，循环结束的条件是要么`hanleError`重新抛出异常终止函数执行，要么`workLoopSync`正常执行完成，到 break 语句退出。
+
+```js
+function renderRootSync(root, lanes) {
+  do {
+    try {
+      workLoopSync();
+      break;
+    } catch (thrownValue) {
+      console.log("renderRootSync捕获了异常.....", thrownValue);
+      handleError(root, thrownValue);
+    }
+  } while (true);
+}
+```
+
+当`workLoopSync`执行的过程中发生异常时，会被`handleError`捕获。`handleError` 会从当前抛出异常的 fiber 节点开始(这里是 div#counter 对应的 fiber 节点)往上找到最近的错误边界组件，即 ErrorBoundary，如果不存在 ErrorBoundary 组件，则会找到 root fiber。然后 handleError 执行完成。循环继续，此时`workLoopSync`重新执行，`workLoopSync`又会从 root fiber 重新执行，这里有两种情况
+
+- 如果存在 ErrorBoundary，那么`workLoopSync`会从 root fiber 开始执行，并渲染 ErrorBoundary 的备用 UI
+- 如果不存在 ErrorBoundary，那么 React 会直接卸载整个组件树，页面崩溃白屏。然后在 commit 阶段执行完成后将异常重新抛出，这次抛出的异常不会被捕获！！
+
+因此，`workLoopSync`的重复执行，要么会让页面崩溃，要么显示我们的备用 UI。
+
+```js
+function handleError(root, thrownValue) {
+  do {
+    var erroredWork = workInProgress;
+
+    try {
+      throwException(root, erroredWork.return, erroredWork, thrownValue);
+      completeUnitOfWork(erroredWork);
+    } catch (yetAnotherThrownValue) {
+      // Something in the return path also threw.
+      continue;
+    }
+
+    return;
+  } while (true);
+}
+```
+
+而往上查找 ErrorBoundary 的任务就由`throwException`函数完成。throwException 主要做两件事：
+
+- 1. 调用`createCapturedValue`从当前抛出异常的 fiber 节点开始往上找出所有的 fiber 节点并收集起来，用于在控制台打印 fiber 栈，如下：
+
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/exception-07.jpg)
+
+- 2. while 循环负责往上找 ErrorBoundary 组件，如果找不到 ErrorBoundary 组件，则找到 root fiber 来处理异常。这里需要注意这个查找过程，只会找类组件以及
+     root 节点。同时，类组件需要满足实现`getDerivedStateFromError`或者`componentDidCatch`方法才能成为 ErrorBoundary
+
+> 注意！！createRootErrorUpdate 创建的更新对象中，update.element 已经被重置为 null 了，因此在 workLoopSync 第二次执行时，root 的子节点是 null，这也是为啥我们页面白屏的原因。如果是找到了 ErrorBoundary 组件，createClassErrorUpdate 在创建 update 对象时，会将 getDerivedStateFromError 做为 update.payload，这样在 workLoopSync 重复执行时，render 阶段就会执行这个 getDerivedStateFromError 函数以获取 ErrorBoundary 的 state
+
+```js
+function throwException(root, returnFiber, sourceFiber, value) {
+  sourceFiber.flags |= Incomplete; // 将当前fiber节点标记为未完成
+  // 由于当前fiber节点已经抛出异常，他对应的副作用链表已经没用了，需要重置
+  sourceFiber.firstEffect = sourceFiber.lastEffect = null;
+  // createCapturedValue主要的一个功能就是从发生异常的fiber节点开始，往上继续找出所有的fiber节点信息，用于在控制台
+  // 打印fiber栈信息
+  value = createCapturedValue(value, sourceFiber);
+
+  var workInProgress = returnFiber;
+
+  do {
+    switch (workInProgress.tag) {
+      case HostRoot: {
+        var _errorInfo = value;
+        workInProgress.flags |= ShouldCapture;
+        // 注意！！createRootErrorUpdate创建的更新对象中，update.element已经被重置为null了，因此在workLoopSync第二次执行时，root的子节点是null，这也是为啥我们页面白屏的原因
+        var _update = createRootErrorUpdate(workInProgress, _errorInfo, lane);
+
+        enqueueCapturedUpdate(workInProgress, _update);
+        return;
+      }
+
+      case ClassComponent:
+        // Capture and retry
+        var errorInfo = value;
+        var ctor = workInProgress.type;
+        var instance = workInProgress.stateNode;
+
+        if (
+          (workInProgress.flags & DidCapture) === NoFlags &&
+          (typeof ctor.getDerivedStateFromError === "function" ||
+            (instance !== null &&
+              typeof instance.componentDidCatch === "function"))
+        ) {
+          workInProgress.flags |= ShouldCapture;
+
+          var _update2 = createClassErrorUpdate(
+            workInProgress,
+            errorInfo,
+            _lane
+          );
+
+          enqueueCapturedUpdate(workInProgress, _update2);
+          return;
+        }
+
+        break;
+    }
+
+    workInProgress = workInProgress.return;
+  } while (workInProgress !== null);
+}
+```
+
+注意，`throwException`执行完成后，会调用`completeUnitOfWork`继续完成工作。此时的 completeUnitOfWork 会走 else 的逻辑，主要做几件事：
+
+- 调用 unwindWork 恢复 context 栈信息，并且找到 ErrorBoundary 组件，如果存在 ErrorBoundary，则将当前的 fiber 返回并终止 completeUnitOfWork 函数执行。否则返回 root 节点。
+- 往上将抛出异常的 fiber 节点的父节点都标记为 Incomplete 并调用 completeUnitOfWork 完成父节点
+
+```js
+// 主要两个工作
+// 调用unwinkWork重置context，然后往上找到最近的能够处理异常的ErrorBoundary，找不到的话，那就是root节点
+function completeUnitOfWork(unitOfWork) {
+  var completedWork = unitOfWork;
+  do {
+    var current = completedWork.alternate;
+    var returnFiber = completedWork.return;
+
+    if ((completedWork.flags & Incomplete) === NoFlags) {
+    } else {
+      // 当前fiber没有完成，因为有异常抛出，因此需要从栈恢复
+      var _next = unwindWork(completedWork);
+      if (_next !== null) {
+        _next.flags &= HostEffectMask;
+        workInProgress = _next;
+        return;
+      }
+      if (returnFiber !== null) {
+        returnFiber.firstEffect = returnFiber.lastEffect = null;
+        returnFiber.flags |= Incomplete;
+      }
+    }
+    completedWork = returnFiber; // Update the next thing we're working on in case something throws.
+    workInProgress = completedWork;
+  } while (completedWork !== null);
+}
+```
+
+看到这里，需要注意一点，workLoopSync 第二次重复执行时，从哪个节点开始，也是分情况的：
+
+- 如果没有找到 ErrorBoundary，那么从 root fiber 节点开始执行 performUnitOfWork
+- 如果找到 ErrorBoundary 组件，那么只需要从 ErrorBoundary 组件开始执行 performUnitOfWork
+
+#### handleError 总结
+
+总的来说，handleError 主要是处理 render 阶段抛出的异常。 从当前抛出异常的节点开始，往上找，直到找到 ErrorBoundary 组件或者 root 节点。并将 cotext 恢复到 ErrorBoundary 或者 root 节点，然后重复执行 workLoopSync，第二次执行的 workLoopSync 从 ErrorBoundary 或者 root 节点开始执行 render 的过程
+
+### captureCommitPhaseError 如何处理异常
+
+还是以上面的代码为例，这次修改一下 Couter 组件，在 useEffect 中抛出异常：
+
+```jsx
+const Counter = () => {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    console.log("use effect...", a);
+  });
+  return <div id="counter">{count}</div>;
+};
+```
+
+`captureCommitPhaseError`用来处理 commit 阶段抛出的异常。主要是做了以下几件事：
+
+- 从当前抛出异常的 fiber 节点开始，往上找，找到 ErrorBoundary 组件或者 root 节点，并创建对应的 update 更新对象。
+- 调用 `ensureRootIsScheduled` 从 root 节点开始执行。
+
+> 这里可以看出，render 阶段的异常会导致 React 从 ErrorBoundary 组件或者 root 节点开始重新执行。而 commit 阶段抛出的异常会导致 React 从 root 节点重新调度执行
+
+```js
+function captureCommitPhaseError(sourceFiber, error) {
+  var fiber = sourceFiber.return;
+
+  while (fiber !== null) {
+    if (fiber.tag === HostRoot) {
+      // captureCommitPhaseErrorOnRoot(fiber, sourceFiber, error);
+      return;
+    } else if (fiber.tag === ClassComponent) {
+      var ctor = fiber.type;
+      var instance = fiber.stateNode;
+
+      if (
+        typeof ctor.getDerivedStateFromError === "function" ||
+        typeof instance.componentDidCatch === "function"
+      ) {
+        var errorInfo = createCapturedValue(error, sourceFiber);
+        var update = createClassErrorUpdate(fiber, errorInfo, SyncLane);
+        enqueueUpdate(fiber, update);
+
+        if (root !== null) {
+          markRootUpdated(root, SyncLane, eventTime);
+          ensureRootIsScheduled(root, eventTime);
+        } else {
+        }
+        return;
+      }
+    }
+    fiber = fiber.return;
+  }
+}
 ```

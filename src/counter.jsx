@@ -1,11 +1,10 @@
 import React, { useState, useLayoutEffect, useEffect, useRef } from "react";
 
 const Counter = () => {
-  const [count, setCount] = useState(11);
-  useLayoutEffect(() => {
-    // console.log("effect...", aa);
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    console.log("use effect...", a);
   });
-
   return (
     <div
       onClick={() => {
