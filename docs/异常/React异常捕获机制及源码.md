@@ -240,13 +240,11 @@ function invokeGuardedCallbackProd(func) {
 
 并不是用户的所有业务代码都能被 React 错误边界处理！！！
 
-[React 错误边界](https://github.com/lizuncong/mini-react/blob/master/docs/%E5%BC%82%E5%B8%B8/React%E9%94%99%E8%AF%AF%E8%BE%B9%E7%95%8C.md)只能够处理以下业务代码中的异常：
+一般情况下，[React 错误边界](https://github.com/lizuncong/mini-react/blob/master/docs/%E5%BC%82%E5%B8%B8/React%E9%94%99%E8%AF%AF%E8%BE%B9%E7%95%8C.md)能够处理大部分的用户业务代码的异常，包括 render 阶段以及 commit 阶段执行的业务代码，但是并不能捕获并处理以下的用户业务代码异常：
 
-- 子组件树渲染期间的错误，比如调用类组件的 render 方法，执行函数组件等
-- 生命周期方法中的错误，比如类组件的所有生命周期方法，函数组件的 useEffect、useLayoutEffect 等 hook
-- 构造函数中的错误
-
-事件处理、异步代码、服务端渲染的异常并不能被错误边界处理。
+- 事件处理
+- 异步代码
+- 服务端渲染的异常
 
 下面，逐一介绍合成事件异常捕获及处理、`handleError`异常处理、`captureCommitPhaseError`异常处理
 
@@ -365,7 +363,7 @@ function beginWork$1(unitOfWork) {
 renderRootSync();
 ```
 
-从上面代码可以看出，如果`beginWork`函数发生了异常，那么会被 try catch 捕获，并且 React 会在 catch 里面重新将 beginWork 包裹进`invokeGuardedCallback`函数中**重复执行!!!**。前面说过，使用 try catch 捕获异常，会破坏浏览器的`Pause on exceptions`预期的行为，因此如果 beginWork 抛出了异常，则需要将 beginWork 包裹进`Pause on exceptions`重复执行，在`Pause on exceptions`抛出的异常就会保持浏览器的`Pause on exceptions`预期行为
+从上面代码可以看出，如果`beginWork`函数发生了异常，那么会被 try catch 捕获，并且 React 会在 catch 里面重新将 beginWork 包裹进`invokeGuardedCallback`函数中**重复执行!!!**。前面说过，使用 try catch 捕获异常，会破坏浏览器的`Pause on exceptions`预期的行为，因此如果 beginWork 抛出了异常，则需要将 beginWork 包裹进`Pause on exceptions`重复执行，在`invokeGuardedCallback`抛出的异常不会被吞没
 
 > 其实我不太明白这里为啥需要重复执行，一开始就完全可以将 beginWork 包裹进`invokeGuardedCallback`中执行，这样既能捕获异常，还能保持浏览器的预期行为，详情可以查看这个[issue](https://github.com/facebook/react/issues/25041)，有懂哥可以指教一下。
 
@@ -416,8 +414,8 @@ function renderRootSync(root, lanes) {
 
 当`workLoopSync`执行的过程中发生异常时，会被`handleError`捕获。`handleError` 会从当前抛出异常的 fiber 节点开始(这里是 div#counter 对应的 fiber 节点)往上找到最近的错误边界组件，即 ErrorBoundary，如果不存在 ErrorBoundary 组件，则会找到 root fiber。然后 handleError 执行完成。循环继续，此时`workLoopSync`重新执行，`workLoopSync`又会从 root fiber 重新执行，这里有两种情况
 
-- 如果存在 ErrorBoundary，那么`workLoopSync`会从 root fiber 开始执行，并渲染 ErrorBoundary 的备用 UI
-- 如果不存在 ErrorBoundary，那么 React 会直接卸载整个组件树，页面崩溃白屏。然后在 commit 阶段执行完成后将异常重新抛出，这次抛出的异常不会被捕获！！
+- 如果存在 ErrorBoundary，那么`workLoopSync`会从 ErrorBoundary 开始执行，并渲染 ErrorBoundary 的备用 UI
+- 如果不存在 ErrorBoundary，那么`workLoopSync`会从 root 节点开始执行，React 会直接卸载整个组件树，页面崩溃白屏。然后在 commit 阶段执行完成后将异常重新抛出，这次抛出的异常会被浏览器的 `Pause on exceptions` 捕获到
 
 因此，`workLoopSync`的重复执行，要么会让页面崩溃，要么显示我们的备用 UI。
 
