@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>React Context</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1"
+    />
+  </head>
+
+  <body>
+    <div id="root">React Context</div>
+    <script>
+      const REACT_CONTEXT_TYPE = symbolFor("react.context");
+      const REACT_PROVIDER_TYPE = symbolFor("react.provider");
+      function createContext(defaultValue, calculateChangedBits = null) {
+        var context = {
+          $$typeof: REACT_CONTEXT_TYPE,
+          _calculateChangedBits: calculateChangedBits,
+          _currentValue: defaultValue,
+          _currentValue2: defaultValue,
+          _threadCount: 0, // 用于concurrent renderers
+          Provider: null,
+          Consumer: null,
+        };
+        context.Provider = {
+          $$typeof: REACT_PROVIDER_TYPE,
+          _context: context,
+        };
+
+        context.Consumer = context;
+
+        return context;
+      }
+    </script>
+  </body>
+</html>
