@@ -33,6 +33,39 @@
 
         return context;
       }
+      var valueStack = [];
+
+      function createCursor(defaultValue) {
+        return {
+          current: defaultValue,
+        };
+      }
+      var valueCursor = createCursor(null);
+      function push(cursor, value, fiber) {
+        index++;
+        valueStack[index] = cursor.current;
+
+        cursor.current = value;
+      }
+      function pushProvider(providerFiber, nextValue) {
+        var context = providerFiber.type._context;
+
+        push(valueCursor, context._currentValue);
+        context._currentValue = nextValue;
+      }
+      function updateContextProvider(current, workInProgress, renderLanes) {
+        var providerType = workInProgress.type; // workInProgress.type的值就是context.Provider
+        var context = providerType._context;
+        var newProps = workInProgress.pendingProps;
+        var oldProps = workInProgress.memoizedProps;
+        var newValue = newProps.value;
+
+        pushProvider(workInProgress, newValue);
+
+        var newChildren = newProps.children;
+        reconcileChildren(current, workInProgress, newChildren, renderLanes);
+        return workInProgress.child;
+      }
     </script>
   </body>
 </html>
