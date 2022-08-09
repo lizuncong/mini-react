@@ -36,6 +36,8 @@ const MyContext = React.createContext(defaultValue);
 
 `Provider` 接收一个 `value` 属性。**_当 `value` 变化时，所有订阅的组件都会强制刷新，不受限于 `shouldComponentUpdate`_**
 
+> 当 Provider 的 value 值发生变化时，它内部的所有消费组件都会重新渲染。从 Provider 到其内部 consumer 组件（包括 .contextType 和 useContext）的传播不受制于 shouldComponentUpdate 函数，因此当 consumer 组件在其祖先组件跳过更新的情况下也能更新。
+
 ### 订阅 Context
 
 react 提供了三个订阅 `context` 的 api

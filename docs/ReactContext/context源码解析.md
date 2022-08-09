@@ -12,15 +12,4 @@ const FiberRootNode = {
 
 在 updateContainer 方法中，初始化 FiberRootNode.context = {}
 
-```js
-function updateHostRoot() {
-  pushHostRootContext(workInProgress);
-}
-function pushHostRootContext(workInProgress) {
-  var root = workInProgress.stateNode;
-
-  pushTopLevelContextObject(workInProgress, root.context, false);
-
-  pushHostContainer(workInProgress, root.containerInfo);
-}
-```
+### ClassComponent

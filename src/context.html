@@ -67,5 +67,57 @@
         return workInProgress.child;
       }
     </script>
+    <script>
+      function beginWork(current, workInProgress) {
+        switch (workInProgress.tag) {
+          case ContextProvider:
+            return updateContextProvider(current, workInProgress);
+
+          case ContextConsumer:
+            return updateContextConsumer(current, workInProgress);
+        }
+      }
+      function updateContextProvider(current, workInProgress) {
+        var providerType = workInProgress.type; // context.Provider = { $$typeof, _context }
+        var context = providerType._context;
+        var newProps = workInProgress.pendingProps;
+        var oldProps = workInProgress.memoizedProps;
+        var newValue = newProps.value;
+
+        pushProvider(workInProgress, newValue);
+
+        if (oldProps !== null) {
+          var oldValue = oldProps.value;
+          var changedBits = calculateChangedBits(context, newValue, oldValue);
+
+          if (changedBits === 0) {
+            // No change. Bailout early if children are the same.
+            if (
+              oldProps.children === newProps.children &&
+              !hasContextChanged()
+            ) {
+              return bailoutOnAlreadyFinishedWork(
+                current,
+                workInProgress,
+                renderLanes
+              );
+            }
+          } else {
+            // The context value changed. Search for matching consumers and schedule
+            // them to update.
+            propagateContextChange(
+              workInProgress,
+              context,
+              changedBits,
+              renderLanes
+            );
+          }
+        }
+
+        var newChildren = newProps.children;
+        reconcileChildren(current, workInProgress, newChildren, renderLanes);
+        return workInProgress.child;
+      }
+    </script>
   </body>
 </html>
