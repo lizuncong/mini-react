@@ -29,6 +29,9 @@ const ThemeContext = React.createContext("light");
 
 class ThemedButton extends React.Component {
   static contextType = ThemeContext;
+  componentDidMount() {
+    console.log("this.context...===", this.context);
+  }
   render() {
     return <button id="button类组件">{this.context}</button>;
   }

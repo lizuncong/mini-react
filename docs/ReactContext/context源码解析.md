@@ -171,6 +171,23 @@ function updateContextProvider(current, workInProgress, renderLanes) {
 ### completeunitofwork
 
 ```js
+function pop(cursor, fiber) {
+  if (index < 0) {
+    return;
+  }
+
+  cursor.current = valueStack[index];
+  valueStack[index] = null;
+
+  index--;
+}
+function popProvider(providerFiber) {
+  var currentValue = valueCursor.current;
+  pop(valueCursor);
+  var context = providerFiber.type._context;
+
+  context._currentValue = currentValue;
+}
 function completeWork(current, workInProgress) {
   switch (workInProgress.tag) {
     case ContextProvider:
