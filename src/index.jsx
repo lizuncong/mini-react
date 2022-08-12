@@ -1,57 +1,71 @@
 import React, { useContext } from "react";
 import ReactDOM from "react-dom";
 
-// function ThemeFooter() {
-//   return (
-//     <div id="footer">
-//       <ThemeContext.Consumer>{(value) => value}</ThemeContext.Consumer>
-//     </div>
-//   );
-// }
+const CounterContext = React.createContext({
+  count: 0,
+  addCount: () => {},
+});
 
-// function ThemeHeader() {
-//   const value = useContext(ThemeContext);
-
-//   return <div id="header函数组件">{value}</div>;
-// }
-
-// function Toolbar() {
-//   return (
-//     <div>
-//       <ThemeHeader />
-//       <ThemedButton />
-//       <ThemeFooter />
-//     </div>
-//   );
-// }
-
-const ThemeContext = React.createContext("light");
-
-class ThemedButton extends React.Component {
-  static contextType = ThemeContext;
-  componentDidMount() {
-    console.log("this.context...===", this.context);
-  }
+class Counter extends React.Component {
+  static contextType = CounterContext;
   render() {
-    return <button id="button类组件">{this.context}</button>;
+    console.log("Counter...render", this.context);
+    return (
+      <button id="counter" onClick={this.context.addCount}>
+        {this.context.count}
+      </button>
+    );
   }
 }
-
+class App extends React.Component {
+  constructor(props) {
+    super(props);
+  }
+  shouldComponentUpdate() {
+    return false;
+  }
+  render() {
+    return <Counter />;
+  }
+}
+const UserContext = React.createContext({
+  name: "mike",
+});
+class User extends React.Component {
+  static contextType = UserContext;
+  constructor(props) {
+    super(props);
+  }
+  shouldComponentUpdate() {
+    return false;
+  }
+  render() {
+    console.log("user render....", this.context);
+    return <div id="user">{this.context.name}</div>;
+  }
+}
 class Home extends React.Component {
   constructor(props) {
     super(props);
+    this.addCount = () => {
+      this.setState({
+        count: this.state.count + 1,
+      });
+    };
     this.state = {
       count: 0,
+      addCount: this.addCount,
     };
   }
 
   render() {
     return (
-      <div onClick={() => this.setState({ count: this.state.count + 1 })}>
-        <ThemeContext.Provider value={`dark${this.state.count}`}>
-          <ThemedButton />
-        </ThemeContext.Provider>
-      </div>
+      <UserContext.Provider value={{ name: `john-${this.state.count}` }}>
+        <User />
+        <CounterContext.Provider value={this.state}>
+          <App />
+        </CounterContext.Provider>
+      </UserContext.Provider>
     );
   }
 }

@@ -1,5 +1,27 @@
 ## 【草稿状态】正在解析进行中
 
+## 大纲
+- 订阅了context的组件是如何强制render的
+## 强制更新
+
+只要订阅了 context，则组件 render 不受父组件或者其自身的 shouldComponentUpdate 控制，一律强制 render
+
+```js
+class ThemedButton extends React.Component {
+  static contextType = ThemeContext;
+  componentDidMount() {
+    console.log("this.context...===", this.context);
+  }
+  shouldComponentUpdate(nextProps, nextState) {
+    return false;
+  }
+  render() {
+    console.log("ThemedButton...", ThemedButton);
+    return <button id="button类组件">test</button>;
+  }
+}
+```
+
 ## TODO
 
 contextStackCursor 存的是什么
