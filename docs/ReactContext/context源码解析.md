@@ -1,7 +1,12 @@
 ## 【草稿状态】正在解析进行中
 
 ## 大纲
-- 订阅了context的组件是如何强制render的
+
+- 订阅了 context 的组件是如何强制 render 的
+- context 的读取发生在 render 阶段
+- `context._currentValue2` 值没有用处
+- 只有消费了 context 的组件的 fiber.dependencies 才不为空
+
 ## 强制更新
 
 只要订阅了 context，则组件 render 不受父组件或者其自身的 shouldComponentUpdate 控制，一律强制 render

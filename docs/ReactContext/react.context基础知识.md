@@ -80,3 +80,32 @@ function ThemeHeader() {
 ```
 
 目前 `useContext` 是 `react` 官方提供的唯一一个与 `context` 有关的 hook api
+
+#### 订阅多个 context
+
+如果需要订阅多个 context，只能通过`Context.Consumer` 组件。
+
+```jsx
+class App extends React.Component {
+  render() {
+    return (
+      <ThemeContext.Provider value={theme}>
+        <UserContext.Provider value={signedInUser}>
+          <Layout />
+        </UserContext.Provider>
+      </ThemeContext.Provider>
+    );
+  }
+}
+function Content() {
+  return (
+    <ThemeContext.Consumer>
+      {(theme) => (
+        <UserContext.Consumer>
+          {(user) => <ProfilePage user={user} theme={theme} />}
+        </UserContext.Consumer>
+      )}
+    </ThemeContext.Consumer>
+  );
+}
+```
