@@ -2,10 +2,9 @@
 
 ## 大纲
 
-- 订阅了 context 的组件是如何强制 render 的
-- context 的读取发生在 render 阶段
-- `context._currentValue2` 值没有用处
-- 只有消费了 context 的组件的 fiber.dependencies 才不为空
+- 订阅了 context 的组件是如何跳过`shouldComponentUpdate`强制 render 的
+- context 的读取发生在 React 渲染的哪些阶段
+- fiber.dependencies 属性的用途
 
 ## 强制更新
 
