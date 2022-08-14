@@ -4,7 +4,7 @@
 
 - 订阅了 context 的组件是如何跳过`shouldComponentUpdate`强制 render 的
 - context 的读取发生在 React 渲染的哪些阶段
-- fiber.dependencies 属性的用途
+- fiber.dependencies 属性的用途，函数组件通过 useContext 订阅多个 context 时，fiber.dependencies 就是一个链表，保存的是组件订阅的 context
 
 ## 强制更新
 

@@ -83,7 +83,7 @@ function ThemeHeader() {
 
 #### 订阅多个 context
 
-如果需要订阅多个 context，只能通过`Context.Consumer` 组件。
+如果需要订阅多个 context，可以通过`Context.Consumer` 组件。
 
 ```jsx
 class App extends React.Component {
@@ -109,3 +109,5 @@ function Content() {
   );
 }
 ```
+
+函数组件还可以通过 useContext 订阅多个 context

@@ -20,10 +20,12 @@ class Counter extends React.Component {
 
 const FunctionCounter = () => {
   const context = useContext(CounterContext);
+  console.log("Function counter render...", context);
   return <div id="函数组件">函数组件：{context.count}</div>;
 };
 
 const ConsumerFunction = (context) => {
+  console.log("Consumer Function render...", context);
   return <div>Context.consumer：{context.count}</div>;
 };
 function ConsumerCounter() {
@@ -56,9 +58,7 @@ class App extends React.Component {
     ];
   }
 }
-const UserContext = React.createContext({
-  name: "mike",
-});
+const UserContext = React.createContext("default mike");
 class User extends React.Component {
   static contextType = UserContext;
   constructor(props) {
@@ -79,13 +79,15 @@ class Route extends React.Component {
     super(props);
   }
   render() {
+    console.log("route render....", this.context);
     return <div>{this.context}</div>;
   }
 }
-function ProfilePage(name, count) {
+function ProfilePage(props) {
+  console.log("profile page...", props);
   return (
     <div>
-      消费多个context：{name}：{count}
+      消费多个context：{props.name}：{props.count}
     </div>
   );
 }
