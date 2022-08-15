@@ -1,3 +1,5 @@
+> 为什么我建议一定要看这篇文章，这篇文章介绍了 react 中 context 的实现机制，以及 context 是如何跳过 shouldComponentUpdate 强制组件 render，以及当 Context.Provider 的 value 变化时，React 如何查找所有订阅了当前 context 的消费组件并标记为强制更新，而这些过程都是比较耗时的，这对于在平常的业务开发中如何合理设计共享状态以利于性能有很大帮助。在平时的开发中，我发现大部分同学都是将所有的状态丢给React Redux管理，实际上这是很不利于React渲染性能的，因此一个最佳实践是，只将真正需要共享的状态丢给React Redux管理，而组件内部的状态则内部维护。这样就能充分利用React提供的memo或者PureComponent提高更新阶段的渲染性能。
+
 ## 【草稿状态】正在解析进行中
 
 ## 大纲
