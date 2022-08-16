@@ -67,53 +67,97 @@ console.log("context....", context);
 
 ### Context.Provider
 
-以下面的 demo 为例
+Provider 有三个特性：
+
+- 如果没有对应的 Provider，那么消费组件将读取 context 的默认值，即传递给 createContext 的 defaultValue
+- 多个 Provider 可以嵌套使用，里层的会覆盖外层的数据
+- Provider 的 value 值发生变化时，它内部的所有消费组件都会跳过 shouldComponentUpdate 强制更新
+
+在介绍 Provider 的源码实现前，我们思考一下，如果让我们设计一个类似 Provider 的 API，如何设计才能满足前面两个特性？
+
+#### 特性 1：如果没有对应的 Provider，那么消费组件将读取 context 的默认值，即传递给 createContext 的 defaultValue
+
+注意，useContext(CounterContext)等价于 CounterContext.\_currentValue，为了减少干扰方便演示，这里我直接使用 CounterContext.\_currentValue 替代 useContext
 
 ```jsx
-import React, { useContext } from "react";
-import ReactDOM from "react-dom";
-
-const CounterContext = React.createContext({
-  count: 0,
-  addCount: () => {},
-});
+const CounterContext = React.createContext(-1);
 
 const Counter = () => {
-  const context = useContext(CounterContext);
-  console.log("Counter render");
-  return (
-    <button id="counter" onClick={context.addCount}>
-      {context.count}
-    </button>
-  );
+  // const context = useContext(CounterContext);
+  const context = CounterContext._currentValue;
+  return <div>{context}</div>;
 };
 class Home extends React.Component {
   constructor(props) {
     super(props);
-    this.addCount = () => {
-      console.log("点击按钮触发更新", this.state.count + 1);
-      this.setState({
-        count: this.state.count + 1,
-      });
-    };
-    this.state = {
-      count: 0,
-      addCount: this.addCount,
-    };
   }
 
   render() {
-    console.log("Home render");
-    return (
-      <CounterContext.Provider value={this.state}>
-        <Counter />
-      </CounterContext.Provider>
-    );
+    return <Counter />;
   }
 }
-ReactDOM.render(<Home />, document.getElementById("root"));
 ```
 
+由于没有 Provider，Counter 将读取 context 的默认值，即页面显示-1。但如果我们用 Provider 包裹一下：
+
+```jsx
+render() {
+  return (
+    <CounterContext.Provider value={1}>
+      <Counter />
+    </CounterContext.Provider>
+  );
+}
+```
+
+由于有 Provider，Counter 将读取 Provider 的 value 值，即页面显示 1。
+
+在调用 React.createContext 创建 context 时，context.\_currentValue 的值保存的就是默认值。因此，如果没有 CounterContext.Provider 时，Counter 可以通过 context.\_currentValue 读取到默认值。
+
+同理，如果有 CounterContext.Provider 包裹 Counter 组件时，我们只需要将 Provider 的 value 值保存到 context.\_currentValue 中就能让 Counter 读取到。
+
+在 render 阶段，CounterContext.Provider 进入 beginWork 时，我们可以将 CounterContext.\_currentValue 设置为新的 value 值。这样在后续的渲染阶段，Counter 就能够通过 CounterContext.\_currentValue 读取到 Provider 最新的 value 值。我们似乎已经满足了第一个特性
+
+```js
+function beginWork(current, workInProgress, renderLanes) {
+  switch (workInProgress.tag) {
+    case ContextProvider:
+      CounterContext._currentValue = workInProgress.pendingProps.value;
+  }
+}
+```
+
+但考虑到下面的案例
+
+```jsx
+render() {
+  return [
+    <CounterContext.Provider value={1}>
+      <Counter />
+    </CounterContext.Provider>,
+    <Counter />,
+  ];
+}
+```
+
+第二个 Counter 由于没有 Provider，理论上它要读取 context 的默认值。但是我们在 beginWork 时，已经将 CounterContext.\_currentValue 修改成最新的值了，第二个 Counter 读取到的也将是最新的值，而不是默认值。我们需要修改一下 beginWork 的逻辑
+
+```js
+let valueCursor;
+function beginWork(current, workInProgress, renderLanes) {
+  switch (workInProgress.tag) {
+    case ContextProvider:
+      valueCursor = CounterContext._currentValue; // 先将旧值保存起来
+      CounterContext._currentValue = workInProgress.pendingProps.value;
+  }
+}
+```
+
+我们声明一个全局变量，将旧值保存起来，然后再将 CounterContext.\_currentValue 设置成新的 value 值。那么问题来了，我们应该在哪个阶段将 CounterContext.\_currentValue 的值恢复成旧值？这里需要了解 Render 阶段的流程，React 在渲染时，
+
+## TODO
+
+第一点，如下 demo
 在 beginWork 阶段，React 为 Context.Provider fiber 执行的操作：
 
 ```js
@@ -186,7 +230,6 @@ context.\_currentValue 保存的是最新的 value 值，这样其子元素就�
 
 第二个 Counter 组件在 Provider 外面，因此它会读取到 context 的默认值，即永远都是 `{ count: 0, addCount: () => }`。但是 beginWork 阶段 React 在执行 Context.Provider 时已经修改了 context 的\_currentValue 值，此时如果继续遍历到第二个 Counter 组件，它读取到的 context.\_currentValue 就不是默认值而是最新值了。因此，React 在 completeUnitOfWork 阶段，当 Context.Provider 执行完时，会调用 popProvider 将 context.\_currentValue 重置为默认值
 
-
 ```js
 function popProvider(providerFiber) {
   var currentValue = valueCursor.current;
@@ -204,8 +247,7 @@ function completeWork(current, workInProgress, renderLanes) {
 }
 ```
 
-那问题来了，React是如何存储默认值的？原本我们可以将默认值直接存在
-
+那问题来了，React 是如何存储默认值的？原本我们可以将默认值直接存在
 
 ## Context.Provider value 变化，React 如何强制更新？
 
