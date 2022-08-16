@@ -153,7 +153,11 @@ function beginWork(current, workInProgress, renderLanes) {
 }
 ```
 
-我们声明一个全局变量，将旧值保存起来，然后再将 CounterContext.\_currentValue 设置成新的 value 值。那么问题来了，我们应该在哪个阶段将 CounterContext.\_currentValue 的值恢复成旧值？这里需要了解 Render 阶段的流程，React 在渲染时，
+我们声明一个全局变量，将旧值保存起来，然后再将 CounterContext.\_currentValue 设置成新的 value 值。那么问题来了，我们应该在哪个阶段将 CounterContext.\_currentValue 的值恢复成旧值？
+
+> 这里需要了解 Render 阶段的流程，React 在渲染时，会先调用 beginWork 为 fiber 节点执行工作，当这个 fiber 所有子节点都完成工作时，就会调用 completeUnitOfWork 为当前 fiber 节点完成工作，比如只有 CounterContext.Provider 的所有子节点都完成工作后，CounterContext.Provider 才能调用 completeUnitOfWork 完成工作。当 CounterContext.Provider 调用 completeUnitOfWork 完成工作后，才会开始执行第二个 Counter 的工作
+
+因此我们可以在 completeUnitOfWork 中将 CounterContext.\_currentValue 恢复成默认值
 
 ## TODO
 
