@@ -12,13 +12,70 @@
   <body>
     <div id="root">React Context</div>
     <script>
-      function completeWork(current, workInProgress, renderLanes) {
-        var newProps = workInProgress.pendingProps;
-        switch (workInProgress.tag) {
-          case ContextProvider:
-            popProvider(workInProgress);
-            return null;
+      const classConstructor = workInProgress.type
+      function prepareToReadContext(workInProgress, renderLanes) {
+        currentlyRenderingFiber = workInProgress;
+        lastContextDependency = null;
+        lastContextWithAllBitsObserved = null;
+        var dependencies = workInProgress.dependencies;
+
+        if (dependencies !== null) {
+          var firstContext = dependencies.firstContext;
+
+          if (firstContext !== null) {
+            if (includesSomeLane(dependencies.lanes, renderLanes)) {
+              // Context list has a pending update. Mark that this fiber performed work.
+              markWorkInProgressReceivedUpdate();
+            } // Reset the work-in-progress list
+
+            dependencies.firstContext = null;
+          }
         }
+      }
+      function updateClassComponent(
+        current,
+        workInProgress,
+        Component,
+        nextProps,
+        renderLanes
+      ) {
+        prepareToReadContext(workInProgress, renderLanes);
+        var instance = workInProgress.stateNode;
+        var shouldUpdate;
+
+        if (instance === null) {
+          // In the initial pass we might need to construct the instance.
+          constructClassInstance(workInProgress, Component, nextProps);
+          mountClassInstance(workInProgress, Component, nextProps, renderLanes);
+          shouldUpdate = true;
+        } else if (current === null) {
+          // In a resume, we'll already have an instance we can reuse.
+          shouldUpdate = resumeMountClassInstance(
+            workInProgress,
+            Component,
+            nextProps,
+            renderLanes
+          );
+        } else {
+          shouldUpdate = updateClassInstance(
+            current,
+            workInProgress,
+            Component,
+            nextProps,
+            renderLanes
+          );
+        }
+
+        var nextUnitOfWork = finishClassComponent(
+          current,
+          workInProgress,
+          Component,
+          shouldUpdate,
+          hasContext,
+          renderLanes
+        );
+
+        return nextUnitOfWork;
       }
     </script>
   </body>

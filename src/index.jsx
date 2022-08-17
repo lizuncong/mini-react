@@ -4,9 +4,22 @@ import ReactDOM from "react-dom";
 const CounterContext = React.createContext(-1);
 
 const Counter = () => {
+  console.log("Function Counter render");
   const context = useContext(CounterContext);
   return <div>{context}</div>;
 };
+
+class ClassCounter extends React.Component {
+  static contextType = CounterContext;
+  render() {
+    console.log("Class Counter render");
+    return (
+      <div>
+        {this.context}
+      </div>
+    );
+  }
+}
 class Home extends React.Component {
   constructor(props) {
     super(props);
@@ -14,10 +27,10 @@ class Home extends React.Component {
 
   render() {
     return [
-      <CounterContext.Provider value={1}>
-        <Counter />
+      <CounterContext.Provider id="provider1" value={1}>
+        <Counter id="counter1" />
+        <ClassCounter />
       </CounterContext.Provider>,
-      <Counter />,
     ];
   }
 }
