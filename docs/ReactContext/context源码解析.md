@@ -425,7 +425,7 @@ var newChildren = render(newValue);
 
 可以看出，这三种方式在读取 context 时都要进行两个操作：
 
-- 在读取 context 前，都需要先调用`prepareToReadContext`进行准备工作，重置几个和 contex 有关的全局变量，以及判断 context 的value是否变更了
+- 在读取 context 前，都需要先调用`prepareToReadContext`进行准备工作，重置几个和 contex 有关的全局变量，以及判断 context 的 value 是否变更了
 - 都是调用 readContext 方法读取 context 值，readContext 方法返回 context.\_currentValue 的值
 
 `prepareToReadContext`主要逻辑如下：
@@ -457,23 +457,67 @@ function prepareToReadContext(workInProgress, renderLanes) {
 }
 ```
 
+### readContext 读取 context 最新值
+
+context 本质上就是一个全局变量，我们完全可以在函数组件或者类组件中通过`context._currentValue`直接访问 context 值，比如：
+
+```js
+const Counter = () => {
+  return <div>{CounterContext._currentValue}</div>;
+};
+```
+
+不信你可以在代码中试试。虽然我们可以直接读取值，但这又引入了两个问题：
+
+- context 的值变了，如何通知所有读取 context 的组件强制刷新？
+- 怎么知道哪些组件订阅了 context？
+
+为了解决这两个问题，React 引入 Provider，Provider 判断 value 变化，就会通知所有订阅了 context 的组件。同时通过 readContext 读取值，在读取的时候，通过在 fiber.dependencies 中添加 context，标记这个组件订阅了 context。
+
+readContext 的逻辑也比较简单，首先判断 `lastContextWithAllBitsObserved === context`，如果相等，说明是同一个 context，这种判断是为了防止重复，readContext 的一个主要目标就是收集组件依赖的所有 context，比如：
+
+```jsx
+const CounterContext = React.createContext(-1);
+const UserContext = React.createContext("mike");
+
+const Counter = () => {
+  const context = useContext(CounterContext);
+  const context2 = useContext(CounterContext);
+  const usercontext = useContext(UserContext);
+
+  return (
+    <div>
+      {context}
+      {usercontext}
+    </div>
+  );
+};
+```
+
+这个例子中，React 认为 Counter 组件订阅了两个 context，而不是三个，因此将这两个 context 添加到 fiber 的 dependencies 依赖链表中，最终，fiber.dependencies 长这样：
+
+```js
+fiber.dependencies = {
+  lanes,
+  firstContext: {
+    context: CounterContext,
+    next: {
+      context: UserContext,
+      next: null,
+    },
+  },
+  responders,
+};
+```
+
+readContext 收集依赖的算法如下：
+
 ```js
 function readContext(context, observedBits) {
-  if (lastContextWithAllBitsObserved === context);
-  else if (observedBits === false || observedBits === 0);
-  else {
-    var resolvedObservedBits; // Avoid deopting on observable arguments or heterogeneous types.
-
-    if (
-      typeof observedBits !== "number" ||
-      observedBits === MAX_SIGNED_31_BIT_INT
-    ) {
-      // Observe all updates.
-      lastContextWithAllBitsObserved = context;
-      resolvedObservedBits = MAX_SIGNED_31_BIT_INT;
-    } else {
-      resolvedObservedBits = observedBits;
-    }
+  if (lastContextWithAllBitsObserved === context) {
+  } else {
+    lastContextWithAllBitsObserved = context;
+    var resolvedObservedBits = MAX_SIGNED_31_BIT_INT;
 
     var contextItem = {
       context: context,
@@ -482,12 +526,7 @@ function readContext(context, observedBits) {
     };
 
     if (lastContextDependency === null) {
-      if (!(currentlyRenderingFiber !== null)) {
-        {
-          throw Error(formatProdErrorMessage(308));
-        }
-      } // This is the first dependency for this component. Create a new list.
-
+      // 这是第一个依赖
       lastContextDependency = contextItem;
       currentlyRenderingFiber.dependencies = {
         lanes: NoLanes,
@@ -495,7 +534,7 @@ function readContext(context, observedBits) {
         responders: null,
       };
     } else {
-      // Append a new context item.
+      // 添加到dependencies表尾
       lastContextDependency = lastContextDependency.next = contextItem;
     }
   }
@@ -506,12 +545,11 @@ function readContext(context, observedBits) {
 
 ## Context.Provider value 变化，React 如何强制更新？
 
-以下面的 demo 为例
+在 Provider 的 value 值变化时，React 会遍历 Provider 内部所有的 fiber 节点，然后查看其 fiber.dependencies，如果 dependencies 中存在一个 context 和当前 Provider 的 context 相等，那说明这个组件订阅了当前的 Provider 的 context，需要将其标记为强制更新
+
+先来看下面的 demo
 
 ```jsx
-import React, { useContext } from "react";
-import ReactDOM from "react-dom";
-
 const CounterContext = React.createContext({
   count: 0,
   addCount: () => {},
@@ -598,68 +636,173 @@ ReactDOM.render(<Home />, document.getElementById("root"));
 
 Home 的更新很容易理解，因为点击按钮触发了它的 state 更新，**那么 Counter 组件是如何跳过父组件 App 以及其自身的 shouldComponentUpdate 强制更新的？**
 
-先来简单回顾一下，React 的渲染分为两大阶段，五小阶段：
+前面介绍过在`updateContextProvider`方法中，使用浅比较判断 Provider 的 value 是否变化，如果变化，则调用`propagateContextChange`查找所有订阅了这个 context 的组件
 
-- render 阶段
-  - beginWork
-  - completeUnitOfWork
-- commit 阶段。
-  - commitBeforeMutationEffects
-  - commitMutationEffects
-  - commitLayoutEffects
+### propagateContextChange 查找算法
 
-beginWork 阶段主要是协调子元素，也就是常说的 dom diff。**React context 只作用于 beginWork 阶段。**当点击按钮触发更新时，React 从 fiber 树的根节点(root fiber)开始执行 beginWork 函数，协调子元素(实际上每一次更新都会从 root fiber 开始调度执行)。
+以下面的代码为例：
 
-当执行到 CounterContext.Provider 组件时，React 使用**浅比较** 比较 Provider 的新旧值
-
-```js
-function beginWork(current, workInProgress, renderLanes) {
-  switch (workInProgress.tag) {
-    case ContextProvider:
-      return updateContextProvider(current, workInProgress, renderLanes);
+```jsx
+class Home extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      count: 1,
+    };
   }
-}
 
-// React真实的源码中，使用changedBits标记context是否有变化，但其实逻辑可以简化成下面的实现
-function calculateChangedBits(context, newValue, oldValue) {
-  if (oldValue === newValue) {
-    // 浅比较
-    // 如果相等，说明没有变化
-    return 0;
-  } else {
-    // 有变化
-    return true;
+  render() {
+    return [
+      <CounterContext.Provider id="provider1" value={this.state.count + 1}>
+        <div id="wrap">
+          <CounterContext.Provider id="provider2" value={2}>
+            <Counter id="counter1" />
+          </CounterContext.Provider>
+          <UserContext.Provider id="userprovider1" value="mike">
+            <Counter id="counter2" />
+          </UserContext.Provider>
+        </div>
+        <Counter id="counter3" />
+      </CounterContext.Provider>,
+      <button
+        onClick={() => {
+          this.setState({
+            count: this.state.count + 1,
+          });
+        }}
+      >
+        click
+      </button>,
+    ];
   }
-}
-function updateContextProvider(current, workInProgress, renderLanes) {
-  var providerType = workInProgress.type;
-  var context = providerType._context;
-  var newProps = workInProgress.pendingProps;
-  var oldProps = workInProgress.memoizedProps;
-  var newValue = newProps.value;
-
-  pushProvider(workInProgress, newValue);
-
-  if (oldProps !== null) {
-    var oldValue = oldProps.value;
-    var changedBits = calculateChangedBits(context, newValue, oldValue);
-
-    if (changedBits === 0) {
-    } else {
-      // context变化了，因此需要查找所有订阅了这个context的组件，将它们标记为强制更新，并调度更新
-      propagateContextChange(workInProgress, context, changedBits, renderLanes);
-    }
-  }
-  var newChildren = newProps.children;
-  reconcileChildren(current, workInProgress, newChildren, renderLanes);
-  return workInProgress.child;
 }
 ```
 
-updateContextProvider 方法逻辑较简单，判断 context 是否变化，**如果有变化则调用 propagateContextChange 开始向下遍历查找所有订阅了这个 context 的组件**，查找的算法也很简单，从当前的 Provider 组件开始，遍历 Provider 组件下面所有的 fiber 节点，找到订阅了这个 context 的组件，并标记为强制更新。
+当点击按钮触发更新时，`provider1`的 value 发生变更，因此调用`propagateContextChange`开始查找所有订阅了`provider1`的 context 的 fiber 节点，按以下顺序：
 
-## React Context 的实现原理
+- 首先是 `div#wrap`，由于它没有订阅了 CounterContext，因此没有任何操作，继续遍历它的子节点
+- 由于 `provider2` 和 `provider1` 是同一个 context，因此不需要继续遍历`provider2`内部的子节点，因为即使`provider2`内部有组件订阅了 CounterContext，那也是读取的是 `provider2` 的 value 值，而不是 `provider1` 的 value 值，因此 `provider1` 的值发生变化不会影响到 `provider2` 内部的消费组件
+- 继续遍历 `userprovider1`，没有订阅 CounterContext，因此继续遍历`couter2`，发现`counter2`订阅了 CounterContext，因此将其标记为更新
+  - 如果 counter2 是类组件，那么会创建一个更新对象 update，并将 update.tag 标记为强制更新
+- 继续遍历 counter3，发现 counter3 也订阅了 CounterContext
+
+如果找到订阅了 context 的消费组件，则将其 fiber.lane 标记为更新，然后合并到父节点。
+
+比如在我们上面那个例子中，Counter 需要更新，但是 App、CounterWrap、NeverUpdate 都不需要更新，因此这三个 fiber 节点在 beginWork 阶段会直接跳过，然后更新 Counter 组件。
+
+至于怎么标记更新，这涉及到 fiber lane 的知识，就不在本节的讨论范围
+
+**可以发现，当有 Provider 的 value 发生变化时，React 会遍历这个 Provider 内部所有的 fiber 节点，找出订阅了这个 Provider 的 context 的 fiber 节点。这个查找的过程也是挺耗时的，特别是组件层级很深时**
+
+最后，propagateContextChange 查找算法如下：
+
+```js
+function propagateContextChange(
+  workInProgress,
+  context,
+  changedBits,
+  renderLanes
+) {
+  var fiber = workInProgress.child;
+
+  while (fiber !== null) {
+    var nextFiber = void 0; // Visit this fiber.
+
+    var list = fiber.dependencies;
+    // 首先判断这个fiber是否有dependencies，如果没有，说明这个fiber没有订阅任何context
+    if (list !== null) {
+      nextFiber = fiber.child;
+      var dependency = list.firstContext;
+      // 如果这个fiber有订阅context，则判断是否是当前Provider的context
+      while (dependency !== null) {
+        // 检查context是否匹配
+        if (
+          dependency.context === context &&
+          (dependency.observedBits & changedBits) !== 0
+        ) {
+          // 匹配到了context，说明这个组件订阅了当前Provider的context，我们需要给这个fiber调度更新
+          if (fiber.tag === ClassComponent) {
+            // 如果是类组件，则创建一个更新对象update，并标记为强制更新
+            var update = createUpdate(
+              NoTimestamp,
+              pickArbitraryLane(renderLanes)
+            );
+            update.tag = ForceUpdate;
+            // 添加到更新队列
+            enqueueUpdate(fiber, update);
+          }
+
+          fiber.lanes = mergeLanes(fiber.lanes, renderLanes);
+          var alternate = fiber.alternate;
+
+          if (alternate !== null) {
+            alternate.lanes = mergeLanes(alternate.lanes, renderLanes);
+          }
+
+          scheduleWorkOnParentPath(fiber.return, renderLanes);
+
+          list.lanes = mergeLanes(list.lanes, renderLanes);
+
+          break;
+        }
+
+        dependency = dependency.next;
+      }
+    } else if (fiber.tag === ContextProvider) {
+      // 如果是相同的Provider，则不用继续遍历了，因为相同的嵌套的Provider，内部的消费组件取最里层的，外层的Provider变化
+      // 和里面的消费组件没啥关系
+      nextFiber = fiber.type === workInProgress.type ? null : fiber.child;
+    } else {
+      // 继续遍历子节点
+      nextFiber = fiber.child;
+    }
+
+    if (nextFiber === null) {
+      // 没有子节点，则继续遍历兄弟节点
+      nextFiber = fiber;
+
+      while (nextFiber !== null) {
+        if (nextFiber === workInProgress) {
+          // 所有fiber节点已经遍历完成，退出
+          nextFiber = null;
+          break;
+        }
+
+        var sibling = nextFiber.sibling;
+
+        if (sibling !== null) {
+          nextFiber = sibling;
+          break;
+        }
+        // 如果没有兄弟节点，则查找父节点的兄弟节点
+        nextFiber = nextFiber.return;
+      }
+    }
+
+    fiber = nextFiber;
+  }
+}
+```
 
 ## 如何合理使用 React Redux 管理全局共享状态
 
-在平时的开发中，我发现大部分同学都是将所有的状态丢给 React Redux 管理，实际上这是很不利于 React 渲染性能的，因此一个最佳实践是，只将真正需要共享的状态丢给 React Redux 管理，而组件内部的状态则内部维护。这样就能充分利用 React 提供的 memo 或者 PureComponent 提高更新阶段的渲染性能。
+从上面 Provider 的 value 变化，查找所有订阅组件的过程可以看出，每次 Provider 一变化，都要遍历一次，像下面的代码：
+
+```js
+<CounterContext.Provider value={this.state.count}>
+  <UserContext.Provider value={this.state.count + "mike"}>
+    <App />
+  </UserContext.Provider>
+</CounterContext.Provider>
+```
+
+如果 this.state.count 发生变化，则导致在 beginWork 阶段：
+
+- CounterContext.Provider 的 value 发生了变化，则遍历内部所有的 fiber 节点找出消费组件
+- UserContext.Provider 的 value 也发生了变化，则遍历内部所有的 fiber 节点找出消费组件
+
+如果页面很复杂，组件层级很深数量庞大，这个开销也是很大的。
+
+因此，我们应该尽量少的避免 Provider 的 value 发生变化
+
+在使用 React Redux 时，每次 dispatch 触发状态变更，React 都要查找一次。我们应该要尽可能少的使用 React Redux 管理状态，只在必要的时候，比如全局共享数据，才使用 React Redux 托管状态。而页面级别或者组件级别的状态应该在组件内部闭环，通过 this.state 或者 useState 管理

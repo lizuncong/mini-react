@@ -2,35 +2,50 @@ import React, { useContext } from "react";
 import ReactDOM from "react-dom";
 
 const CounterContext = React.createContext(-1);
+const UserContext = React.createContext("mike");
 
 const Counter = () => {
-  console.log("Function Counter render");
   const context = useContext(CounterContext);
+
   return <div>{context}</div>;
 };
 
-class ClassCounter extends React.Component {
-  static contextType = CounterContext;
+class App extends React.Component {
+  constructor(props) {
+    super(props);
+  }
+  shouldComponentUpdate() {
+    return false;
+  }
   render() {
-    console.log("Class Counter render");
-    return (
-      <div>
-        {this.context}
-      </div>
-    );
+    console.log("App render，控制台只会输出一次");
+    return <Counter />;
   }
 }
 class Home extends React.Component {
   constructor(props) {
     super(props);
+    this.state = {
+      count: 1,
+    };
   }
 
   render() {
     return [
-      <CounterContext.Provider id="provider1" value={1}>
-        <Counter id="counter1" />
-        <ClassCounter />
+      <CounterContext.Provider value={this.state.count}>
+        <UserContext.Provider value={this.state.count + "mike"}>
+          <App />
+        </UserContext.Provider>
       </CounterContext.Provider>,
+      <button
+        onClick={() => {
+          this.setState({
+            count: this.state.count + 1,
+          });
+        }}
+      >
+        click
+      </button>,
     ];
   }
 }
