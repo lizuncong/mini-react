@@ -21,9 +21,9 @@
   - commitMutationEffects
   - commitLayoutEffects
 
-beginWork 阶段主要是协调子元素，也就是常说的 dom diff。在 render 阶段，React 为每一个 fiber 节点调用 beginWork 开始执行工作，如果 fiber 没有子节点或者子节点都已经完成了工作，那么这个 fiber 就可以调用 completeUnitOfWork 完成自身的工作，这个过程就是深度优先遍历，具体可以看这篇文章[深入概述 React 初次渲染及状态更新主流程](https://github.com/lizuncong/mini-react/blob/master/docs/render/%E6%B7%B1%E5%85%A5%E6%A6%82%E8%BF%B0%20React%E5%88%9D%E6%AC%A1%E6%B8%B2%E6%9F%93%E5%8F%8A%E7%8A%B6%E6%80%81%E6%9B%B4%E6%96%B0%E4%B8%BB%E6%B5%81%E7%A8%8B.md)。
+在 render 阶段，React 为每一个 fiber 节点调用 beginWork 开始执行工作，如果 fiber 没有子节点或者子节点都已经完成了工作，那么这个 fiber 就可以调用 completeUnitOfWork 完成自身的工作，这个过程就是深度优先遍历，具体可以看这篇文章[深入概述 React 初次渲染及状态更新主流程](https://github.com/lizuncong/mini-react/blob/master/docs/render/%E6%B7%B1%E5%85%A5%E6%A6%82%E8%BF%B0%20React%E5%88%9D%E6%AC%A1%E6%B8%B2%E6%9F%93%E5%8F%8A%E7%8A%B6%E6%80%81%E6%9B%B4%E6%96%B0%E4%B8%BB%E6%B5%81%E7%A8%8B.md)。我们可以将进入节点的过程理解为 beginWork，离开节点的过程叫 completeUnitOfWork。
 
-**React context 只作用于 beginWork 阶段。** 在 beginWork 阶段，如果当前组件订阅了 context，则从 context 中读取 value 值。
+beginWork 阶段主要是协调子元素，也就是常说的 dom diff。在这个阶段，React 会调用类组件的 render 方法或者执行函数组件。**context 的存取就是作用于 beginWork 阶段。**在 beginWork 阶段，如果当前组件订阅了 context，则从 context 中读取 value 值。
 
 context 提供了一种存取全局共享数据的方式
 
@@ -162,7 +162,7 @@ function beginWork(current, workInProgress, renderLanes) {
 
 我们声明一个全局变量，将旧值保存起来，然后再将 CounterContext.\_currentValue 设置成新的 value 值。那么问题来了，我们应该在哪个阶段将 CounterContext.\_currentValue 的值恢复成旧值？
 
-> React 在 render 阶段会遍历每一个 fiber 节点并调用 beginWork 为 fiber 执行工作，如果 fiber 没有子节点或者子节点都已经完成了工作，那么可以调用 completeUnitOfWork 为 fiber 完成工作。这个过程就是深度优先遍历，我们可以将 beginWork 理解为"进入"fiber 节点，而将 completeUnitOfWork 理解为"离开"fiber 节点，因此我们可以在离开 fiber 节点时，将 context.\_currentValue 恢复成旧值
+> 在前面介绍过，React 在遍历 fiber 树时，进入节点时会调用 beginWork 方法开始工作，离开节点时会调用 completeUnitOfWork 完成工作。因此我们可以在离开 fiber 节点时，将 context.\_currentValue 恢复成旧值
 
 completeUnitOfWork 内部调用 completeWork 完成工作，大概如下：
 
@@ -180,7 +180,7 @@ function completeWork(current, workInProgress, renderLanes) {
 
 ### 特性 2：多个相同 Provider 可以嵌套使用，里层的会覆盖外层的数据
 
-我们自己设计的 api 已经能够满足 Provider 的第一个特性了，我们在进入 Provider fiber 节点时，将当前的 context.\_currentValue 值保存起来，然后再将 Provider 新的 value 值保存在 context.\_currentValue 中，这样 Provider 内部的所有组件都能够通过 context.\_currentValue 读取到最新的值。然后再离开 Provider fiber 节点时，我们将 context.\_currentValue 恢复成旧值。
+我们自己设计的 api 已经能够满足 Provider 的第一个特性了，我们在进入 Provider fiber 节点时，将当前的 context.\_currentValue 值保存起来，然后再将 Provider 新的 value 值保存在 context.\_currentValue 中，这样 Provider 内部的所有组件都能够通过 context.\_currentValue 读取到最新的值。然后在离开 Provider fiber 节点时，我们将 context.\_currentValue 恢复成旧值。
 
 现在让我们考虑下面多个 Provider 嵌套的场景：
 
@@ -316,7 +316,7 @@ render() {
 
 ### Context.Provider 源码实现
 
-React 在 beginWork 阶段对 Provider 类型的 fiber 节点执行的主要工作有两点：
+在 render 阶段，React 进入 Provider 类型的 fiber 节点时，beginWork 会调用`updateContextProvider`函数为 Provider 类型的节点执行工作，主要逻辑如下：
 
 - 调用 pushProvider，将 context.\_currentValue 保存到 valueStack 栈中。然后将 context.\_currentValue 设置成 Provider 新的 value 值
 - 使用浅比较判断 Context.Provider 的新旧 value 值是否发生了改变，如果发生了改变，则调用 propagateContextChange 找出所有订阅了这个 context 的组件，然后跳过 shouldComponenentUpdate 强制更新。查找算法放在后面单独一节介绍
@@ -404,6 +404,7 @@ React 提供了三种方式读取 Context 的值：
 对于类组件，React 会判断类组件上是否有静态属性 contextType，如果有，则调用 `readContext` 读取 context 值，并赋值给类实例的 context 属性
 
 ```js
+prepareToReadContext(workInProgress, renderLanes);
 const ctor = workInProgress.type;
 const instance = new ctor();
 const contextType = ctor.contextType;
@@ -423,7 +424,7 @@ var newValue = readContext(context, newProps.unstable_observedBits);
 var newChildren = render(newValue);
 ```
 
-可以看出，这三种方式在读取 context 时都要进行两个操作：
+这三种方式在读取 context 时都要进行两个操作：
 
 - 在读取 context 前，都需要先调用`prepareToReadContext`进行准备工作，重置几个和 contex 有关的全局变量，以及判断 context 的 value 是否变更了
 - 都是调用 readContext 方法读取 context 值，readContext 方法返回 context.\_currentValue 的值
@@ -467,14 +468,16 @@ const Counter = () => {
 };
 ```
 
-不信你可以在代码中试试。虽然我们可以直接读取值，但这又引入了两个问题：
+不信你可以在代码中试试。虽然我们可以直接读取值，但是直接读取值无法解决下面两个问题：
 
 - context 的值变了，如何通知所有读取 context 的组件强制刷新？
 - 怎么知道哪些组件订阅了 context？
 
-为了解决这两个问题，React 引入 Provider，Provider 判断 value 变化，就会通知所有订阅了 context 的组件。同时通过 readContext 读取值，在读取的时候，通过在 fiber.dependencies 中添加 context，标记这个组件订阅了 context。
+也正是为了解决全局变量的这两个问题，React 使用 Provider 显示声明全局状态，使用 useContext 或者 contextType 显示使用全局状态。React 通过在 useContext 或者 contextType 中读取全局状态时，会将 context 的信息存储在消费组件的 fiber.dependencies 中，然后 Provider 会判断 value 值是否改变，如果改变，则查找内部所有订阅了这个 context 的消费组件并强制更新
 
-readContext 的逻辑也比较简单，首先判断 `lastContextWithAllBitsObserved === context`，如果相等，说明是同一个 context，这种判断是为了防止重复，readContext 的一个主要目标就是收集组件依赖的所有 context，比如：
+**这也是为什么 React 会引入 Provider 和 useContext、contextType 的根本原理**
+
+下面我们看看 readContext 的逻辑，**readContext 的一个主要目标就是收集组件依赖的所有不同的 context，如果组件订阅了 context，则将 context 添加到 fiber.dependencies 链表中**，比如
 
 ```jsx
 const CounterContext = React.createContext(-1);
@@ -494,7 +497,7 @@ const Counter = () => {
 };
 ```
 
-这个例子中，React 认为 Counter 组件订阅了两个 context，而不是三个，因此将这两个 context 添加到 fiber 的 dependencies 依赖链表中，最终，fiber.dependencies 长这样：
+这个例子中，虽然我们调用了三次 useContext，但是 context 和 contex2 是同一个 context，React 认为 Counter 组件订阅了两个 context，而不是三个，因此将这两个 context 添加到 fiber 的 dependencies 依赖链表中，最终，fiber.dependencies 长这样：
 
 ```js
 fiber.dependencies = {
@@ -510,7 +513,7 @@ fiber.dependencies = {
 };
 ```
 
-readContext 收集依赖的算法如下：
+readContext 收集依赖的算法如下，首先判断 `lastContextWithAllBitsObserved === context`，如果相等，说明是同一个 context，这种判断是为了防止重复添加依赖。如果不等，则将 lastContextWithAllBitsObserved 设置为 context，并将 context 添加到 fiber.dependencies 链表末尾
 
 ```js
 function readContext(context, observedBits) {
@@ -543,11 +546,39 @@ function readContext(context, observedBits) {
 }
 ```
 
+以上面的例子为例介绍 context 的读取过程
+
+render 阶段进入 Counter 节点时开始调用 beginWork 执行工作，在读取 context 前，调用 prepareToReadContext 进行一些准备工作，比如：
+
+```js
+currentlyRenderingFiber = workInProgress;
+lastContextDependency = null;
+lastContextWithAllBitsObserved = null;
+```
+
+然后开始调用 readContext 读取 context 的\_currentValue 值，步骤如下
+
+- 首先调用 const context = useContext(CounterContext)，由于此时的 lastContextWithAllBitsObserved 为 null，lastContextWithAllBitsObserved !== context，因此将这个 context 添加到 fiber 的 dependencies 链表中。同时 lastContextDependency 指针指向表尾，目前链表只有一个 context 依赖
+- 然后调用 const context2 = useContext(CounterContext)再次读取 CounterContext，由于此时的 lastContextWithAllBitsObserved === CounterContext，说明 CounterContext 已经被添加到 fiber.dependencies 链表中了，不必重复添加，直接返回 CounterContext.\_currentValue
+- 最后调用 const usercontext = useContext(UserContext)，发现 lastContextWithAllBitsObserved !== UserContext，说明 UserContext 还没添加到 fiber.dependencies 链表中，因此添加进去即可
+
 ## Context.Provider value 变化，React 如何强制更新？
 
-在 Provider 的 value 值变化时，React 会遍历 Provider 内部所有的 fiber 节点，然后查看其 fiber.dependencies，如果 dependencies 中存在一个 context 和当前 Provider 的 context 相等，那说明这个组件订阅了当前的 Provider 的 context，需要将其标记为强制更新
+Provider 的 value 值变化时，其内部所有订阅了这个 context 的组件都会强制更新。
 
-先来看下面的 demo
+```jsx
+<CounterContext.Provider id="provider1" value={this.state.count}>
+  <CounterContext.Provider id="provider2" value="2">
+    <Counter />
+  </CounterContext.Provider>
+</CounterContext.Provider>
+```
+
+比如在这个例子中，有两个嵌套的 CounterContext.Provider，但是 Counter 组件只会读取最里层的 Provider，即`provider2`的 value 值。即使`provider1`的 value 发生变化，也不会影响到 Counter 组件。`provider2`的 value 值发生变化时，才会强制 Counter 更新。
+
+Provider 的 value 值变化时，React 会遍历 Provider 内部所有的 fiber 节点，然后查看其 fiber.dependencies，如果 dependencies 中存在一个 context 和当前 Provider 的 context 相等，那说明这个组件订阅了当前的 Provider 的 context，需要将其标记为强制更新
+
+下面的 demo 演示了 React 跳过 sCU 更新消费组件的场景：
 
 ```jsx
 const CounterContext = React.createContext({
@@ -634,7 +665,7 @@ ReactDOM.render(<Home />, document.getElementById("root"));
 - 第一次渲染时，所有组件都会更新，组件的 render 方法都被执行
 - 在随后的点击过程中，只有 Home 组件以及订阅了 Context 的 Counter 组件更新了，它们对应的 render 方法执行
 
-Home 的更新很容易理解，因为点击按钮触发了它的 state 更新，**那么 Counter 组件是如何跳过父组件 App 以及其自身的 shouldComponentUpdate 强制更新的？**
+Home 的更新很容易理解，因为点击按钮触发了它的 state 更新，**那么 Counter 组件是如何跳过父组件 App 以及其自身的 shouldComponentUpdate 强制更新的？**我们稍后再回答这个问题
 
 前面介绍过在`updateContextProvider`方法中，使用浅比较判断 Provider 的 value 是否变化，如果变化，则调用`propagateContextChange`查找所有订阅了这个 context 的组件
 
@@ -681,7 +712,10 @@ class Home extends React.Component {
 当点击按钮触发更新时，`provider1`的 value 发生变更，因此调用`propagateContextChange`开始查找所有订阅了`provider1`的 context 的 fiber 节点，按以下顺序：
 
 - 首先是 `div#wrap`，由于它没有订阅了 CounterContext，因此没有任何操作，继续遍历它的子节点
-- 由于 `provider2` 和 `provider1` 是同一个 context，因此不需要继续遍历`provider2`内部的子节点，因为即使`provider2`内部有组件订阅了 CounterContext，那也是读取的是 `provider2` 的 value 值，而不是 `provider1` 的 value 值，因此 `provider1` 的值发生变化不会影响到 `provider2` 内部的消费组件
+- 由于 `provider2` 和 `provider1` 是同一个 context，因此不需要继续遍历`provider2`内部的子节点。
+
+  > 前面介绍过，在嵌套的相同的 Provider 中，里层的会覆盖外层的，因此外层的 Provider 的 value 变化，不会影响到消费组件。只有最里层的 Provider 的 value 变化才会强制消费组件更新。因此就没必要再继续遍历`provider2`内部的所有节点了。
+
 - 继续遍历 `userprovider1`，没有订阅 CounterContext，因此继续遍历`couter2`，发现`counter2`订阅了 CounterContext，因此将其标记为更新
   - 如果 counter2 是类组件，那么会创建一个更新对象 update，并将 update.tag 标记为强制更新
 - 继续遍历 counter3，发现 counter3 也订阅了 CounterContext
@@ -784,6 +818,153 @@ function propagateContextChange(
 }
 ```
 
+### beginWork 强制更新消费组件
+
+在 propagateContextChange 方法中已经找到并标记了消费组件强制更新，那在 beginWork 阶段，react 怎么判断组件要不要更新？
+
+在更新阶段，React 会判断 workInProgress.lanes 和 renderLanes，如果两者不同，说明当前 fiber 不需要更新，调用`bailoutOnAlreadyFinishedWork`退出。如果两者相同，说明需要更新，则继续执行 beginWork 的逻辑。
+
+beginWork 的判断逻辑如下：
+
+```js
+function beginWork(current, workInProgress, renderLanes) {
+  var updateLanes = workInProgress.lanes;
+  // 在执行beginWork的逻辑前，需要判断当前fiber是否需要更新
+  // current为null，说明这个fiber第一次渲染。如果不为null说明是更新阶段
+  if (current !== null) {
+    var oldProps = current.memoizedProps;
+    var newProps = workInProgress.pendingProps;
+
+    if (oldProps !== newProps) {
+      // 如果props变更了，将fiber标记为需要更新，即设置didReceiveUpdate为true
+      didReceiveUpdate = true;
+    } else if (!includesSomeLane(renderLanes, updateLanes)) {
+      didReceiveUpdate = false;
+      // 当前fiber没有工作，因此提前退出，不需要进入beginWork阶段
+
+      return bailoutOnAlreadyFinishedWork(current, workInProgress, renderLanes);
+    } else {
+      // 当前fiber需要被调度更新，但是props没有变化。设置为false。如果fiber的update queue或者context
+      // consumer发生了变化，didReceiveUpdate将被设置为true
+      didReceiveUpdate = false;
+    }
+  } else {
+    didReceiveUpdate = false;
+  }
+
+  workInProgress.lanes = NoLanes;
+  // 开始执行beginWork的逻辑
+  switch (workInProgress.tag) {
+  }
+}
+```
+
+bailoutOnAlreadyFinishedWork 会通过 workInProgress.childLanes 判断当前 fiber 节点的子节点需不需要更新，如果不需要更新，则返回 null，即 beginWork 阶段返回 null，说明当前 fiber 节点可以完成工作了。
+
+如果子节点需要更新，则调用 cloneChildFibers 复用旧的子节点，然后对子节点继续执行 beginWork 开始工作
+
+```js
+function bailoutOnAlreadyFinishedWork(current, workInProgress, renderLanes) {
+  if (!includesSomeLane(renderLanes, workInProgress.childLanes)) {
+    // 通过childLanes判断子节点是否有工作，如果没有，则直接返回null
+    return null;
+  } else {
+    // 这个fiber没有工作，但是它的子节点有工作，复制子节点并继续执行beginWork
+    cloneChildFibers(current, workInProgress);
+    return workInProgress.child;
+  }
+}
+```
+
+#### 类组件强制更新流程
+
+在 updateClassComponent 中会调用 updateClassInstance 判断组件是否应该更新。在 updateClassInstance 中会判断全局变量 hasForceUpdate 或者组件的 shouldComponentUpdate 的返回值。
+
+这里最关键的是 hasForceUpdate 变量。前面 propagateContextChange 说过，如果类组件订阅了 context，那么会给类组件的 fiber 创建一个 update 对象，并将 update.tag 标记为 ForceUpdate，然后在 processUpdateQueue 处理 update 时，发现 tag 为 ForceUpdate，则将全局变量 hasForceUpdate 设置为 true。这就是 context 发生变化，订阅了 context 的类组件能够跳过 sCU 强制更新的原因
+
+shouldUpdate 为 true，finishClassComponent 会调用类组件的 render 方法走强制更新逻辑
+
+```js
+function updateClassComponent(
+  current,
+  workInProgress,
+  Component,
+  nextProps,
+  renderLanes
+) {
+  prepareToReadContext(workInProgress, renderLanes);
+  var instance = workInProgress.stateNode;
+  var shouldUpdate;
+
+  if (instance === null) {
+    // 第一次渲染
+    shouldUpdate = true;
+  } else {
+    // 更新阶段
+    shouldUpdate = updateClassInstance(
+      current,
+      workInProgress,
+      Component,
+      nextProps,
+      renderLanes
+    );
+  }
+
+  var nextUnitOfWork = finishClassComponent(
+    current,
+    workInProgress,
+    Component,
+    shouldUpdate,
+    hasContext,
+    renderLanes
+  );
+
+  return nextUnitOfWork;
+}
+
+function updateClassInstance(
+  current,
+  workInProgress,
+  ctor,
+  newProps,
+  renderLanes
+) {
+  // 省略前面一大段逻辑....
+  processUpdateQueue(workInProgress, newProps, instance, renderLanes);
+  // ...
+  var shouldUpdate =
+    hasForceUpdate ||
+    instance.shouldComponentUpdate(newProps, newState, nextContext);
+
+  // 省略后面一大段逻辑...
+  return shouldUpdate;
+}
+function finishClassComponent(
+  current,
+  workInProgress,
+  Component,
+  shouldUpdate,
+  hasContext,
+  renderLanes
+) {
+  // ...
+  if (!shouldUpdate) {
+    return bailoutOnAlreadyFinishedWork(current, workInProgress, renderLanes);
+  }
+  // 省略后面的一大段逻辑：调用类组件的render方法，执行reconcileChildren协调子元素
+
+  nextChildren = instance.render();
+  // ...
+  reconcileChildren(current, workInProgress, nextChildren, renderLanes);
+  // ....
+  return workInProgress.child;
+}
+```
+
+#### 函数组件强制更新流程
+
+前面 propagateContextChange 说过，如果组件订阅了 context，不管是函数组件还是类组件，都会将 fiber.lanes 设置为 renderLanes。在 beginWork 阶段，发现 fiber.lanes 等于 renderLanes，则走 beginWork 的逻辑，强制组件更新
+
 ## 如何合理使用 React Redux 管理全局共享状态
 
 从上面 Provider 的 value 变化，查找所有订阅组件的过程可以看出，每次 Provider 一变化，都要遍历一次，像下面的代码：
@@ -801,8 +982,21 @@ function propagateContextChange(
 - CounterContext.Provider 的 value 发生了变化，则遍历内部所有的 fiber 节点找出消费组件
 - UserContext.Provider 的 value 也发生了变化，则遍历内部所有的 fiber 节点找出消费组件
 
-如果页面很复杂，组件层级很深数量庞大，这个开销也是很大的。
+如果页面很复杂，组件层级很深数量庞大，遍历树的开销也是很大的。
 
 因此，我们应该尽量少的避免 Provider 的 value 发生变化
 
-在使用 React Redux 时，每次 dispatch 触发状态变更，React 都要查找一次。我们应该要尽可能少的使用 React Redux 管理状态，只在必要的时候，比如全局共享数据，才使用 React Redux 托管状态。而页面级别或者组件级别的状态应该在组件内部闭环，通过 this.state 或者 useState 管理
+在使用 React Redux 时，我们需要使用 React Redux 提供的 Provider 包裹我们的整个应，一旦我们通过 dispatch 触发状态变更，React 都会从根组件开始重新调度更新，这里会增加额外的开销
+
+- 对 Provider 执行工作时，会一次遍历 fiber 树查找其内部所有订阅了 context 的消费组件，增加了一次遍历 fiber 树的开销
+- 即使有 connect 或者 useSelector 帮我们做了优化处理，但是原本我们组件只订阅了状态 A，但是状态 B 的改变也会导致 connect 组件执行
+
+```jsx
+import { Provider } from 'react-redux';
+
+<Provider store={store}>
+  <ClientApp />
+</Provider>,
+```
+
+综上，我们在设计共享状态时，我们应该只将真正的全局共享数据用 Redux 托，而页面级别或者组件级别的状态应该在组件内部闭环，通过 this.state 或者 useState 管理
