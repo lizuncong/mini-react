@@ -1,36 +1,29 @@
-import React, { useContext, memo } from "react";
+import React, {
+  useContext,
+  useRef,
+  useState,
+  useImperativeHandle,
+  memo,
+} from "react";
 import ReactDOM from "react-dom";
 
-class Counter extends React.Component {
-  constructor(props) {
-    super(props);
-  }
-  render() {
-    return <div>Class Counter</div>;
-  }
-}
-const FunctionCounter = () => {
-  return <div>函数组件Counter</div>;
+const FunctionCounter = (props) => {
+  const [count, setCount] = useState(0);
+  console.log("props..", props);
+  return <div ref={props.myRef}>{`计数器：${count}-${props.name}`}</div>;
 };
 
 class Home extends React.Component {
   constructor(props) {
     super(props);
-    this.myRef = React.createRef();
     this.domRef = React.createRef();
   }
   componentDidMount() {
-    console.log("did mount....this.myRef", this.myRef);
-    console.log("did mount....this.domRef", this.domRef);
+    console.log("dom节点ref：this.domRef", this.domRef);
   }
 
   render() {
-    return (
-      <div ref={this.domRef}>
-        <Counter ref={this.myRef} />
-        <FunctionCounter />
-      </div>
-    );
+    return <FunctionCounter myRef={this.domRef} name="test" />;
   }
 }
 ReactDOM.render(<Home />, document.getElementById("root"));
