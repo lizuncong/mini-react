@@ -14,6 +14,7 @@
   - 逻辑复用：类组件可以通过继承实现逻辑的复用，函数组件可以通过自定义 hooks 实现逻辑复用
   - 跳过更新：类组件可以通过 shouldComponentUpdate 和 PureComponent 来跳过更新，而函数式组件可以使用 React.memo 来跳过更新
   - 发展前景：未来函数组件将会成为主流，因为它可以更好的屏蔽 this 问题、规范和复用逻辑、更好的适合时间切片和并发渲染
+  - 类组件可以直接使用 ref 调用类实例方法，函数组件不可以直接使用，要用 forwardRef 与 useImperativeHandle 结合使用
 
 ### React 作者 Dan 认为的类组件和函数组件的最大区别
 
