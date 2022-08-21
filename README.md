@@ -64,6 +64,7 @@
   - [updateQueue 在不同类型的 Fiber 节点的含义](https://github.com/lizuncong/mini-react/blob/master/docs/fiber/fiber.updateQueue.md)
   - [盘点 fiber 中常见的副作用标志 flags](https://github.com/lizuncong/mini-react/blob/master/docs/fiber/%E7%9B%98%E7%82%B9fiber%E4%B8%AD%E5%B8%B8%E8%A7%81%E7%9A%84%E5%89%AF%E4%BD%9C%E7%94%A8%E6%A0%87%E5%BF%97flags.md)
   - [33 张图爆肝介绍 Fiber 双缓冲树机制](https://github.com/lizuncong/mini-react/blob/master/docs/fiber/fiber%E5%8F%8C%E7%BC%93%E5%86%B2%E6%A0%91.md)
+  - [Ref 原理及源码解析](./docs/ref/ref%E5%8E%9F%E7%90%86%E5%8F%8A%E6%BA%90%E7%A0%81.md)
 
 - Hydrate 服务端渲染
 

@@ -7,12 +7,6 @@ import React, {
 } from "react";
 import ReactDOM from "react-dom";
 
-const FunctionCounter = (props) => {
-  const [count, setCount] = useState(0);
-  console.log("props..", props);
-  return <div ref={props.myRef}>{`计数器：${count}-${props.name}`}</div>;
-};
-
 class Home extends React.Component {
   constructor(props) {
     super(props);
@@ -23,7 +17,7 @@ class Home extends React.Component {
   }
 
   render() {
-    return <FunctionCounter myRef={this.domRef} name="test" />;
+    return <div ref={this.domRef}>dom ref</div>;
   }
 }
 ReactDOM.render(<Home />, document.getElementById("root"));
