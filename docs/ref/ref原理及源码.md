@@ -3,6 +3,10 @@
 - 为什么 React 不将 ref 存在 fiber 的 props 中，这样在组件中就能通过 props.ref 获取到值
 - ref 的值什么时候设置，什么时候被释放？
 
+## 前置知识
+
+React Ref 用法可以看[这篇文章](https://github.com/lizuncong/mini-react/blob/master/docs/ref/ref%E5%8E%9F%E7%90%86%E5%8F%8A%E6%BA%90%E7%A0%81.md)
+
 ## React element 中的 ref 属性
 
 React.createElement 对 ref 属性进行特殊处理
