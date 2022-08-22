@@ -7,10 +7,22 @@ import React, {
 } from "react";
 import ReactDOM from "react-dom";
 
+const FunctionCounter = (props, ref) => {
+  const createInst = () => ({
+    focus: () => {
+      console.log("focus...");
+    },
+  });
+  useImperativeHandle(ref, createInst);
+  return <div>{`计数器：${props.count}`}</div>;
+};
+
+const ForwardRefCounter = React.forwardRef(FunctionCounter);
+
 class Home extends React.Component {
   constructor(props) {
     super(props);
-    this.domRef = React.createRef();
+    this.domRef = null; // React.createRef
     this.state = {
       count: 0,
     };
@@ -20,16 +32,16 @@ class Home extends React.Component {
   }
 
   render() {
-    const { count } = this.state;
     return (
-      <div
-        ref={this.domRef}
-        id="counter"
-        name="test"
-        onClick={() => this.setState({ count: this.state.count + 1 })}
-      >
-        {`dom ref：${count}`}
-      </div>
+      <>
+        <ForwardRefCounter
+          ref={(el) => (this.domRef = el)}
+          count={this.state.count}
+        />
+        <button onClick={() => this.setState({ count: this.state.count + 1 })}>
+          {this.state.count}
+        </button>
+      </>
     );
   }
 }

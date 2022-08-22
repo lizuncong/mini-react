@@ -386,3 +386,170 @@ function commitAttachRef(finishedWork) {
   }
 }
 ```
+
+## useImperativeHandle
+
+### render 阶段
+
+在 render 阶段，执行函数调用 useImperativeHandle 时，React 会为 forwardRef 创建一个 imperativeHandle 类型的 Effect 对象，并添加到 updateQueue 队列中，如下：
+
+```js
+function imperativeHandleEffect(create, ref) {
+  if (typeof ref === "function") {
+    var refCallback = ref;
+
+    var _inst = create();
+
+    refCallback(_inst);
+    return function () {
+      // 注意这里会返回一个函数!!!
+      refCallback(null);
+    };
+  } else if (ref !== null && ref !== undefined) {
+    var refObject = ref;
+
+    var _inst2 = create();
+
+    refObject.current = _inst2;
+    return function () {
+      refObject.current = null;
+    };
+  }
+}
+const imperativeEffect = {
+  create: imperativeHandleEffect,
+  deps: null,
+  destroy: undefined,
+  next: null,
+  tag: 3,
+};
+imperativeEffect.next = imperativeEffect;
+
+fiber.updateQueue = {
+  lastEffect: imperativeEffect,
+};
+```
+
+以下面的代码为例：
+
+```jsx
+const FunctionCounter = (props, ref) => {
+  const createInst = () => ({
+    focus: () => {
+      console.log("focus...");
+    },
+  });
+  useImperativeHandle(ref, createInst);
+  return <div>{`计数器：${props.count}`}</div>;
+};
+
+const ForwardRefCounter = React.forwardRef(FunctionCounter);
+```
+
+`imperativeHandleEffect(create, ref)`中的第一个参数`create`对应`useImperativeHandle(ref, createInst);`中的第二个参数`createInst`。
+
+`imperativeHandleEffect(create, ref)`中的第二个参数`ref`对应`useImperativeHandle(ref, createInst);`中的第一个参数`ref`。
+
+> 注意，这里我们用 React.forwardRef 包裹 FunctionCounter，React 会为 forwardRef 创建一个 fiber 节点，但不会为 FunctionCounter 创建一个 fiber 节点。因此 render 阶段执行的工作是针对 forwardRef 类型的 fiber 节点
+
+### commitLayoutEffects 阶段：设置 ref.current 的值
+
+commitLayoutEffects 阶段调用 commitLifeCycles。注意，在 commitHookEffectListMount 中会遍历 fiber.updateQueue 的 effect 队列，然后执行 effect.create 方法，就是我们前面说过的 imperativeHandleEffect 方法。
+
+```js
+function commitLifeCycles(current, finishedWork) {
+  switch (finishedWork.tag) {
+    case ForwardRef: {
+      commitHookEffectListMount(Layout | HasEffect, finishedWork);
+      return;
+    }
+  }
+}
+function commitHookEffectListMount(tag, finishedWork) {
+  var updateQueue = finishedWork.updateQueue;
+  var lastEffect = updateQueue !== null ? updateQueue.lastEffect : null;
+
+  if (lastEffect !== null) {
+    var firstEffect = lastEffect.next;
+    var effect = firstEffect;
+
+    do {
+      if ((effect.tag & tag) === tag) {
+        // Mount
+        var create = effect.create;
+        effect.destroy = create(); // 调用effect.create
+      }
+
+      effect = effect.next;
+    } while (effect !== firstEffect);
+  }
+}
+```
+
+在执行 imperativeHandleEffect 方法时，会返回一个函数：
+
+```js
+function imperativeHandleEffect(create, ref) {
+  if (typeof ref === "function") {
+    var refCallback = ref;
+
+    var _inst = create();
+
+    refCallback(_inst);
+    return function () {
+      // 注意这里会返回一个函数!!!
+      refCallback(null);
+    };
+  } else if (ref !== null && ref !== undefined) {
+    var refObject = ref;
+
+    var _inst2 = create();
+
+    refObject.current = _inst2;
+    return function () {
+      refObject.current = null;
+    };
+  }
+}
+```
+
+这个函数就是用来重置 ref.current 属性为 null 的。返回函数会在 commitMutationEffects 阶段执行
+
+### commitMutationEffects 阶段：重置 ref.current 为 null
+
+commitMutationEffects 阶段调用 commitWork
+
+```js
+function commitWork(current, finishedWork) {
+  switch (finishedWork.tag) {
+    case ForwardRef:
+      commitHookEffectListUnmount(Layout | HasEffect, finishedWork);
+      return;
+  }
+}
+function commitHookEffectListUnmount(tag, finishedWork) {
+  var updateQueue = finishedWork.updateQueue;
+  var lastEffect = updateQueue !== null ? updateQueue.lastEffect : null;
+
+  if (lastEffect !== null) {
+    var firstEffect = lastEffect.next;
+    var effect = firstEffect;
+
+    do {
+      if ((effect.tag & tag) === tag) {
+        // Unmount
+        var destroy = effect.destroy;
+        effect.destroy = undefined;
+
+        if (destroy !== undefined) {
+          destroy();
+        }
+      }
+
+      effect = effect.next;
+    } while (effect !== firstEffect);
+  }
+}
+```
+
+> 从这个过程也可以看出，如果 ref 是一个函数，会被执行两次，第一次在 commitMutationEffects 阶段执行，用于重置 ref.current 为 null，第二次在 commitLayoutEffects 阶段执行，用于设置 ref.current 为最新的值
