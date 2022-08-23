@@ -1,13 +1,13 @@
-> React 异常处理最重要的目标之一就是保持浏览器的`Pause on exceptions`行为。这里你不仅能学到 React 异常捕获的知识，还能学到如何模拟 try catch
+> React 异常处理最重要的目标之一就是避免吞没用户业务代码异常，从而保持浏览器的`Pause on exceptions`行为。这里你不仅能学到 React 异常捕获的知识，还能学到如何模拟 try catch
 
-## 大纲
+## 学习目标
 
 - React 开发和生产环境捕获异常的实现不同
 - 如何捕获异常，同时不吞没用户业务代码的异常
 - 如何模拟 try catch 捕获异常
 - React 捕获用户所有的业务代码中的异常，除了异步代码无法捕获以外。
 - React 使用 handleError 处理 render 阶段用户业务代码的异常，使用 captureCommitPhaseError 处理 commit 阶段用户业务代码的异常，而事件处理函数中的业务代码异常则简单并特殊处理
-- render 阶段抛出的业务代码异常，会导致 React 从 ErrorBoundary 组件或者 root 节点重新开始执行。而 commit 阶段抛出的业务代码异常，会导致 React 从 root 节点重新开始调度执行！
+- render 阶段抛出的业务代码异常，会导致 React 从 ErrorBoundary 组件或者 root 节点重新开始执行。而 commit 阶段抛出的业务代码异常，会导致 React 从 root 节点重新开始调度执行！重新执行的目的就是为了显示错误边界的备用 UI，如果没有错误边界组件，那么页面将显示白屏
 
 ## 前置基础知识
 
@@ -25,11 +25,11 @@
 
 ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/exception-01.jpg)
 
-同时结合这个[issue](https://github.com/facebook/react/issues/4982)可以知道，**React 异常处理最重要的目标之一就是保持浏览器的`Pause on exceptions`行为**。如果对`Pause on exceptions`不熟悉的，可以看[这篇文章](https://github.com/lizuncong/mini-react/blob/master/docs/%E5%BC%82%E5%B8%B8/JS%E5%BC%82%E5%B8%B8%E6%8D%95%E8%8E%B7%E5%9F%BA%E7%A1%80.md#%E5%A6%82%E4%BD%95%E5%88%A9%E7%94%A8%E8%B0%B7%E6%AD%8C-devtool-%E5%9C%A8%E5%BC%82%E5%B8%B8%E4%BB%A3%E7%A0%81%E5%A4%84%E6%89%93%E6%96%AD%E7%82%B9)
+同时结合这个[issue](https://github.com/facebook/react/issues/4982)可以知道，**React 异常处理最重要的目标之一就是，避免吞没用户业务代码的异常，从而保持浏览器的`Pause on exceptions`行为**。如果对`Pause on exceptions`不熟悉的，可以看[这篇文章](https://github.com/lizuncong/mini-react/blob/master/docs/%E5%BC%82%E5%B8%B8/JS%E5%BC%82%E5%B8%B8%E6%8D%95%E8%8E%B7%E5%9F%BA%E7%A1%80.md#%E5%A6%82%E4%BD%95%E5%88%A9%E7%94%A8%E8%B0%B7%E6%AD%8C-devtool-%E5%9C%A8%E5%BC%82%E5%B8%B8%E4%BB%A3%E7%A0%81%E5%A4%84%E6%89%93%E6%96%AD%E7%82%B9)
 
-React 将用户的所有业务代码包装在 `invokeGuardedCallback` 函数中执行，比如构造函数，生命周期方法等。
+为了达到这个目标，React 将用户的所有业务代码包裹在 `invokeGuardedCallback` 函数中执行，比如构造函数，生命周期方法等。在`invokeGuardedCallback`内部，dev 环境下，React 模拟实现了 try catch 机制，而在生产环境中，react 简单的使用了 try catch
 
-**这些方法内部的逻辑是用户自己实现的，并且大部分在 React 的 render 阶段调用，理论上这些方法内部所抛出的任何异常，都应该让用户自行捕获**，比如下面的代码中
+**构造函数、生命周期等方法内部的逻辑是用户自己实现的，理论上这些方法内部所抛出的任何异常，都应该让用户自行捕获**，比如下面的代码中
 
 ```js
 useLayoutEffect(() => {
@@ -37,15 +37,23 @@ useLayoutEffect(() => {
 }, []);
 ```
 
-`useLayoutEffect`内部的逻辑是用户自己实现的，由于用户没有自己实现 try catch 捕获异常，那么理论上`useLayoutEffect`内部抛出的异常应该可以被浏览器的`Pause on exceptions`自动定位到。
+`useLayoutEffect`内部的逻辑是用户自己实现的，由于用户没有自己实现 try catch 捕获异常，那么`useLayoutEffect`内部抛出的异常应该可以被浏览器的`Pause on exceptions`自动定位到。
 
 在生产环境中，`invokeGuardedCallback` 使用 try catch，因此所有的用户代码异常都被视为已经捕获的异常，不会被`Pause on exceptions`自动定位到，当然用户也可以通过开启 `Pause On Caught Exceptions` 自动定位到被捕获的异常代码位置。
 
 但是这并不直观，因为即使 React 已经捕获了错误，从开发者的角度来说，错误是没有捕获的(毕竟用户没有自行捕获这个异常，而 React 作为库，不应该吞没异常)，**因此为了保持预期的 `Pause on exceptions` 行为，React 不会在 Dev 中使用 try catch**，而是使用 [custom event](https://developer.mozilla.org/en-US/docs/Web/API/Document/createEvent)以及[dispatchEvent](https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/dispatchEvent)模拟 try catch 的行为。
 
+在上面的 `useLayoutEffect` 中，当执行我们的函数时，React 会将其包裹在 `invokeGuardedCallback` 中执行，即：
+
+```js
+invokeGuardedCallback(() => {
+  console.log(aaadd);
+});
+```
+
 ### 防止用户业务代码被第三方库吞没
 
-根据这个[issue](https://github.com/facebook/react/issues/6895#issuecomment-281405036)可以知道，React 异常捕获还有一个目标就是防止用户业务代码被其他第三方库的**异步代码**吞没。比如 react redux，redux saga 等。例如在 redux saga 中这么调用了 setState：
+根据这个[issue](https://github.com/facebook/react/issues/6895#issuecomment-281405036)可以知道，React 异常捕获还有一个目标就是防止用户业务代码被其他第三方库的代码吞没。比如 react redux，redux saga 等。例如在 redux saga 中这么调用了 setState：
 
 ```js
 Promise.resolve()
@@ -57,9 +65,9 @@ Promise.resolve()
   });
 ```
 
-如果 React 不经过 invokeguardcallback 处理，那么 setState 的触发的 render 的异常将会被 promise.catch 捕获，在用户的角度看来，这个异常被吞没了。
+如果 React 不经过 invokeguardcallback 包裹执行`this.setState`，那么 setState 触发的异常将会被 promise.catch 捕获，在用户的角度看来，这个异常被吞没了。
 
-React16 以后由于有了 invokeguardcallback 处理异常，在异步代码中调用 setState 触发的 render 的异常不会被任何 try catch 或者 promise catch 吞没。比如：
+React16 以后由于有了 invokeguardcallback 处理异常，在异步代码中调用 setState 触发的异常不会被任何第三方的 try catch 或者 promise catch 吞没。比如：
 
 ```jsx
 <div
@@ -77,7 +85,7 @@ React16 以后由于有了 invokeguardcallback 处理异常，在异步代码中
 </div>
 ```
 
-Promise 的 catch 虽然可以捕获异常，但是 React 还是可以照样抛出异常，控制台还是会打印 Error 信息
+虽然这里用户自行使用 Promise 的 catch 捕获异常，但是 React 还是可以照样抛出异常，控制台还是会打印 Error 信息
 
 ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/exception-04.jpg)
 
@@ -171,7 +179,7 @@ console.log("结束");
 
 ## Dev 模式下，React 如何实现模拟 try catch 的行为
 
-在 dev 环境下，invokeGuardedCallback 的实现如下所示，这里是精简后的代码，func 是用户提供的回调函数，比如在 render 阶段，func 就是 beginWork 函数。
+在 dev 环境下，invokeGuardedCallback 的实现如下所示，这里是精简后的代码，func 是需要包裹执行的回调函数，比如前面的 useLayoutEffect 中的监听函数。在 render 阶段，react 将 beginWork 包裹进 invokeGuardedCallback 执行，这样在 render 阶段执行所有的用户业务代码里面抛出来的异常都能被 React 处理，比如 render 阶段执行的构造函数、shouldComponentUpdate、render 等方法。
 
 dev 环境下在自定义事件监听器中执行用户的回调函数，如果用户的回调函数抛出异常，则被全局的异常监听器捕获，并且立即执行全局异常监听器
 
@@ -219,7 +227,7 @@ function invokeGuardedCallbackProd(func) {
 
 ## React Dev 模式异常捕获及处理
 
-在 Dev 环境下，React 使用 `invokeGuardedCallback` 包裹几乎所有的用户业务代码，我全局搜索了一下 `invokeGuardedCallback` 函数的调用，总共有以下几个地方调用了 `invokeGuardedCallback` 函数捕获异常，涵盖了所有的用户业务代码：
+在 Dev 环境下，React 使用 `invokeGuardedCallback` 包裹所有的用户业务代码，我全局搜索了一下 `invokeGuardedCallback` 函数的调用，总共有以下几个地方调用了 `invokeGuardedCallback` 函数捕获异常，涵盖了所有的用户业务代码：
 
 - 合成事件的回调函数，将第一个错误重新抛出
 - 类组件 componentWillUnmount 生命周期方法，避免 componentWillUnmount 中的异常阻断组件卸载。然后在 captureCommitPhaseError 中处理异常
@@ -230,7 +238,7 @@ function invokeGuardedCallbackProd(func) {
 
 可以看出，在 dev 环境中，我们**所有的业务代码**都被`invokeGuardedCallback`包裹并且执行，我们业务代码中的异常都会被 `invokeGuardedCallback` 捕获。除了合成事件中的异常特殊处理外，在 render 阶段调用的方法，比如构造函数，一些生命周期方法中的异常，都在`handleError`中处理。在 commit 阶段调用的方法，比如 useEffect 的监听函数等方法的异常，都在`captureCommitPhaseError`中处理。
 
-**总的来说，React 使用 invokeGuardedCallback 捕获我们业务代码中的异常，然后在`handleError`或者`captureCommitPhaseError`处理异常**
+**总的来说，React 使用 invokeGuardedCallback 捕获我们业务代码中的异常，然后在`handleError`或者`captureCommitPhaseError`处理异常，这也正是 React 错误边界的逻辑**
 
 **但是，我们也需要明白一点，并不是所有的用户业务代码中的异常都会被错误边界处理**
 
