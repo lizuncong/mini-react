@@ -17,6 +17,7 @@
 - [自定义事件以及 dispatchEvent 基础知识](https://github.com/lizuncong/mini-react/blob/master/docs/%E5%BC%82%E5%B8%B8/dispatchEvent%E5%9F%BA%E7%A1%80.md)
 - [React 错误边界](https://github.com/lizuncong/mini-react/blob/master/docs/%E5%BC%82%E5%B8%B8/React%E9%94%99%E8%AF%AF%E8%BE%B9%E7%95%8C.md)
 
+>目前只有类组件才能作为错误边界，关于函数组件支持错误边界的场景，可以看看这个[issue](https://github.com/facebook/react/issues/14347)
 ## 为什么 Dev 模式下， React 不直接使用 try catch，而是自己模拟 try catch 机制实现异常捕获？
 
 ### 开发环境的目标：保持 Pause on exceptions 的预期行为
