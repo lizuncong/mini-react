@@ -7,7 +7,6 @@
 - React 是如何使用堆栈来存储 Provider 的 value 以支持嵌套 Provider 的
 - context 的存取发生在 React 渲染的哪些阶段
 - fiber.dependencies 用于保存当前组件订阅的 context 依赖，一般情况下组件只有一个 context 依赖。但是通过 useContext 订阅多个 context 时，fiber.dependencies 就是一个链表
-- 为什么我建议尽量少的使用 React Redux？如何合理使用 React Redux 管理全局共享状态？
 
 ## 前言
 
@@ -965,7 +964,7 @@ function finishClassComponent(
 
 前面 propagateContextChange 说过，如果组件订阅了 context，不管是函数组件还是类组件，都会将 fiber.lanes 设置为 renderLanes。在 beginWork 阶段，发现 fiber.lanes 等于 renderLanes，则走 beginWork 的逻辑，强制组件更新
 
-## 如何合理使用 React Redux 管理全局共享状态
+## 如何合理设计全局共享状态
 
 从上面 Provider 的 value 变化，查找所有订阅组件的过程可以看出，每次 Provider 一变化，都要遍历一次，像下面的代码：
 
@@ -984,19 +983,18 @@ function finishClassComponent(
 
 如果页面很复杂，组件层级很深数量庞大，遍历树的开销也是很大的。
 
-因此，我们应该尽量少的避免 Provider 的 value 发生变化
-
-在使用 React Redux 时，我们需要使用 React Redux 提供的 Provider 包裹我们的整个应，一旦我们通过 dispatch 触发状态变更，React 都会从根组件开始重新调度更新，这里会增加额外的开销
-
-- 对 Provider 执行工作时，会一次遍历 fiber 树查找其内部所有订阅了 context 的消费组件，增加了一次遍历 fiber 树的开销
-- 即使有 connect 或者 useSelector 帮我们做了优化处理，但是原本我们组件只订阅了状态 A，但是状态 B 的改变也会导致 connect 组件执行
+因此，我们应该尽量少的避免 Provider 的 value 发生变化。避免以下用法：
 
 ```jsx
-import { Provider } from 'react-redux';
-
-<Provider store={store}>
+<Provider store={{ count: 1 }}>
   <ClientApp />
-</Provider>,
+</Provider>
 ```
 
-综上，我们在设计共享状态时，我们应该只将真正的全局共享数据用 Redux 托，而页面级别或者组件级别的状态应该在组件内部闭环，通过 this.state 或者 useState 管理
+即使 count 值没变，但是每次 render，value 的引用都发生了变化。
+
+## React Redux 是如何设计 Provider 的？
+
+React Redux 的 `Provider` 接收 store，而 store 在创建初期就保持不变，因此 Provider 的 store 在整个应用生命周期内都不会发生改变，也就不会触发订阅的组件重新渲染。
+
+我们通过 dispatch 触发的状态变更，实际上改变的是 store.state，然后通过 useSelector 或者 connect 订阅了状态的组件会强制更新，有兴趣可以参考这里[mini-react-redux](https://github.com/lizuncong/mini-react-redux)
