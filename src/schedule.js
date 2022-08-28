@@ -1,5 +1,10 @@
+
+/***************** debugger packages/scheduler/SchedulerFeatureFlags.js start *****************/
 var enableSchedulerDebugging = false;
 var enableProfiling = false;
+/***************** debugger packages/scheduler/SchedulerFeatureFlags.js end *****************/
+
+/***************** debugger packages/scheduler/SchedulerHostConfig.js start *****************/
 
 var requestHostCallback;
 var requestHostTimeout;
@@ -10,16 +15,16 @@ var hasPerformanceNow = typeof performance === 'object' && typeof performance.no
 if (hasPerformanceNow) {
     var localPerformance = performance;
 
-    // exports.unstable_now = function () {
-    //     return localPerformance.now();
-    // };
+    exports.unstable_now = function () {
+        return localPerformance.now();
+    };
 } else {
     var localDate = Date;
     var initialTime = localDate.now();
 
-    // exports.unstable_now = function () {
-    //     return localDate.now() - initialTime;
-    // };
+    exports.unstable_now = function () {
+        return localDate.now() - initialTime;
+    };
 }
 
 if ( // If Scheduler runs in a non-DOM environment, it falls back to a naive
@@ -71,31 +76,15 @@ if ( // If Scheduler runs in a non-DOM environment, it falls back to a naive
 
     requestPaint = exports.unstable_forceFrameRate = function () { };
 } else {
-    // Capture local references to native APIs, in case a polyfill overrides them.
     var _setTimeout = window.setTimeout;
     var _clearTimeout = window.clearTimeout;
-
-    if (typeof console !== 'undefined') {
-        // TODO: Scheduler no longer requires these methods to be polyfilled. But
-        // maybe we want to continue warning if they don't exist, to preserve the
-        // option to rely on it in the future?
-        var requestAnimationFrame = window.requestAnimationFrame;
-        var cancelAnimationFrame = window.cancelAnimationFrame;
-
-        if (typeof requestAnimationFrame !== 'function') {
-            // Using console['error'] to evade Babel and ESLint
-            console['error']("This browser doesn't support requestAnimationFrame. " + 'Make sure that you load a ' + 'polyfill in older browsers. https://reactjs.org/link/react-polyfills');
-        }
-
-        if (typeof cancelAnimationFrame !== 'function') {
-            // Using console['error'] to evade Babel and ESLint
-            console['error']("This browser doesn't support cancelAnimationFrame. " + 'Make sure that you load a ' + 'polyfill in older browsers. https://reactjs.org/link/react-polyfills');
-        }
-    }
+    var requestAnimationFrame = window.requestAnimationFrame;
+    var cancelAnimationFrame = window.cancelAnimationFrame;
 
     var isMessageLoopRunning = false;
     var scheduledHostCallback = null;
-    var taskTimeoutID = -1; // Scheduler periodically yields in case there is other work on the main
+    var taskTimeoutID = -1;
+    // Scheduler periodically yields in case there is other work on the main
     // thread, like user events. By default, it yields multiple times per frame.
     // It does not attempt to align with frame boundaries, since most tasks don't
     // need to be frame aligned; for those that do, use requestAnimationFrame.
@@ -131,7 +120,8 @@ if ( // If Scheduler runs in a non-DOM environment, it falls back to a naive
 
     var performWorkUntilDeadline = function () {
         if (scheduledHostCallback !== null) {
-            var currentTime = exports.unstable_now(); // Yield after `yieldInterval` ms, regardless of where we are in the vsync
+            var currentTime = exports.unstable_now();
+            // Yield after `yieldInterval` ms, regardless of where we are in the vsync
             // cycle. This means there's always time remaining at the beginning of
             // the message event.
 
@@ -185,7 +175,9 @@ if ( // If Scheduler runs in a non-DOM environment, it falls back to a naive
         taskTimeoutID = -1;
     };
 }
+/***************** debugger packages/scheduler/SchedulerHostConfig.js end *****************/
 
+/***************** debugger packages/scheduler/SchedulerMinHeap.js start *****************/
 function push(heap, node) {
     var index = heap.length;
     heap.push(node);
@@ -267,16 +259,22 @@ function compare(a, b) {
     var diff = a.sortIndex - b.sortIndex;
     return diff !== 0 ? diff : a.id - b.id;
 }
+/***************** debugger packages/scheduler/SchedulerMinHeap.js end *****************/
 
+/***************** debugger packages/scheduler/SchedulerPriorities.js start *****************/
 // TODO: Use symbols?
 var ImmediatePriority = 1;
 var UserBlockingPriority = 2;
 var NormalPriority = 3;
 var LowPriority = 4;
 var IdlePriority = 5;
+/***************** debugger packages/scheduler/SchedulerPriorities.js end *****************/
+/***************** debugger packages/scheduler/SchedulerProfiling.js start *****************/
 
 function markTaskErrored(task, ms) {
 }
+/***************** debugger packages/scheduler/SchedulerProfiling.js end *****************/
+/***************** debugger packages/scheduler/Scheduler.js start *****************/
 
 /* eslint-disable no-var */
 // Math.pow(2, 30) - 1
@@ -611,22 +609,22 @@ function unstable_getCurrentPriorityLevel() {
 var unstable_requestPaint = requestPaint;
 var unstable_Profiling = null;
 
-// 以下是导出的属性
-var unstable_IdlePriority = IdlePriority;
-var unstable_ImmediatePriority = ImmediatePriority;
-var unstable_LowPriority = LowPriority;
-var unstable_NormalPriority = NormalPriority;
-var unstable_Profiling = unstable_Profiling;
-var unstable_UserBlockingPriority = UserBlockingPriority;
-var unstable_cancelCallback = unstable_cancelCallback;
-var unstable_continueExecution = unstable_continueExecution;
-var unstable_getCurrentPriorityLevel = unstable_getCurrentPriorityLevel;
-var unstable_getFirstCallbackNode = unstable_getFirstCallbackNode;
-var unstable_next = unstable_next;
-var unstable_pauseExecution = unstable_pauseExecution;
-var unstable_requestPaint = unstable_requestPaint;
-var unstable_runWithPriority = unstable_runWithPriority;
-var unstable_scheduleCallback = unstable_scheduleCallback;
-var unstable_wrapCallback = unstable_wrapCallback;
+exports.unstable_IdlePriority = IdlePriority;
+exports.unstable_ImmediatePriority = ImmediatePriority;
+exports.unstable_LowPriority = LowPriority;
+exports.unstable_NormalPriority = NormalPriority;
+exports.unstable_Profiling = unstable_Profiling;
+exports.unstable_UserBlockingPriority = UserBlockingPriority;
+exports.unstable_cancelCallback = unstable_cancelCallback;
+exports.unstable_continueExecution = unstable_continueExecution;
+exports.unstable_getCurrentPriorityLevel = unstable_getCurrentPriorityLevel;
+exports.unstable_getFirstCallbackNode = unstable_getFirstCallbackNode;
+exports.unstable_next = unstable_next;
+exports.unstable_pauseExecution = unstable_pauseExecution;
+exports.unstable_requestPaint = unstable_requestPaint;
+exports.unstable_runWithPriority = unstable_runWithPriority;
+exports.unstable_scheduleCallback = unstable_scheduleCallback;
+exports.unstable_wrapCallback = unstable_wrapCallback;
+    /***************** debugger packages/scheduler/Scheduler.js end *****************/
 
 
