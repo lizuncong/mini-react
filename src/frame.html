@@ -21,11 +21,13 @@
         from {
           width: 30px;
           height: 30px;
+          border-radius: 0;
           background: red;
         }
         to {
           width: 200px;
           height: 200px;
+          border-radius: 50%;
           background: yellow;
         }
       }
@@ -69,11 +71,11 @@
     <script>
       function work() {
         // console.log("setTimeout.work");
-        const start = new Date().getTime();
-        while (new Date().getTime() - start < 2) {}
+        //const start = new Date().getTime();
+        //while (new Date().getTime() - start < 2) {}
         setTimeout(work, 0);
       }
-      setTimeout(work, 0);
+      //setTimeout(work, 0);
     </script>
     <script>
       var channel = new MessageChannel();
