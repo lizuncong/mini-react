@@ -49,24 +49,24 @@
       window.requestAnimationFrame(step);
     </script>
     <script>
-      const timeout = 1000;
+      // const timeout = 1000;
+      // //   requestIdleCallback(workLoop, { timeout });
+      // function workLoop(deadline) {
+      //   console.log(
+      //     "requestIdleCallback",
+      //     deadline.timeRemaining(),
+      //     deadline.didTimeout
+      //   );
+      //   while (deadline.timeRemaining() > 0 || deadline.didTimeout) {
+      //     performUnitOfWork();
+      //   }
       //   requestIdleCallback(workLoop, { timeout });
-      function workLoop(deadline) {
-        console.log(
-          "requestIdleCallback",
-          deadline.timeRemaining(),
-          deadline.didTimeout
-        );
-        while (deadline.timeRemaining() > 0 || deadline.didTimeout) {
-          performUnitOfWork();
-        }
-        requestIdleCallback(workLoop, { timeout });
-      }
-      function performUnitOfWork() {
-        const start = new Date().getTime();
-        while (new Date().getTime() - start < 5) {}
-        // console.log("performUnitOfWork");
-      }
+      // }
+      // function performUnitOfWork() {
+      //   const start = new Date().getTime();
+      //   while (new Date().getTime() - start < 5) {}
+      //   // console.log("performUnitOfWork");
+      // }
     </script>
     <script>
       function work() {
@@ -110,6 +110,42 @@
       //     });
       //   }
       //   cb();
+    </script>
+    <script>
+      function sleep(delay) {
+        const start = new Date().getTime();
+        while (new Date().getTime() - start < delay) {}
+      }
+      const works = [
+        () => {
+          console.log("first task start");
+          sleep(5);
+          console.log("first task end");
+        },
+        () => {
+          console.log("second task start");
+          sleep(7);
+          console.log("second task end");
+        },
+        () => {
+          console.log("third task start");
+          sleep(9);
+          console.log("third task end");
+        },
+      ];
+      const timeout = 1000;
+      requestIdleCallback(workLoop, { timeout });
+      function workLoop({ timeRemaining, didTimeout }) {
+        while ((timeRemaining() > 0 || didTimeout) && works.length) {
+          performUnitOfWork();
+        }
+        if (works.length) {
+          requestIdleCallback(workLoop, { timeout });
+        }
+      }
+      function performUnitOfWork() {
+        works.shift()();
+      }
     </script>
   </body>
 </html>
