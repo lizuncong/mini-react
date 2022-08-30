@@ -4,6 +4,31 @@
     <meta charset="utf-8" />
     <title>Mini React</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      .animation {
+        display: block;
+        width: 100px;
+        height: 100px;
+        background: red;
+        animation: myfirst 5s;
+        animation-iteration-count: infinite;
+      }
+
+      @keyframes myfirst {
+        from {
+          width: 30px;
+          height: 30px;
+          border-radius: 0;
+          background: red;
+        }
+        to {
+          width: 200px;
+          height: 200px;
+          border-radius: 50%;
+          background: yellow;
+        }
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>

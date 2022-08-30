@@ -171,7 +171,7 @@ const RetryAfterError = /*       */ 0b1000000; // 64
 
 ```js
 function FiberRootNode(containerInfo, tag, hydrate) {
-  this.tag = tag;
+  this.tag = tag; // ReactRootTags，取值（LegacyRoot：0；ConcurrentRoot：2；BlockingRoot：1）
   this.containerInfo = containerInfo;
   this.pendingChildren = null;
   this.current = null;
@@ -203,6 +203,8 @@ function FiberRootNode(containerInfo, tag, hydrate) {
 
 ```js
 function FiberNode(tag, pendingProps, key, mode) {
+  this.tag = tag; // HostRoot、HostComponent、FunctionComponent等
+  this.mode = mode; // ReactTypeOfMode取值(NoMode：0；ConcurrentMode：4等等)
   // ...
   // lane相关的属性
   this.lanes = NoLanes;

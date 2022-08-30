@@ -45,6 +45,12 @@
         start = timestamp;
         // console.log("requestAnimationFrame", start - timestamp);
         window.requestAnimationFrame(step);
+        setTimeout(() => {
+          Promise.resolve(2).then((res) => {
+            const start = new Date().getTime();
+            while (new Date().getTime() - start < 2) {}
+          });
+        }, 0);
       }
       window.requestAnimationFrame(step);
     </script>
@@ -87,7 +93,7 @@
         // while (new Date().getTime() - start < 2) {}
         port.postMessage(null);
       }
-      port.postMessage(null);
+      // port.postMessage(null);
     </script>
     <script>
       //   let count = 0;
@@ -133,19 +139,19 @@
           console.log("third task end");
         },
       ];
-      const timeout = 1000;
-      requestIdleCallback(workLoop, { timeout });
-      function workLoop({ timeRemaining, didTimeout }) {
-        while ((timeRemaining() > 0 || didTimeout) && works.length) {
-          performUnitOfWork();
-        }
-        if (works.length) {
-          requestIdleCallback(workLoop, { timeout });
-        }
-      }
-      function performUnitOfWork() {
-        works.shift()();
-      }
+      // const timeout = 1000;
+      // requestIdleCallback(workLoop, { timeout });
+      // function workLoop({ timeRemaining, didTimeout }) {
+      //   while ((timeRemaining() > 0 || didTimeout) && works.length) {
+      //     performUnitOfWork();
+      //   }
+      //   if (works.length) {
+      //     requestIdleCallback(workLoop, { timeout });
+      //   }
+      // }
+      // function performUnitOfWork() {
+      //   works.shift()();
+      // }
     </script>
   </body>
 </html>

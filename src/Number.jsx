@@ -2,7 +2,7 @@ import React from "react";
 
 const NumberComp = ({ count }) => {
   const start = new Date().getTime();
-  while (new Date().getTime() - start < 1) {}
+  while (new Date().getTime() - start < 2) {}
   return count;
 };
 
