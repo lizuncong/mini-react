@@ -2,10 +2,6 @@
 ![Forks](https://img.shields.io/github/forks/lizuncong/mini-react)
 ![Stars](https://img.shields.io/github/stars/lizuncong/mini-react)
 
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=lizuncong/mini-react&type=Date)](https://star-history.com/#lizuncong/mini-react&Date)
-
 > 如果对 react 源码感兴趣的朋友，可以从下面的 TODO 待办项中找一项，以此为发力点解析 React 源码。如果有什么好的外文需要翻译，也可以加到 TODO 中。或者觉得什么文章好，也欢迎提 PR 收录进来。希望能一起对文章质量把关，一起共建社区最好的 react 源码生态环境。
 
 ### 目录划分
