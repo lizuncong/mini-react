@@ -7,12 +7,38 @@
       name="viewport"
       content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1"
     />
+    <script src="./schedule.js"></script>
   </head>
 
   <body>
     <div id="root">
       <div>Schedule Test</div>
     </div>
-    <script></script>
+    <script>
+      unstable_scheduleCallback(NormalPriority, () => {
+        console.log("call...a");
+      });
+      unstable_scheduleCallback(NormalPriority, () => {
+        const start = new Date().getTime();
+        while (new Date().getTime() - start < 6) {}
+        console.log("b");
+      });
+      unstable_scheduleCallback(NormalPriority, () => {
+        const start = new Date().getTime();
+        while (new Date().getTime() - start < 5) {}
+        console.log("c");
+      });
+      unstable_scheduleCallback(NormalPriority, () => {
+        const start = new Date().getTime();
+        while (new Date().getTime() - start < 3) {}
+        console.log("d");
+      });
+
+      unstable_scheduleCallback(UserBlockingPriority, () => {
+        const start = new Date().getTime();
+        while (new Date().getTime() - start < 10) {}
+        console.log("E");
+      });
+    </script>
   </body>
 </html>
