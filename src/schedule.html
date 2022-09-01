@@ -15,10 +15,10 @@
       <div>Scheduler</div>
     </div>
     <script>
-      function printA() {
+      function printA(didTimeout) {
         const start = new Date().getTime();
         while (new Date().getTime() - start < 7) {}
-        console.log("A");
+        console.log("A didTimeout", didTimeout);
       }
       function printB() {
         const start = new Date().getTime();
@@ -42,11 +42,16 @@
       }
     </script>
     <script>
-      unstable_scheduleCallback(NormalPriority, printA);
-      unstable_scheduleCallback(NormalPriority, printB);
+      //var ImmediatePriority = 1; // IMMEDIATE_PRIORITY_TIMEOUT -1毫秒 立即执行
+      //var UserBlockingPriority = 2; // USER_BLOCKING_PRIORITY_TIMEOUT 250毫秒
+      //var NormalPriority = 3; // NORMAL_PRIORITY_TIMEOUT 5000毫秒
+      //var LowPriority = 4; // LOW_PRIORITY_TIMEOUT 10000毫秒
+      //var IdlePriority = 5; // IDLE_PRIORITY_TIMEOUT maxSigned31BitInt永不过期
+      unstable_scheduleCallback(IdlePriority, printA);
+      unstable_scheduleCallback(LowPriority, printB);
       unstable_scheduleCallback(NormalPriority, printC);
-      unstable_scheduleCallback(NormalPriority, printD);
-      unstable_scheduleCallback(NormalPriority, printE);
+      unstable_scheduleCallback(UserBlockingPriority, printD);
+      unstable_scheduleCallback(ImmediatePriority, printE);
     </script>
   </body>
 </html>

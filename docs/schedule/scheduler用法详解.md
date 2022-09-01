@@ -54,7 +54,17 @@
 
 [schedule.js](./schedule.js)文件可以在[这里](./schedule.js)获取
 
-### 相同优先级
+## Scheduler 简介
+
+```js
+var ImmediatePriority = 1; // IMMEDIATE_PRIORITY_TIMEOUT -1毫秒 立即执行
+var UserBlockingPriority = 2; // USER_BLOCKING_PRIORITY_TIMEOUT 250毫秒
+var NormalPriority = 3; // NORMAL_PRIORITY_TIMEOUT 5000毫秒
+var LowPriority = 4; // LOW_PRIORITY_TIMEOUT 10000毫秒
+var IdlePriority = 5; // IDLE_PRIORITY_TIMEOUT maxSigned31BitInt永不过期 
+```
+
+## 1.相同优先级
 
 ```js
 unstable_scheduleCallback(NormalPriority, printA);
@@ -65,3 +75,28 @@ unstable_scheduleCallback(NormalPriority, printE);
 ```
 
 可以看到，控制台依次按顺序输出：A、B、C、D、E
+
+performance 查看调用栈信息：
+
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/scheduler-01.jpg)
+
+## 2.取消某个任务
+
+```js
+const callbackA = unstable_scheduleCallback(NormalPriority, printA);
+unstable_scheduleCallback(NormalPriority, printB);
+unstable_scheduleCallback(NormalPriority, printC);
+unstable_scheduleCallback(NormalPriority, printD);
+unstable_scheduleCallback(NormalPriority, printE);
+unstable_cancelCallback(callbackA);
+```
+
+## 2.不同优先级，高优先级先执行
+
+```js
+unstable_scheduleCallback(IdlePriority, printA);
+unstable_scheduleCallback(LowPriority, printB);
+unstable_scheduleCallback(NormalPriority, printC);
+unstable_scheduleCallback(UserBlockingPriority, printD);
+unstable_scheduleCallback(ImmediatePriority, printE);
+```
