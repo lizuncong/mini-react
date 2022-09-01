@@ -20,25 +20,25 @@
         while (new Date().getTime() - start < 7) {}
         console.log("A didTimeout", didTimeout);
       }
-      function printB() {
+      function printB(didTimeout) {
         const start = new Date().getTime();
         while (new Date().getTime() - start < 3) {}
-        console.log("B");
+        console.log("B didTimeout", didTimeout);
       }
-      function printC() {
+      function printC(didTimeout) {
         const start = new Date().getTime();
         while (new Date().getTime() - start < 4) {}
-        console.log("C");
+        console.log("C didTimeout", didTimeout);
       }
-      function printD() {
+      function printD(didTimeout) {
         const start = new Date().getTime();
         while (new Date().getTime() - start < 7) {}
-        console.log("D");
+        console.log("D didTimeout", didTimeout);
       }
-      function printE() {
+      function printE(didTimeout) {
         const start = new Date().getTime();
-        while (new Date().getTime() - start < 10) {}
-        console.log("E");
+        while (new Date().getTime() - start < 1000) {}
+        console.log("E didTimeout", didTimeout);
       }
     </script>
     <script>
