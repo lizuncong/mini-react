@@ -34,10 +34,15 @@
         const start = new Date().getTime();
         while (new Date().getTime() - start < 7) {}
         console.log("D didTimeout", didTimeout);
+        console.log(
+          "isHostCallbackScheduled...isPerformingWork",
+          isPerformingWork,
+          isHostCallbackScheduled
+        );
       }
       function printE(didTimeout) {
         const start = new Date().getTime();
-        while (new Date().getTime() - start < 1000) {}
+        while (new Date().getTime() - start < 2000) {}
         console.log("E didTimeout", didTimeout);
       }
     </script>

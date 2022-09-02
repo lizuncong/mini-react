@@ -56,15 +56,20 @@
 
 ## Scheduler 简介
 
+Scheduler 是 React 提供的调度器，将我们的任务放入异步队列执行，支持任务按优先级执行。
+
 ```js
 var ImmediatePriority = 1; // IMMEDIATE_PRIORITY_TIMEOUT -1毫秒 立即执行
 var UserBlockingPriority = 2; // USER_BLOCKING_PRIORITY_TIMEOUT 250毫秒
 var NormalPriority = 3; // NORMAL_PRIORITY_TIMEOUT 5000毫秒
 var LowPriority = 4; // LOW_PRIORITY_TIMEOUT 10000毫秒
-var IdlePriority = 5; // IDLE_PRIORITY_TIMEOUT maxSigned31BitInt永不过期 
+var IdlePriority = 5; // IDLE_PRIORITY_TIMEOUT maxSigned31BitInt永不过期
 ```
 
-## 1.相同优先级
+## Scheduler基础用法
+### 1.相同优先级
+
+相同优先级的任务按照顺序执行
 
 ```js
 unstable_scheduleCallback(NormalPriority, printA);
@@ -80,7 +85,7 @@ performance 查看调用栈信息：
 
 ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/scheduler-01.jpg)
 
-## 2.取消某个任务
+### 2.取消某个任务
 
 ```js
 const callbackA = unstable_scheduleCallback(NormalPriority, printA);
@@ -91,7 +96,7 @@ unstable_scheduleCallback(NormalPriority, printE);
 unstable_cancelCallback(callbackA);
 ```
 
-## 2.不同优先级，高优先级先执行
+### 2.不同优先级，高优先级先执行
 
 ```js
 unstable_scheduleCallback(IdlePriority, printA);

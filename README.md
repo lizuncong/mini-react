@@ -75,7 +75,11 @@
   - [全网最详细的 React 异常捕获机制及源码，为什么在开发环境下，React 不使用 try catch，而是自己模拟了 try catch 的效果？](https://github.com/lizuncong/mini-react/blob/master/docs/%E5%BC%82%E5%B8%B8/React%E5%BC%82%E5%B8%B8%E6%8D%95%E8%8E%B7%E6%9C%BA%E5%88%B6%E5%8F%8A%E6%BA%90%E7%A0%81.md)
 
 - React Context 设计哲学
+
   - [面试官还在问 React Redux API 时，我已经默默开始手撕 React Context 源码设计哲学](https://github.com/lizuncong/mini-react/blob/master/docs/ReactContext/context%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90.md)
+
+- React Scheduler
+  - [探索哪些 API 适合用于调度](./docs/schedule/%E5%9F%BA%E7%A1%80API%E4%BB%8B%E7%BB%8D.md)介绍`requestAnimationFrame`、`requestIdleCallback`、`setTimeout`、`MessageChannel`、`MutationObserver`等基础用法及特性，看看哪些 API 会适合任务调度
 
 ### 参考链接
 
