@@ -16,7 +16,7 @@
 - 页面是一帧一帧绘制出来的，当每秒绘制的帧数(FPS)达到 60 时，页面是流畅的，小于这个值时，用户会感觉到卡顿
 - 每帧的预算时间是 16.66 毫秒(1 秒/60)，因此在写代码时，注意避免一帧的工作量超过 16ms。在每一帧内，浏览器都会执行以下操作：
   - 执行宏任务、用户事件等。
-  - 执行 requestAnimationFram
+  - 执行 requestAnimationFrame
   - 执行样式计算、布局和绘制。
   - 如果还有空闲时间，则执行 requestIdelCallback
   - 如果某个任务执行时间过长，则当前帧不会绘制，会造成掉帧的现象。
@@ -128,7 +128,7 @@ window.requestAnimationFrame(rafCallback);
 
 requestIdleCallback 在每一帧剩余时间执行。
 
-本例中使用`deadline.timeRemaining() > 0 || deadline.didTimeout`如果当前帧中还有剩余时间，则继续 while 循环
+本例中使用`deadline.timeRemaining() > 0 || deadline.didTimeout`判断如果当前帧中还有剩余时间，则继续 while 循环
 
 ```js
 const timeout = 1000;
@@ -158,7 +158,7 @@ function work() {
 setTimeout(work, 0);
 ```
 
-Performance 查看如下，可以发现，即使我将时间间隔设置为 0 毫秒，两次 setTimeout 之间的间隔差不多是 4 毫秒。因此 setTimeout 会有至少 4 毫秒的延迟
+Performance 查看如下，可以发现，即使我将时间间隔设置为 0 毫秒，两次 setTimeout 之间的间隔差不多是 4 毫秒(如图中红线所示)。可以看出 setTimeout 会有至少 4 毫秒的延迟
 
 ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/frame-08.jpg)
 
@@ -189,7 +189,7 @@ Performance 查看如下：
 从图中可以看出，相比于 setTimeout，MessageChannel 有以下特点：
 
 - 在一帧内的调用频次超高
-- 两次之间的时间间隔几乎可以忽略不计，没有 setTimeout 4 毫秒延迟的缺点
+- 两次之间的时间间隔几乎可以忽略不计，没有 setTimeout 4 毫秒延迟的特点
 
 ## 微任务
 
