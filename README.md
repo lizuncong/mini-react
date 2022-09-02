@@ -79,7 +79,7 @@
   - [面试官还在问 React Redux API 时，我已经默默开始手撕 React Context 源码设计哲学](https://github.com/lizuncong/mini-react/blob/master/docs/ReactContext/context%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90.md)
 
 - React Scheduler
-  - [探索哪些 API 适合用于调度](./docs/schedule/%E5%9F%BA%E7%A1%80API%E4%BB%8B%E7%BB%8D.md)介绍`requestAnimationFrame`、`requestIdleCallback`、`setTimeout`、`MessageChannel`、`MutationObserver`等基础用法及特性，看看哪些 API 会适合任务调度
+  - [哪些 API 适合用于调度任务](./docs/schedule/%E5%9F%BA%E7%A1%80API%E4%BB%8B%E7%BB%8D.md)。介绍`requestAnimationFrame`、`requestIdleCallback`、`setTimeout`、`MessageChannel`、`MutationObserver`等基础用法及特性，看看哪些 API 会适合任务调度
 
 ### 参考链接
 
