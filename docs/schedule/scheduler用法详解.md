@@ -66,7 +66,15 @@
 
 ## Scheduler 简介
 
-Scheduler 是 React 提供的调度器，当我们通过`unstable_scheduleCallback(NormalPriority, task)`调度任务时，Scheduler 会将我们的 task 存到一个数组`taskQueue`中，然后启动一个宏任务（类似于 setTimeout 定时器）。在宏任务事件中，Scheduler 会遍历`taskQueue`取出每一个 task 执行，每执行完一个 task，都需要判断执行时间是否超过 5 毫秒，如果超过了 5 毫秒，则主动让出控制权，剩下的任务在下一个事件循环中处理。
+Scheduler 是 React 提供的调度器，当我们通过`unstable_scheduleCallback(NormalPriority, task)`调度任务时，Scheduler 会将我们的 task 存到一个数组`taskQueue`中，然后启动一个宏任务（类似于 setTimeout 定时器）。在宏任务事件中，Scheduler 会遍历`taskQueue`取出每一个 task 执行，每执行完一个 task，都需要判断执行时间是否超过 5 毫秒，如果超过了 5 毫秒，则主动让出控制权，剩下的任务在下一个事件循环中处理。如果没超过 5 毫秒，则在当前事件中继续执行下一个 task。**这里，你可以简单理解为，Scheduler 为每个宏任务事件的执行时间设定的最大执行时间是 5 毫秒**，比如：
+
+```js
+setTimeout(() => {
+  performWork();
+}, 0);
+```
+
+在每一个事件循环中，`performWork`的执行时间最大是 5 毫秒，超过 5 毫秒则主动让出控制权。
 
 Scheduler 支持任务按优先级排序执行，优先级通过`过期时间`体现，比如 `ImmediatePriority` 对应的过期时间是 `-1毫秒`，需要立即执行。
 
