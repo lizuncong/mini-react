@@ -1,3 +1,5 @@
+> 本章是手写 React Scheduler 源码系列的第一篇文章，第二篇查看[Scheduler 基础用法详解](./scheduler%E7%94%A8%E6%B3%95%E8%AF%A6%E8%A7%A3.md)
+
 ## 学习目标
 
 了解屏幕刷新率，下面这些 API 的基础用法及执行时机。从浏览器 Performance 面板中看每一帧的执行时间以及工作。探索哪些 API 适合用来调度任务

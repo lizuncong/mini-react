@@ -1,4 +1,4 @@
-> 本章是手写 React Scheduler 源码系列的第二篇文章，第一篇查看[哪些 API 适合用于任务调度](./%E5%93%AA%E4%BA%9BAPI%E9%80%82%E5%90%88%E7%94%A8%E4%BA%8E%E4%BB%BB%E5%8A%A1%E8%B0%83%E5%BA%A6.md)。React Scheduler 是 react 提供的一个可以独立使用的包，即可以单独使用。由于 React 官网对于这个包的用法介绍较少，因此本章全面介绍 react scheduler 的基本用法，熟练使用是阅读源码的前提，本章对于后续的源码阅读有很大的帮助
+> 本章是手写 React Scheduler 源码系列的第二篇文章，第一篇查看[哪些 API 适合用于任务调度](./%E5%93%AA%E4%BA%9BAPI%E9%80%82%E5%90%88%E7%94%A8%E4%BA%8E%E4%BB%BB%E5%8A%A1%E8%B0%83%E5%BA%A6.md)。React Scheduler 是 react 提供的一个可以独立使用的包，即可以单独使用。由于 React 官网对于这个包的用法介绍较少，因此本章全面介绍 react scheduler 的基本用法，熟练使用是阅读源码的前提，本章是后续的手写源码的基础
 
 ## 学习目标
 
@@ -74,6 +74,8 @@ setTimeout(() => {
 }, 0);
 ```
 
+> 当然，在 scheduler 源码中并不是使用 setTimeout 启动一个宏任务，task 也并不仅仅只是 taskQueue，但原理是一样的
+
 在每一个事件循环中，`performWork`的执行时间最大是 5 毫秒，超过 5 毫秒则主动让出控制权。
 
 Scheduler 支持任务按优先级排序执行，优先级通过`过期时间`体现，比如 `ImmediatePriority` 对应的过期时间是 `-1毫秒`，需要立即执行。
@@ -130,7 +132,7 @@ D didTimeout： false
 E didTimeout： false
 ```
 
-### 3.不同优先级，高优先级先执行
+### 3.不同优先级的任务，高优先级先执行
 
 ```js
 unstable_scheduleCallback(IdlePriority, printA);
