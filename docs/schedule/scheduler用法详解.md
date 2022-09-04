@@ -92,6 +92,31 @@ var IdlePriority = 5; // 对应的过期时间：IDLE_PRIORITY_TIMEOUT maxSigned
 
 ## Scheduler 用法
 
+Scheduler 暴露一个`unstable_scheduleCallback(priorityLevel, callback, options)`方法给我们调度任务，其中`priorityLevel`是调度的优先级，callback 是我们的任务，optoins 里面可以通过指定`delay`，延迟执行我们的任务。所有的任务都是在宏任务事件中处理。`unstable_scheduleCallback`返回一个 task 对象，用于描述任务的基本信息：
+
+```js
+var newTask = {
+  id: taskIdCounter++,
+  callback: callback,
+  priorityLevel: priorityLevel,
+  startTime: startTime,
+  expirationTime: expirationTime,
+  sortIndex: -1,
+};
+```
+
+这里需要注意，`startTime` 是指当前调用`unstable_scheduleCallback`的时间 + options.delay(如果有指定的话)，即
+
+```js
+startTime = performance.now() + options.delay;
+```
+
+`expirationTime`是通过 startTime + timeout 计算出来的，不同优先级 timeout 不同，如果优先级是 UserBlockingPriority，则 timeout 为 250 毫秒，那么 expirationTime 计算如下：
+
+```js
+var expirationTime = startTime + 250;
+```
+
 ### 1.相同优先级
 
 相同优先级的任务按照调度的顺序执行
