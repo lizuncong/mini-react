@@ -17,33 +17,28 @@
     <script>
       function printA(didTimeout) {
         const start = new Date().getTime();
-        while (new Date().getTime() - start < 7) {}
-        console.log("A didTimeout", didTimeout);
+        while (new Date().getTime() - start < 100) {}
+        console.log("A didTimeout：", didTimeout);
       }
       function printB(didTimeout) {
         const start = new Date().getTime();
-        while (new Date().getTime() - start < 3) {}
-        console.log("B didTimeout", didTimeout);
+        while (new Date().getTime() - start < 100) {}
+        console.log("B didTimeout：", didTimeout);
       }
       function printC(didTimeout) {
         const start = new Date().getTime();
-        while (new Date().getTime() - start < 4) {}
-        console.log("C didTimeout", didTimeout);
+        while (new Date().getTime() - start < 4652) {}
+        console.log("C didTimeout：", didTimeout);
       }
       function printD(didTimeout) {
         const start = new Date().getTime();
-        while (new Date().getTime() - start < 7) {}
-        console.log("D didTimeout", didTimeout);
-        console.log(
-          "isHostCallbackScheduled...isPerformingWork",
-          isPerformingWork,
-          isHostCallbackScheduled
-        );
+        while (new Date().getTime() - start < 100) {}
+        console.log("D didTimeout：", didTimeout);
       }
       function printE(didTimeout) {
         const start = new Date().getTime();
-        while (new Date().getTime() - start < 2000) {}
-        console.log("E didTimeout", didTimeout);
+        while (new Date().getTime() - start < 100) {}
+        console.log("E didTimeout：", didTimeout);
       }
     </script>
     <script>
@@ -52,11 +47,34 @@
       //var NormalPriority = 3; // NORMAL_PRIORITY_TIMEOUT 5000毫秒
       //var LowPriority = 4; // LOW_PRIORITY_TIMEOUT 10000毫秒
       //var IdlePriority = 5; // IDLE_PRIORITY_TIMEOUT maxSigned31BitInt永不过期
-      unstable_scheduleCallback(IdlePriority, printA);
-      unstable_scheduleCallback(LowPriority, printB);
+      function printA() {
+        console.log("A delayed task");
+      }
+      function printB() {
+        console.log("B delayed task");
+      }
+      unstable_scheduleCallback(UserBlockingPriority, printA, { delay: 300 });
+      unstable_scheduleCallback(UserBlockingPriority, printB, { delay: 100 });
+
+      const tasks = [
+        ["C1", 100],
+        ["C2", 100],
+        ["C3", 100],
+        ["C4", 100],
+      ];
+      function printC() {
+        while (tasks.length > 0) {
+          const task = tasks.shift();
+          const [label, ms] = task;
+          const start = new Date().getTime();
+          while (new Date().getTime() - start < ms) {}
+          console.log(label);
+          if (tasks.length > 0) {
+            return printC;
+          }
+        }
+      }
       unstable_scheduleCallback(NormalPriority, printC);
-      unstable_scheduleCallback(UserBlockingPriority, printD);
-      unstable_scheduleCallback(ImmediatePriority, printE);
     </script>
   </body>
 </html>
