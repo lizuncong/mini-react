@@ -1,4 +1,4 @@
-> 本章是手写 React Scheduler 源码系列的第二篇文章，第一篇查看[哪些 API 适合用于任务调度](./%E5%93%AA%E4%BA%9BAPI%E9%80%82%E5%90%88%E7%94%A8%E4%BA%8E%E4%BB%BB%E5%8A%A1%E8%B0%83%E5%BA%A6.md)。React Scheduler 是 react 提供的一个可以独立使用的包，即可以单独使用。由于 React 官网对于这个包的用法介绍较少，因此本章全面介绍 react scheduler 的基本用法，熟练使用是阅读源码的前提，本章是后续的手写源码的基础
+> 本章是手写 React Scheduler 源码系列的第二篇文章，第一篇查看[哪些 API 适合用于任务调度](./%E5%93%AA%E4%BA%9BAPI%E9%80%82%E5%90%88%E7%94%A8%E4%BA%8E%E4%BB%BB%E5%8A%A1%E8%B0%83%E5%BA%A6.md)。React Scheduler 是 react 提供的一个可以独立使用的包，可以单独使用。由于 React 官网对于这个包的用法介绍较少，因此本章全面介绍 react scheduler 的基本用法，熟练使用可以为后续手写源码奠定坚实的基础。
 
 ## 学习目标
 
@@ -8,7 +8,7 @@
 - 任务切片如何中途取消
 - 任务过期
 
-如果本篇文章所有的 demo 的输出顺序都能理清楚，那说明你已经彻底搞懂了 React Scheduler 的用法
+本章 demo 几乎涵盖了 Scheduler 所有的用法，如果能理清所有 demo 的输出顺序，那恭喜你已经掌握了 Scheduler 的用法
 
 ## 准备工作
 
@@ -66,21 +66,7 @@
 
 ## Scheduler 简介
 
-Scheduler 是 React 提供的调度器，当我们通过`unstable_scheduleCallback(NormalPriority, task)`调度任务时，Scheduler 会将我们的 task 存到一个数组`taskQueue`中，然后启动一个宏任务（类似于 setTimeout 定时器）。在宏任务事件中，Scheduler 会遍历`taskQueue`取出每一个 task 执行，每执行完一个 task，都需要判断执行时间是否超过 5 毫秒，如果超过了 5 毫秒，则主动让出控制权，剩下的任务在下一个事件循环中处理。如果没超过 5 毫秒，则在当前事件中继续执行下一个 task。**这里，你可以简单理解为，Scheduler 为每个宏任务事件的执行时间设定的最大执行时间是 5 毫秒**，比如：
-
-```js
-setTimeout(() => {
-  performWork();
-}, 0);
-```
-
-> 当然，在 scheduler 源码中并不是使用 setTimeout 启动一个宏任务，task 也并不仅仅只是 taskQueue，但原理是一样的
-
-在每一个事件循环中，`performWork`的执行时间最大是 5 毫秒，超过 5 毫秒则主动让出控制权。
-
-Scheduler 支持任务按优先级排序执行，优先级通过`过期时间`体现，比如 `ImmediatePriority` 对应的过期时间是 `-1毫秒`，需要立即执行。
-
-同时 Scheduler 还支持对单个 task 进行切片，这也正是 React concurrrent 模式采用的方式。
+Scheduler 是 React 提供的调度器，它内部暴露`unstable_scheduleCallback(priorityLevel, callback, options)`方法给我们调度任务，其中`priorityLevel`是调度的优先级，callback 是我们的任务，optoins 里面可以通过指定`delay`延迟执行我们的任务。Scheduler 支持任务按优先级排序执行，优先级通过`过期时间`体现，比如 `ImmediatePriority` 对应的过期时间是 `-1毫秒`，需要立即执行。
 
 ```js
 var ImmediatePriority = 1; // 对应的过期时间：IMMEDIATE_PRIORITY_TIMEOUT -1毫秒 立即执行
@@ -90,9 +76,7 @@ var LowPriority = 4; // 对应的过期时间：LOW_PRIORITY_TIMEOUT 10000毫秒
 var IdlePriority = 5; // 对应的过期时间：IDLE_PRIORITY_TIMEOUT maxSigned31BitInt永不过期
 ```
 
-## Scheduler 用法
-
-Scheduler 暴露一个`unstable_scheduleCallback(priorityLevel, callback, options)`方法给我们调度任务，其中`priorityLevel`是调度的优先级，callback 是我们的任务，optoins 里面可以通过指定`delay`，延迟执行我们的任务。所有的任务都是在宏任务事件中处理。`unstable_scheduleCallback`返回一个 task 对象，用于描述任务的基本信息：
+`unstable_scheduleCallback`返回一个 task 对象，用于描述任务的基本信息：
 
 ```js
 var newTask = {
@@ -105,17 +89,95 @@ var newTask = {
 };
 ```
 
-这里需要注意，`startTime` 是指当前调用`unstable_scheduleCallback`的时间 + options.delay(如果有指定的话)，即
+`startTime` 是`当前调用unstable_scheduleCallback的时间 + options.delay(如果有指定的话)`，即
 
 ```js
 startTime = performance.now() + options.delay;
 ```
 
-`expirationTime`是通过 startTime + timeout 计算出来的，不同优先级 timeout 不同，如果优先级是 UserBlockingPriority，则 timeout 为 250 毫秒，那么 expirationTime 计算如下：
+`expirationTime`是`startTime + timeout`计算出来的，不同优先级 timeout 不同，如果优先级是 UserBlockingPriority，则 timeout 为 250 毫秒，那么 expirationTime 计算如下：
 
 ```js
 var expirationTime = startTime + 250;
 ```
+
+对于`sortIndex`，是用于在队列中排序的，这里需要区分 task 的两种类型：
+
+- 普通任务，不需要延迟执行，加入队列后就直接开始调度执行，这种任务存储在 taskQueue 中，**同时按照 expirationTime 排序，expirationTime 最小的优先级最高，最先执行**
+- 延迟任务，需要延迟执行，加入队列后需要在指定的 delay 才开始调度执行，这种任务存储在 timerQueue 中，**同时按照 startTime 排序，startTime 最小的需要最先调度执行**
+
+因此，对于延迟任务，`sortIndex`存的就是`startTime`。对于普通任务，`sortIndex`存的就是`expirationTime`
+
+我们通过`unstable_scheduleCallback(NormalPriority, task)`调度任务时，scheduler 会根据 options.delay 决定 task 是存入 taskQueue 还是 timerQueue 中。为便于描述，这里我简单使用 setTimeout 代替源码中的 MessageChannel 描述这两个任务的执行时机的区别：
+
+```js
+function unstable_scheduleCallback(priorityLevel, callback, options) {
+  var currentTime = unstable_now();
+  var startTime;
+
+  if (typeof options === "object" && options !== null) {
+    var delay = options.delay;
+  } else {
+    startTime = currentTime;
+  }
+
+  var timeout;
+
+  switch (priorityLevel) {
+    case ImmediatePriority:
+      timeout = IMMEDIATE_PRIORITY_TIMEOUT;
+      break;
+
+    case UserBlockingPriority:
+      timeout = USER_BLOCKING_PRIORITY_TIMEOUT;
+      break;
+    // ...
+    case NormalPriority:
+    default:
+      timeout = NORMAL_PRIORITY_TIMEOUT;
+      break;
+  }
+
+  var expirationTime = startTime + timeout;
+  var newTask = {
+    id: taskIdCounter++,
+    callback: callback,
+    priorityLevel: priorityLevel,
+    startTime: startTime,
+    expirationTime: expirationTime,
+    sortIndex: -1,
+  };
+
+  if (startTime > currentTime) {
+    // 延迟任务
+    newTask.sortIndex = startTime;
+    timerQueue.push(newTask);
+
+    setTimeout(() => {
+      // 启动一个定时器处理延迟任务
+    }, options.delay);
+  } else {
+    newTask.sortIndex = expirationTime;
+    taskQueue.push(newTask);
+
+    setTimeout(() => {
+      // 处理普通任务
+    }, 0);
+  }
+
+  return newTask;
+}
+```
+
+注意，这里用了两个时间间隔不一样的定时器区分普通任务和延迟任务的执行时机
+
+延迟任务的定时器到期执行时，scheduler 会遍历 timerQueue 中的任务，找出那些到期需要执行的延迟任务，添加到 taskQueue 中。
+
+对于 taskQueue 的处理，每执行完一个 task，都需要判断执行时间是否超过 5 毫秒，如果超过 5 毫秒，就主动交出控制权，剩下的 task 在下一个事件循环中再继续处理
+
+同时 Scheduler 还支持对单个 task 进行切片，这也正是 React concurrrent 模式采用的方式。
+
+## Scheduler 用法
 
 ### 1.相同优先级
 
@@ -137,7 +199,7 @@ performance 查看调用栈信息：
 
 ### 2.取消某个任务
 
-可以通过 unstable_cancelCallback 取消某个任务
+可以通过 unstable_cancelCallback 取消某个任务，`unstable_cancelCallback`通过重置`task.callback = null`即可取消任务
 
 ```js
 const callbackA = unstable_scheduleCallback(NormalPriority, printA);
@@ -288,7 +350,7 @@ while (new Date().getTime() - start < 248) {}
 
 ### 5.任务切片
 
-scheduler 在每一次事件循环中，会每隔 5ms 主动交出控制权给浏览器。也就是说，每一次事件循环执行的任务都不应超过 5ms。对于某个超长的任务，我们可以将其拆分成一小段执行
+scheduler 在每一次事件循环中处理任务，每执行完一个 task，都需要判断当前事件执行时间是否超过 5 毫秒。如果超过 5 毫秒，则主动让出控制权，剩下的 task 在下一次时间循环中处理。如果没超过 5 毫秒，则继续执行下一个 task。也就是说，每一次事件循环执行的任务都不应超过 5ms。对于某个超长的 task，我们可以将其拆分成一小段执行
 
 在下面的例子中
 
@@ -314,7 +376,11 @@ unstable_scheduleCallback(NormalPriority, printC);
 
 ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/scheduler-04.jpg)
 
-我们可以将这个任务拆分成几小段执行，比如：
+我们可以将这个任务拆分成几小段执行，任务切片的原理如下：
+
+- 首先将某个长任务 task 拆分成几小段，这需要一个合理的数据结构设计
+- 通过 Scheduler 暴露的`unstable_shouldYield`判断当前执行时间是否超过了 5 毫秒，如果超过了就不继续执行下一小段任务
+- 通过在 callback 中返回一个函数告诉 Scheduler 需要继续执行这个 task
 
 ```js
 const tasks = [
@@ -329,9 +395,10 @@ const printC = () => {
     while (new Date().getTime() - start < ms) {}
     console.log(label);
     if (unstable_shouldYield()) {
+      // 判断是否需要让出控制权
       console.log("yield：交出控制权");
       didYield = true;
-      return printC;
+      return printC; // 返回一个函数
     }
   }
 };
