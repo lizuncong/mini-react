@@ -181,7 +181,7 @@ function unstable_scheduleCallback(priorityLevel, callback, options) {
 
 ### 1.相同优先级
 
-相同优先级的任务按照调度的顺序执行
+相同优先级的任务按照调度的顺序执行。
 
 ```js
 unstable_scheduleCallback(NormalPriority, printA);
@@ -193,7 +193,7 @@ unstable_scheduleCallback(NormalPriority, printE);
 
 可以看到，控制台依次按顺序输出：A、B、C、D、E
 
-performance 查看调用栈信息：
+performance 查看调用栈信息。需要注意，`printA`等任务的执行耗时都是 100 毫秒，远远超过了 5 毫秒，因此每执行完一次 task，都需要让出控制权，这也是为啥我们在 performance 中看到这些任务是分段执行的原因
 
 ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/scheduler-01.jpg)
 
@@ -243,16 +243,18 @@ A didTimeout： false
 
 ### 4.任务超时
 
-任务超时是指执行任务的开始时间(currentTime)大于等于任务的过期时间(expirationTime)。
+任务超时是指从任务开始加入队列到执行的这段时间是否超过了任务的优先级对应的超时时间 timeout。
 
-比如当我们调用`unstable_scheduleCallback(UserBlockingPriority, printB)`时，任务 B 的过期时间计算方式如下：
+比如当我们调用`unstable_scheduleCallback(UserBlockingPriority, printB)`时，`UserBlockingPriority`对应的超时时间为 250 毫秒。从调用 unstable_scheduleCallback 将 printB 加入队列，到 printB 执行的这段时间，如果超过了 250 毫秒，那么 printB 就超时了。否则就没有超时
+
+printB 的过期时间计算方式如下：
 
 ```js
 //调用unstable_scheduleCallback添加任务的当前时间 + 优先级对应的过期时间;
-expirationTime = currentTime + timeout;
+expirationTime = startTime + timeout;
 ```
 
-其中，currentTime 等于调用 unstable_scheduleCallback 添加任务的当前时间。timeout 是任务优先级对应的过期时间，这里 UserBlockingPriority 对应的 timeout 为 250 毫秒
+其中，startTime 等于调用 unstable_scheduleCallback 添加任务的当前时间。timeout 是任务优先级对应的过期时间，这里 UserBlockingPriority 对应的 timeout 为 250 毫秒
 
 #### 简单的超时任务
 
@@ -764,4 +766,127 @@ C2
 C3
 A delayed task
 C4
+```
+
+## runWithPriority 用法
+
+```js
+function unstable_runWithPriority(priorityLevel, eventHandler) {
+  var previousPriorityLevel = currentPriorityLevel;
+  currentPriorityLevel = priorityLevel;
+
+  try {
+    return eventHandler();
+  } finally {
+    currentPriorityLevel = previousPriorityLevel;
+  }
+}
+```
+
+runWithPriority 就是在执行 eventHandler 前将 currentPriorityLevel 设置为 priorityLevel，在 eventHandler 执行完成后，又将 currentPriorityLevel 重设回原来的值。这样的意义在于，eventHandler 执行时，currentPriorityLevel 就是它对应的 priorityLevel
+
+在 Scheduler 中，currentPriorityLevel 默认的值是 NormalPriority，即 3
+
+```js
+function unstable_wrapCallback(callback) {
+  var parentPriorityLevel = currentPriorityLevel;
+  return function () {
+    // This is a fork of runWithPriority, inlined for performance.
+    var previousPriorityLevel = currentPriorityLevel;
+    currentPriorityLevel = parentPriorityLevel;
+
+    try {
+      return callback.apply(this, arguments);
+    } finally {
+      currentPriorityLevel = previousPriorityLevel;
+    }
+  };
+}
+```
+
+> 可以看出，调用`unstable_runWithPriority(Priority, callback)`会立即执行我们的 callback。在 callback 执行时，获取到的优先级(currentPriorityLevel)就是 Priority，callback 执行完之后才恢复成原来的优先级。调用`unstable_wrapCallback(callback)`时，会立即将当前的优先级(currentPriorityLevel)保存起来，然后返回一个函数，不论这个函数在任何时候调用我们的 callback，callback 内部访问到的优先级都是调用`unstable_wrapCallback(callback)`时保存的值
+
+### runWithPriority & wrapCallback 的用法
+
+```js
+const wrappedNormalCallback = unstable_runWithPriority(NormalPriority, () => {
+  // unstable_wrapCallback将当前的优先级保存起来，此时是NormalPriority，因此这里输出的值是3
+  return unstable_wrapCallback(() => {
+    console.log("【NormalWrap callback】", unstable_getCurrentPriorityLevel());
+  });
+});
+
+const wrappedUserBlockingCallback = unstable_runWithPriority(
+  UserBlockingPriority,
+  () => {
+    // unstable_wrapCallback将当前的优先级保存起来，此时是UserBlockingPriority，因此这里输出的值是2
+    return unstable_wrapCallback(() => {
+      console.log(
+        "【UserBlocking callback】",
+        unstable_getCurrentPriorityLevel()
+      );
+    });
+  }
+);
+
+wrappedNormalCallback();
+console.log("【after normal callback】", unstable_getCurrentPriorityLevel());
+
+wrappedUserBlockingCallback();
+console.log(
+  "【after UserBlocking callback】",
+  unstable_getCurrentPriorityLevel()
+);
+```
+
+控制台输出：
+
+```js
+【NormalWrap callback】 3
+【after normal callback】 3
+【UserBlocking callback】 2
+【after UserBlocking callback】 3
+```
+
+再来看下面嵌套调用 unstable_runWithPriority 的例子：
+
+```js
+let wrappedCallback;
+let wrappedUserBlockingCallback;
+
+unstable_runWithPriority(NormalPriority, () => {
+  wrappedCallback = unstable_wrapCallback(() => {
+    console.log(
+      "【NormalPriority callback】",
+      unstable_getCurrentPriorityLevel()
+    );
+  });
+  wrappedUserBlockingCallback = unstable_runWithPriority(
+    UserBlockingPriority,
+    () =>
+      unstable_wrapCallback(() => {
+        console.log(
+          "【UserBlockingPriority callback】",
+          unstable_getCurrentPriorityLevel()
+        );
+      })
+  );
+});
+
+wrappedCallback();
+console.log("【after normal callback】", unstable_getCurrentPriorityLevel());
+wrappedUserBlockingCallback();
+console.log(
+  "【after UserBlocking callback】",
+  unstable_getCurrentPriorityLevel()
+);
+```
+
+控制台输出：
+
+```js
+【NormalPriority callback】 3
+【after normal callback】 3
+【UserBlockingPriority callback】 2
+【after UserBlocking callback】 3
 ```

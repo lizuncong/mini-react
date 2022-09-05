@@ -47,34 +47,18 @@
       //var NormalPriority = 3; // NORMAL_PRIORITY_TIMEOUT 5000毫秒
       //var LowPriority = 4; // LOW_PRIORITY_TIMEOUT 10000毫秒
       //var IdlePriority = 5; // IDLE_PRIORITY_TIMEOUT maxSigned31BitInt永不过期
-      function printA() {
-        console.log("A delayed task");
-      }
-      function printB() {
-        console.log("B delayed task");
-      }
-      unstable_scheduleCallback(UserBlockingPriority, printA, { delay: 300 });
-      unstable_scheduleCallback(UserBlockingPriority, printB, { delay: 100 });
 
-      const tasks = [
-        ["C1", 100],
-        ["C2", 100],
-        ["C3", 100],
-        ["C4", 100],
-      ];
-      function printC() {
-        while (tasks.length > 0) {
-          const task = tasks.shift();
-          const [label, ms] = task;
-          const start = new Date().getTime();
-          while (new Date().getTime() - start < ms) {}
-          console.log(label);
-          if (tasks.length > 0) {
-            return printC;
-          }
-        }
-      }
-      unstable_scheduleCallback(NormalPriority, printC);
+      unstable_scheduleCallback(NormalPriority, () => {
+        console.log("A");
+        throw new Error("Oops A");
+      });
+      unstable_scheduleCallback(NormalPriority, () => {
+        console.log("B");
+      });
+      unstable_scheduleCallback(NormalPriority, () => {
+        console.log("C");
+        throw new Error("Oops C");
+      });
     </script>
   </body>
 </html>
