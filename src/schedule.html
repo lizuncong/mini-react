@@ -2,63 +2,74 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>schedule用法</title>
+    <title>schedule源码</title>
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1"
     />
-    <script src="./schedule.js"></script>
+    <style>
+      #animation {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100px;
+        height: 100px;
+        background: red;
+        animation: myfirst 5s;
+        animation-iteration-count: infinite;
+      }
+
+      @keyframes myfirst {
+        from {
+          width: 30px;
+          height: 30px;
+          border-radius: 0;
+          background: red;
+        }
+        to {
+          width: 300px;
+          height: 300px;
+          border-radius: 50%;
+          background: yellow;
+        }
+      }
+    </style>
   </head>
 
   <body>
-    <div id="animation">
-      <div>Scheduler</div>
-    </div>
+    <button id="btn">perform work</button>
+    <div id="animation">Animation</div>
     <script>
-      function printA(didTimeout) {
-        const start = new Date().getTime();
-        while (new Date().getTime() - start < 100) {}
-        console.log("A didTimeout：", didTimeout);
+      let works = [];
+      for (let i = 0; i < 3000; i++) {
+        works.push(() => {
+          const start = new Date().getTime();
+          while (new Date().getTime() - start < 2) {}
+        });
       }
-      function printB(didTimeout) {
-        const start = new Date().getTime();
-        while (new Date().getTime() - start < 100) {}
-        console.log("B didTimeout：", didTimeout);
-      }
-      function printC(didTimeout) {
-        const start = new Date().getTime();
-        while (new Date().getTime() - start < 4652) {}
-        console.log("C didTimeout：", didTimeout);
-      }
-      function printD(didTimeout) {
-        const start = new Date().getTime();
-        while (new Date().getTime() - start < 100) {}
-        console.log("D didTimeout：", didTimeout);
-      }
-      function printE(didTimeout) {
-        const start = new Date().getTime();
-        while (new Date().getTime() - start < 100) {}
-        console.log("E didTimeout：", didTimeout);
-      }
-    </script>
-    <script>
-      //var ImmediatePriority = 1; // IMMEDIATE_PRIORITY_TIMEOUT -1毫秒 立即执行
-      //var UserBlockingPriority = 2; // USER_BLOCKING_PRIORITY_TIMEOUT 250毫秒
-      //var NormalPriority = 3; // NORMAL_PRIORITY_TIMEOUT 5000毫秒
-      //var LowPriority = 4; // LOW_PRIORITY_TIMEOUT 10000毫秒
-      //var IdlePriority = 5; // IDLE_PRIORITY_TIMEOUT maxSigned31BitInt永不过期
+      const btn = document.getElementById("btn");
+      const animate = document.getElementById("animation");
+      let endTime;
+      let startTime;
+      btn.onclick = () => {
+        startTime = new Date().getTime();
+        flushWork();
+      };
 
-      unstable_scheduleCallback(NormalPriority, () => {
-        console.log("A");
-        throw new Error("Oops A");
-      });
-      unstable_scheduleCallback(NormalPriority, () => {
-        console.log("B");
-      });
-      unstable_scheduleCallback(NormalPriority, () => {
-        console.log("C");
-        throw new Error("Oops C");
-      });
+      function flushWork() {
+        setTimeout(workLoop, 0);
+      }
+
+      function workLoop() {
+        const work = works.shift();
+        if (work) {
+          work();
+          setTimeout(workLoop, 0);
+        } else {
+          const endTime = new Date().getTime();
+          animate.innerHTML = endTime - startTime;
+        }
+      }
     </script>
   </body>
 </html>

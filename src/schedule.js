@@ -1,116 +1,3 @@
-/***************** debugger packages/scheduler/SchedulerHostConfig.js start *****************/
-
-var requestHostCallback;
-var requestHostTimeout;
-var cancelHostTimeout;
-var requestPaint;
-
-var unstable_now = function () {
-  return performance.now();
-};
-
-var _setTimeout = window.setTimeout;
-var _clearTimeout = window.clearTimeout;
-var requestAnimationFrame = window.requestAnimationFrame;
-var cancelAnimationFrame = window.cancelAnimationFrame;
-
-var isMessageLoopRunning = false;
-var scheduledHostCallback = null;
-var taskTimeoutID = -1;
-// Scheduler periodically yields in case there is other work on the main
-// thread, like user events. By default, it yields multiple times per frame.
-// It does not attempt to align with frame boundaries, since most tasks don't
-// need to be frame aligned; for those that do, use requestAnimationFrame.
-
-var yieldInterval = 5;
-var deadline = 0; // TODO: Make this configurable
-
-// `isInputPending` is not available. Since we have no way of knowing if
-// there's pending input, always yield at the end of the frame.
-var unstable_shouldYield = function () {
-  return unstable_now() >= deadline;
-}; // Since we yield every frame regardless, `requestPaint` has no effect.
-
-requestPaint = function () { };
-
-var unstable_forceFrameRate = function (fps) {
-  if (fps < 0 || fps > 125) {
-    // Using console['error'] to evade Babel and ESLint
-    console["error"](
-      "forceFrameRate takes a positive int between 0 and 125, " +
-      "forcing frame rates higher than 125 fps is not supported"
-    );
-    return;
-  }
-
-  if (fps > 0) {
-    yieldInterval = Math.floor(1000 / fps);
-  } else {
-    // reset the framerate
-    yieldInterval = 5;
-  }
-};
-
-var performWorkUntilDeadline = function () {
-  if (scheduledHostCallback !== null) {
-    var currentTime = unstable_now();
-    // Yield after `yieldInterval` ms, regardless of where we are in the vsync
-    // cycle. This means there's always time remaining at the beginning of
-    // the message event.
-
-    deadline = currentTime + yieldInterval;
-    var hasTimeRemaining = true;
-
-    try {
-      var hasMoreWork = scheduledHostCallback(hasTimeRemaining, currentTime);
-
-      if (!hasMoreWork) {
-        isMessageLoopRunning = false;
-        scheduledHostCallback = null;
-      } else {
-        // If there's more work, schedule the next message event at the end
-        // of the preceding one.
-        // console.log('hasMorework....', hasMoreWork)
-        port.postMessage(null);
-      }
-    } catch (error) {
-      // If a scheduler task throws, exit the current browser task so the
-      // error can be observed.
-      port.postMessage(null);
-      throw error;
-    }
-  } else {
-    isMessageLoopRunning = false;
-  } // Yielding to the browser will give it a chance to paint, so we can
-};
-
-var channel = new MessageChannel();
-var port = channel.port2;
-channel.port1.onmessage = performWorkUntilDeadline;
-
-requestHostCallback = function (callback) {
-  scheduledHostCallback = callback;
-
-  if (!isMessageLoopRunning) {
-    isMessageLoopRunning = true;
-    port.postMessage(null);
-  }
-};
-
-requestHostTimeout = function (callback, ms) {
-  taskTimeoutID = _setTimeout(function () {
-    callback(unstable_now());
-  }, ms);
-};
-
-cancelHostTimeout = function () {
-  _clearTimeout(taskTimeoutID);
-
-  taskTimeoutID = -1;
-};
-
-/***************** debugger packages/scheduler/SchedulerHostConfig.js end *****************/
-
 /***************** debugger packages/scheduler/SchedulerMinHeap.js start *****************/
 function push(heap, node) {
   var index = heap.length;
@@ -195,60 +82,140 @@ function compare(a, b) {
 }
 /***************** debugger packages/scheduler/SchedulerMinHeap.js end *****************/
 
+/***************** debugger packages/scheduler/SchedulerHostConfig.js start *****************/
+
+var isMessageLoopRunning = false;
+var scheduledHostCallback = null; // 实际上存的就是flushwork
+var taskTimeoutID = -1;
+
+// Scheduler程序定期让出控制权，以防主线程还有其他工作，比如用户事件。默认情况下，一帧会让出多次。
+// 它不会尝试与帧对齐，因为大多数任务不需要帧对齐。如果需要帧对齐，可以使用requestAnimationFrame
+// 把控制权交给浏览器绘制页面
+var yieldInterval = 5;
+var deadline = 0;
+
+function unstable_shouldYield() {
+  return performance.now() >= deadline;
+}
+
+// 所有的任务调度都是由MessageChannel的第二个端口port2通过调用postMessage发起的。
+function performWorkUntilDeadline() {
+  // scheduledHostCallback 保存的是flushwork的引用
+  if (scheduledHostCallback !== null) {
+    var currentTime = performance.now();
+    console.log("message channel start...", currentTime);
+    // 在 yieldInterval 毫秒后让出控制权
+    deadline = currentTime + yieldInterval;
+    var hasTimeRemaining = true;
+
+    try {
+      var hasMoreWork = scheduledHostCallback(hasTimeRemaining, currentTime);
+      //console.log("message channel end...hasMoreWork：", hasMoreWork);
+      if (!hasMoreWork) {
+        // 没有任务需要执行
+        isMessageLoopRunning = false;
+        scheduledHostCallback = null;
+      } else {
+        // 如果还有任务，则触发下一个事件
+        port.postMessage(null);
+      }
+    } catch (error) {
+      // If a scheduler task throws, exit the current browser task so the
+      // error can be observed.
+      port.postMessage(null);
+      throw error;
+    }
+  } else {
+    isMessageLoopRunning = false;
+  }
+}
+
+var channel = new MessageChannel();
+var port = channel.port2;
+channel.port1.onmessage = performWorkUntilDeadline;
+
+// 使用 messagechannel触发一个宏任务，异步执行scheduledHostCallback，即callback回调
+// 引入isMessageLoopRunning的一个重要原因是，假设执行完一次performWorkUntilDeadline，还有剩余的工作没完成，
+// 那么performWorkUntilDeadline内部会通过port.postMessage(null);启动下一个宏任务事件。此时如果刚好用户又调用了
+// unstable_scheduleCallback添加任务，就会导致又触发了一个宏任务事件，就会出现问题。因此引入isMessageLoopRunning开关
+// 如果所有任务都已经执行完成，这个开关才会关闭。如果还有任务需要执行，则不允许重复触发宏任务事件
+function requestHostCallback(callback) {
+  scheduledHostCallback = callback;
+
+  if (!isMessageLoopRunning) {
+    isMessageLoopRunning = true;
+    port.postMessage(null);
+  }
+}
+
+// 实际上，在这里callback永远都是handleTimeout，也就是将handletimeout放入定时器，ms毫秒后执行
+// 如果有延迟执行的任务，需要放在handleTimeout中调度执行
+function requestHostTimeout(callback, ms) {
+  taskTimeoutID = setTimeout(function () {
+    callback(performance.now());
+  }, ms);
+}
+
+function cancelHostTimeout() {
+  clearTimeout(taskTimeoutID);
+
+  taskTimeoutID = -1;
+}
+
+/***************** debugger packages/scheduler/SchedulerHostConfig.js end *****************/
+
 /***************** debugger packages/scheduler/SchedulerPriorities.js start *****************/
-// TODO: Use symbols?
+// Scheduler调度优先级
 var ImmediatePriority = 1;
 var UserBlockingPriority = 2;
 var NormalPriority = 3;
 var LowPriority = 4;
 var IdlePriority = 5;
 /***************** debugger packages/scheduler/SchedulerPriorities.js end *****************/
-/***************** debugger packages/scheduler/SchedulerProfiling.js start *****************/
 
-function markTaskErrored(task, ms) { }
-/***************** debugger packages/scheduler/SchedulerProfiling.js end *****************/
 /***************** debugger packages/scheduler/Scheduler.js start *****************/
 
-/* eslint-disable no-var */
 // Math.pow(2, 30) - 1
 // 0b111111111111111111111111111111
 
-var maxSigned31BitInt = 1073741823; // Times out immediately
+var maxSigned31BitInt = 1073741823;
+// 过期时间，单位毫秒
+var IMMEDIATE_PRIORITY_TIMEOUT = -1; // Times out immediately
 
-var IMMEDIATE_PRIORITY_TIMEOUT = -1; // Eventually times out
-
-var USER_BLOCKING_PRIORITY_TIMEOUT = 250;
+var USER_BLOCKING_PRIORITY_TIMEOUT = 250; // Eventually times out
 var NORMAL_PRIORITY_TIMEOUT = 5000;
 var LOW_PRIORITY_TIMEOUT = 10000; // Never times out
 
-var IDLE_PRIORITY_TIMEOUT = maxSigned31BitInt; // Tasks are stored on a min heap
+var IDLE_PRIORITY_TIMEOUT = maxSigned31BitInt;
 
-var taskQueue = [];
-var timerQueue = []; // Incrementing id counter. Used to maintain insertion order.
+// Tasks are stored on a min heap
+var taskQueue = []; // 存储的是立即执行的任务，根据expirationTime排序，expirationTime最小的任务在第一位
+var timerQueue = []; // 存储的是延迟执行的任务。根据任务开始时间startTime排序，startTime最小的任务在第一位
 
-var taskIdCounter = 1; // Pausing the scheduler is useful for debugging.
+var taskIdCounter = 1; // Incrementing id counter. Used to maintain insertion order.
+
 var currentTask = null;
-var currentPriorityLevel = NormalPriority; // This is set while performing work, to prevent re-entrancy.
+var currentPriorityLevel = NormalPriority;
 
-var isPerformingWork = false;
+var isPerformingWork = false; // This is set while performing work, to prevent re-entrancy.
 var isHostCallbackScheduled = false;
 var isHostTimeoutScheduled = false;
 
+// 找出那些到时的不需要再延迟执行的任务，添加到taskQueue中
 function advanceTimers(currentTime) {
-  // Check for tasks that are no longer delayed and add them to the queue.
   var timer = peek(timerQueue);
 
   while (timer !== null) {
     if (timer.callback === null) {
-      // Timer was cancelled.
+      // 任务被取消了
       pop(timerQueue);
     } else if (timer.startTime <= currentTime) {
-      // Timer fired. Transfer to the task queue.
+      // 任务到时了，需要执行，添加到taskQueue调度执行
       pop(timerQueue);
       timer.sortIndex = timer.expirationTime;
       push(taskQueue, timer);
     } else {
-      // Remaining timers are pending.
+      // 如果第一个任务都还没到时，说明剩下的都还需要延迟
       return;
     }
 
@@ -260,7 +227,11 @@ function handleTimeout(currentTime) {
   isHostTimeoutScheduled = false;
   advanceTimers(currentTime);
 
+  // 如果已经触发了一个message channel事件，但是事件还没执行。刚好定时器这时候执行了，就会
+  // 存在isHostCallbackScheduled为true的情况，此时就没必要再继续里面的逻辑了。因为
+  // message channel中就会执行这些操作
   if (!isHostCallbackScheduled) {
+    // 如果timerQueue的第一个任务被取消了，则taskQueue可能为null，此时timerQueue后面的任务还是需要延迟执行
     if (peek(taskQueue) !== null) {
       isHostCallbackScheduled = true;
       requestHostCallback(flushWork);
@@ -274,11 +245,15 @@ function handleTimeout(currentTime) {
   }
 }
 
+// 这里需要isHostCallbackScheduled和isPerformingWork两个开关的原因是，防止在
+// 正在工作中的task中又调度了unstable_scheduleCallback添加任务
 function flushWork(hasTimeRemaining, initialTime) {
   isHostCallbackScheduled = false;
 
   if (isHostTimeoutScheduled) {
-    // We scheduled a timeout but it's no longer needed. Cancel it.
+    // 如果之前启动过定时器，则取消。因为在workLoop内部每执行一个任务，都会调用advanceTimers将
+    // timerQueue中到期执行的任务加入到taskQueue中去执行。但taskQueue全部执行完成，
+    // 如果timerQueue还有工作，此时就会重新启动定时器延迟执行timerQueue中的任务
     isHostTimeoutScheduled = false;
     cancelHostTimeout();
   }
@@ -292,6 +267,7 @@ function flushWork(hasTimeRemaining, initialTime) {
     currentTask = null;
     currentPriorityLevel = previousPriorityLevel;
     isPerformingWork = false;
+    console.log("flushwork...");
   }
 }
 
@@ -305,7 +281,9 @@ function workLoop(hasTimeRemaining, initialTime) {
       currentTask.expirationTime > currentTime &&
       (!hasTimeRemaining || unstable_shouldYield())
     ) {
-      // This currentTask hasn't expired, and we've reached the deadline.
+      // 当前的currentTask还没过期，但是当前宏任务事件已经到达执行的最后期限，即我们需要
+      // 将控制权交还给浏览器，剩下的任务在下一个事件循环中再继续执行
+      console.log("yield");
       break;
     }
 
@@ -315,13 +293,18 @@ function workLoop(hasTimeRemaining, initialTime) {
       currentTask.callback = null;
       currentPriorityLevel = currentTask.priorityLevel;
       var didUserCallbackTimeout = currentTask.expirationTime <= currentTime;
-
       var continuationCallback = callback(didUserCallbackTimeout);
-      currentTime = unstable_now();
+      currentTime = performance.now();
 
       if (typeof continuationCallback === "function") {
+        // 当前任务还没全部执行完成，需要继续执行，不能从taskQueue中pop掉
         currentTask.callback = continuationCallback;
       } else {
+        // 为什么需要做这个判断？这是因为，当我们在callback(didUserCallbackTimeout)这个任务里面
+        // 再次调用了unstable_scheduleCallback添加一个更高优先级的任务，此时这个任务会排在taskQueue的第一位
+        // 需要立即执行，也就是插队了。这种情况我们不能简单的使用pop(taskQueue)将其删除
+
+        // 如果currentTask === peek(taskQueue)相等，说明没有更高优先级的任务插队
         if (currentTask === peek(taskQueue)) {
           pop(taskQueue);
         }
@@ -333,11 +316,12 @@ function workLoop(hasTimeRemaining, initialTime) {
     }
 
     currentTask = peek(taskQueue);
-  } // Return whether there's additional work
-
+  }
   if (currentTask !== null) {
+    // 如果taskQueue中还有剩余工作，则返回true
     return true;
   } else {
+    // 如果taskQueue已经没有工作，同时timerQueue还有工作，则需要启用一个定时器延迟执行
     var firstTimer = peek(timerQueue);
 
     if (firstTimer !== null) {
@@ -347,74 +331,12 @@ function workLoop(hasTimeRemaining, initialTime) {
     return false;
   }
 }
-
-function unstable_runWithPriority(priorityLevel, eventHandler) {
-  switch (priorityLevel) {
-    case ImmediatePriority:
-    case UserBlockingPriority:
-    case NormalPriority:
-    case LowPriority:
-    case IdlePriority:
-      break;
-
-    default:
-      priorityLevel = NormalPriority;
-  }
-
-  var previousPriorityLevel = currentPriorityLevel;
-  currentPriorityLevel = priorityLevel;
-
-  try {
-    return eventHandler();
-  } finally {
-    currentPriorityLevel = previousPriorityLevel;
-  }
-}
-
-function unstable_next(eventHandler) {
-  var priorityLevel;
-
-  switch (currentPriorityLevel) {
-    case ImmediatePriority:
-    case UserBlockingPriority:
-    case NormalPriority:
-      // Shift down to normal priority
-      priorityLevel = NormalPriority;
-      break;
-
-    default:
-      // Anything lower than normal priority should remain at the current level.
-      priorityLevel = currentPriorityLevel;
-      break;
-  }
-
-  var previousPriorityLevel = currentPriorityLevel;
-  currentPriorityLevel = priorityLevel;
-
-  try {
-    return eventHandler();
-  } finally {
-    currentPriorityLevel = previousPriorityLevel;
-  }
-}
-
-function unstable_wrapCallback(callback) {
-  var parentPriorityLevel = currentPriorityLevel;
-  return function () {
-    // This is a fork of runWithPriority, inlined for performance.
-    var previousPriorityLevel = currentPriorityLevel;
-    currentPriorityLevel = parentPriorityLevel;
-
-    try {
-      return callback.apply(this, arguments);
-    } finally {
-      currentPriorityLevel = previousPriorityLevel;
-    }
-  };
-}
-
+// 根据currentTime和options.delay计算任务开始调度的时间startTime
+// 根据调度优先级priorityLevel以及startTime计算任务的过期时间expirationTime
+// 生成一个task任务对象，将callback、startTime、expirationTime等存储起来
+// 判断task是否是延迟任务，如果是延迟执行任务，则加入timerQueue，否则加入
 function unstable_scheduleCallback(priorityLevel, callback, options) {
-  var currentTime = unstable_now();
+  var currentTime = performance.now();
   var startTime;
 
   if (typeof options === "object" && options !== null) {
@@ -469,24 +391,36 @@ function unstable_scheduleCallback(priorityLevel, callback, options) {
     newTask.sortIndex = startTime;
     push(timerQueue, newTask);
 
+    // 如果taskQueue为空，同时新添加的newTask是最早需要执行的延迟任务，则我们需要取消之前的定时器
+    // 启动一个更早的定时器
     if (peek(taskQueue) === null && newTask === peek(timerQueue)) {
-      // All tasks are delayed, and this is the task with the earliest delay.
+      // 所有的任务都需要执行，但是新添加的这个newTask是最早需要执行的任务，因此我们需要取消之前的定时器
+      // 重新启动一个更早的定时器
       if (isHostTimeoutScheduled) {
-        // Cancel an existing timeout.
+        // 取消之前的定时器
         cancelHostTimeout();
       } else {
         isHostTimeoutScheduled = true;
-      } // Schedule a timeout.
-
+      }
+      // 启动一个更早的定时器
+      // 开启一个settimeout定时器，startTime - currentTime，其实就是options.delay毫秒后执行handleTimeout
       requestHostTimeout(handleTimeout, startTime - currentTime);
     }
   } else {
     newTask.sortIndex = expirationTime;
     push(taskQueue, newTask);
-    // wait until the next time we yield.
-
+    // 这里需要isHostCallbackScheduled和isPerformingWork两个开关的原因是，防止在
+    // 正在工作中的task中又调度了unstable_scheduleCallback添加任务，而这个任务可能是添加到taskQueue中的，
+    // 也可能是添加到timerQueue中延迟执行的
+    // 但会存在一种情况，flushwork执行完成，但是还有剩余的任务需要在下一个事件循环中执行。此时的isHostCallbackScheduled
+    // 和isPerformingWork都为false，然后再调用unstable_scheduleCallback继续添加一个任务时，就会重新执行
+    // requestHostCallback，但是requestHostCallback使用isMessageLoopRunning开关，如果任务还没全部完成
+    // 即使再调用requestHostCallback，也不会再开启下一个宏任务事件
     if (!isHostCallbackScheduled && !isPerformingWork) {
       isHostCallbackScheduled = true;
+      // 将flushWork保存到scheduledHostCallback
+      // 如果isMessageLoopRunning为false，则使用messagechannel的端口2通过postMessage触发一个宏任务，
+      // 同时设置isMessageLoopRunning为true
       requestHostCallback(flushWork);
     }
   }
@@ -494,47 +428,4 @@ function unstable_scheduleCallback(priorityLevel, callback, options) {
   return newTask;
 }
 
-function unstable_pauseExecution() { }
-
-function unstable_continueExecution() {
-  if (!isHostCallbackScheduled && !isPerformingWork) {
-    isHostCallbackScheduled = true;
-    requestHostCallback(flushWork);
-  }
-}
-
-function unstable_getFirstCallbackNode() {
-  return peek(taskQueue);
-}
-
-function unstable_cancelCallback(task) {
-  // remove from the queue because you can't remove arbitrary nodes from an
-  // array based heap, only the first one.)
-
-  task.callback = null;
-}
-
-function unstable_getCurrentPriorityLevel() {
-  return currentPriorityLevel;
-}
-
-var unstable_requestPaint = requestPaint;
-var unstable_Profiling = null;
-
-var unstable_IdlePriority = IdlePriority;
-var unstable_ImmediatePriority = ImmediatePriority;
-var unstable_LowPriority = LowPriority;
-// var unstable_NormalPriority = NormalPriority;
-var unstable_Profiling = unstable_Profiling;
-var unstable_UserBlockingPriority = UserBlockingPriority;
-var unstable_cancelCallback = unstable_cancelCallback;
-var unstable_continueExecution = unstable_continueExecution;
-var unstable_getCurrentPriorityLevel = unstable_getCurrentPriorityLevel;
-var unstable_getFirstCallbackNode = unstable_getFirstCallbackNode;
-var unstable_next = unstable_next;
-var unstable_pauseExecution = unstable_pauseExecution;
-var unstable_requestPaint = unstable_requestPaint;
-var unstable_runWithPriority = unstable_runWithPriority;
-// var unstable_scheduleCallback = unstable_scheduleCallback;
-var unstable_wrapCallback = unstable_wrapCallback;
 /***************** debugger packages/scheduler/Scheduler.js end *****************/
