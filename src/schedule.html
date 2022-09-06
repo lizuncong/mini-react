@@ -57,17 +57,25 @@
       let endTime;
       let startTime;
       btn.onclick = () => {
-        startTime = performance.now();
+        startTime = new Date().getTime();
         port.postMessage(null);
       };
-
+      const yieldInterval = 5; // 单位毫秒
       function workLoop() {
-        const work = works.shift();
-        if (work) {
+        const currentEventStartTime = new Date().getTime();
+        let work = works.shift();
+        while (work) {
           work();
+          if (new Date().getTime() - currentEventStartTime > yieldInterval) {
+            // 执行耗时超过了5ms，结束本轮事件，主动让出控制权给浏览器绘制页面或者执行其他操作
+            break;
+          }
+          work = works.shift();
+        }
+        if (works.length) {
           port.postMessage(null);
         } else {
-          const endTime = performance.now();
+          const endTime = new Date().getTime();
           animate.innerHTML = endTime - startTime;
         }
       }
