@@ -49,24 +49,25 @@
       }
       const btn = document.getElementById("btn");
       const animate = document.getElementById("animation");
+
+      var channel = new MessageChannel();
+      var port = channel.port2;
+      channel.port1.onmessage = workLoop;
+
       let endTime;
       let startTime;
       btn.onclick = () => {
-        startTime = new Date().getTime();
-        flushWork();
+        startTime = performance.now();
+        port.postMessage(null);
       };
-
-      function flushWork() {
-        setTimeout(workLoop, 0);
-      }
 
       function workLoop() {
         const work = works.shift();
         if (work) {
           work();
-          setTimeout(workLoop, 0);
+          port.postMessage(null);
         } else {
-          const endTime = new Date().getTime();
+          const endTime = performance.now();
           animate.innerHTML = endTime - startTime;
         }
       }
