@@ -1,4 +1,4 @@
-> 本章是手写 React Scheduler 源码系列的第三篇文章，前两篇可以点击下面链接查看：1.[哪些 API 适合用于任务调度](./%E5%93%AA%E4%BA%9BAPI%E9%80%82%E5%90%88%E7%94%A8%E4%BA%8E%E4%BB%BB%E5%8A%A1%E8%B0%83%E5%BA%A6.md)。2.[scheduler 用法详解](./scheduler%E7%94%A8%E6%B3%95%E8%AF%A6%E8%A7%A3.md)
+> 本章是手写 React Scheduler 异步任务调度源码系列的第三篇文章，前两篇可以点击下面链接查看：1.[哪些 API 适合用于任务调度](./%E5%93%AA%E4%BA%9BAPI%E9%80%82%E5%90%88%E7%94%A8%E4%BA%8E%E4%BB%BB%E5%8A%A1%E8%B0%83%E5%BA%A6.md)。2.[scheduler 用法详解](./scheduler%E7%94%A8%E6%B3%95%E8%AF%A6%E8%A7%A3.md)。来看看为啥采用 MessageChannel 而不是 setTimeout 等 api 实现异步任务调度。任务切片，时间切片这些概念听着吓人，但原理其实很简单。实际上这篇文章不需要 react 背景即可看懂，给我们提供了一种解决耗时长的任务的思路。
 
 ## 学习目标
 
@@ -356,6 +356,8 @@ let deadline = 0;
 const channel = new MessageChannel();
 let port = channel.port2;
 channel.port1.onmessage = performWorkUntilDeadline;
+// 触发message channel事件执行时，会调用performWorkUntilDeadline，在开始执行
+// performWorkUntilDeadline时获取当前的时间，计算performWorkUntilDeadline的截止时间
 function performWorkUntilDeadline() {
   if (scheduledHostCallback) {
     // 当前宏任务事件开始执行
@@ -377,11 +379,11 @@ function requestHostCallback(callback) {
 }
 ```
 
-我们通过 requestHostCallback 触发一个 message channel 事件，同时在 performWorkUntilDeadline 接收事件，这里需要注意，我们必须在 performWorkUntilDeadline 开始时获取到当前的时间 currentTime，然后计算出本次事件执行的截止时间，performWorkUntilDeadline 的执行时间控制在 5 毫秒内，因此截止时间就是 deadline = currentTime + yieldInterval;
+我们通过 requestHostCallback 触发一个 message channel 事件，同时在 performWorkUntilDeadline 接收事件，这里需要注意，我们必须在 performWorkUntilDeadline 开始时获取到当前的时间 currentTime，然后计算出本次事件执行的截止时间，**performWorkUntilDeadline 的执行时间控制在 5 毫秒内**，因此截止时间就是 deadline = currentTime + yieldInterval;
 
 如果 scheduledHostCallback 返回 true，说明还有剩余的工作没完成，则调度下一个宏任务事件执行剩余的工作。
 
-其次，我们需要一个 scheduleCallback 方法给用户添加任务，我们将用户添加的任务保存在 taskQueue 中。然后触发一个 message channel 事件，异步执行任务。
+其次，我们需要暴露一个 scheduleCallback 方法给用户添加任务，我们将用户添加的任务保存在 taskQueue 中。然后触发一个 message channel 事件，异步执行任务。
 
 ```js
 let taskQueue = [];
@@ -391,6 +393,7 @@ function scheduleCallback(callback) {
     callback: callback,
   };
   taskQueue.push(newTask);
+  // 这里需要加个判断，避免触发多次事件。
   if (!isHostCallbackScheduled) {
     isHostCallbackScheduled = true;
     requestHostCallback(flushWork);
@@ -441,6 +444,7 @@ btn.onclick = () => {
   for (let i = 0; i < 3000; i++) {
     if (i === 2999) {
       scheduleCallback(() => {
+        // 这里，最后一次任务用于更新页面
         const start = new Date().getTime();
         while (new Date().getTime() - start < 2) {}
         const endTime = new Date().getTime();
@@ -456,4 +460,6 @@ btn.onclick = () => {
 };
 ```
 
-以上就是 schedule 的简单实现。下一篇文章会继续实现优先级、延迟任务。
+以上就是 schedule 的简单实现。可以看出 scheduler 的原理其实真的很简单。任务调度就是通过 scheduleCallback 添加的一组任务，在 message channel 异步事件中处理
+
+下一篇文章会继续实现优先级、延迟任务。

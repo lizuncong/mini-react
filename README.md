@@ -81,6 +81,7 @@
 - React Scheduler
   - 【手写 Scheduler 源码系列文章第一篇】[哪些 API 适合用于调度任务](./docs/schedule/%E5%93%AA%E4%BA%9BAPI%E9%80%82%E5%90%88%E7%94%A8%E4%BA%8E%E4%BB%BB%E5%8A%A1%E8%B0%83%E5%BA%A6.md)。介绍`requestAnimationFrame`、`requestIdleCallback`、`setTimeout`、`MessageChannel`、`MutationObserver`等基础用法及特性，看看哪些 API 会适合任务调度
   - 【手写 Scheduler 源码系列文章第二篇】[scheduler 用法详解](./docs/schedule/scheduler%E7%94%A8%E6%B3%95%E8%AF%A6%E8%A7%A3.md)
+  - 【手写 Scheduler 源码系列文章第三篇】[scheduler 原理及源码手写](./docs/schedule/%E6%89%8B%E5%86%99scheduler%E6%BA%90%E7%A0%81.md)。介绍任务切片、时间切片原理、为什么使用 Message Channel 而不是 setTimeout 等调度任务？
 
 ### 参考链接
 
