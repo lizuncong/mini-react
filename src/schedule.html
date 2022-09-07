@@ -40,44 +40,94 @@
     <button id="btn">perform work</button>
     <div id="animation">Animation</div>
     <script>
-      let works = [];
-      for (let i = 0; i < 3000; i++) {
-        works.push(() => {
-          const start = new Date().getTime();
-          while (new Date().getTime() - start < 2) {}
-        });
-      }
       const btn = document.getElementById("btn");
       const animate = document.getElementById("animation");
-
-      var channel = new MessageChannel();
-      var port = channel.port2;
-      channel.port1.onmessage = workLoop;
-
-      let endTime;
       let startTime;
       btn.onclick = () => {
         startTime = new Date().getTime();
-        port.postMessage(null);
+        for (let i = 0; i < 3000; i++) {
+          if (i === 2999) {
+            scheduleCallback(() => {
+              const start = new Date().getTime();
+              while (new Date().getTime() - start < 2) {}
+              const endTime = new Date().getTime();
+              animate.innerHTML = endTime - startTime;
+            });
+          } else {
+            scheduleCallback(() => {
+              const start = new Date().getTime();
+              while (new Date().getTime() - start < 2) {}
+            });
+          }
+        }
       };
-      const yieldInterval = 5; // 单位毫秒
-      function workLoop() {
-        const currentEventStartTime = new Date().getTime();
-        let work = works.shift();
-        while (work) {
-          work();
-          if (new Date().getTime() - currentEventStartTime > yieldInterval) {
-            // 执行耗时超过了5ms，结束本轮事件，主动让出控制权给浏览器绘制页面或者执行其他操作
+    </script>
+    <script>
+      const yieldInterval = 5;
+      let deadline = 0;
+      const channel = new MessageChannel();
+      let port = channel.port2;
+      channel.port1.onmessage = performWorkUntilDeadline;
+      function performWorkUntilDeadline() {
+        if (scheduledHostCallback) {
+          // 当前宏任务事件开始执行
+          let currentTime = new Date().getTime();
+          // 计算当前宏任务事件结束时间
+          deadline = currentTime + yieldInterval;
+          const hasMoreWork = scheduledHostCallback(currentTime);
+          if (!hasMoreWork) {
+            scheduledHostCallback = null;
+          } else {
+            // 如果还有工作，则触发下一个宏任务事件
+            port.postMessage(null);
+          }
+        }
+      }
+      function requestHostCallback(callback) {
+        scheduledHostCallback = callback;
+        port.postMessage(null);
+      }
+
+      let taskQueue = [];
+      let currentTask = null;
+      let isHostCallbackScheduled = false;
+      function flushWork(initialTime) {
+        return workLoop(initialTime);
+      }
+
+      function workLoop(initialTime) {
+        currentTask = taskQueue[0];
+
+        while (currentTask) {
+          if (new Date().getTime() >= deadline) {
+            // 当前的currentTask还没过期，但是当前宏任务事件已经到达执行的最后期限，即我们需要
+            // 将控制权交还给浏览器，剩下的任务在下一个事件循环中再继续执行
+            //console.log("yield");
             break;
           }
-          work = works.shift();
+          var callback = currentTask.callback;
+          callback();
+
+          taskQueue.shift();
+          currentTask = taskQueue[0];
         }
-        if (works.length) {
-          port.postMessage(null);
+        if (currentTask) {
+          // 如果taskQueue中还有剩余工作，则返回true
+          return true;
         } else {
-          const endTime = new Date().getTime();
-          animate.innerHTML = endTime - startTime;
+          return false;
         }
+      }
+      function scheduleCallback(callback) {
+        var newTask = {
+          callback: callback,
+        };
+        taskQueue.push(newTask);
+        if (!isHostCallbackScheduled) {
+          isHostCallbackScheduled = true;
+          requestHostCallback(flushWork);
+        }
+        return newTask;
       }
     </script>
   </body>

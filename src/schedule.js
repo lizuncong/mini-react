@@ -248,6 +248,7 @@ function handleTimeout(currentTime) {
 // 这里需要isHostCallbackScheduled和isPerformingWork两个开关的原因是，防止在
 // 正在工作中的task中又调度了unstable_scheduleCallback添加任务
 function flushWork(hasTimeRemaining, initialTime) {
+  // 为什么要在这里设置为false？在taskQueue执行完再设置不可以吗？
   isHostCallbackScheduled = false;
 
   if (isHostTimeoutScheduled) {
