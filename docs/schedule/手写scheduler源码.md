@@ -399,7 +399,7 @@ function scheduleCallback(callback) {
 }
 ```
 
-最后需要实现 flushwork 方法
+最后需要实现 flushwork 方法，在 workLoop 方法中，每执行一个工作，都需要判断当前 performWorkUntilDeadline 事件执行时间是否超过 5ms
 
 ```js
 let currentTask = null;
@@ -456,4 +456,4 @@ btn.onclick = () => {
 };
 ```
 
-以上就是schedule的简单实现。下一篇文章会继续实现优先级、延迟任务。
+以上就是 schedule 的简单实现。下一篇文章会继续实现优先级、延迟任务。
