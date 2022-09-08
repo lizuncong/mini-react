@@ -42,27 +42,45 @@
     <script>
       const btn = document.getElementById("btn");
       const animate = document.getElementById("animation");
+      const sleep = (ms = 2) => {
+        const start = new Date().getTime();
+        while (new Date().getTime() - start < ms) {}
+      };
       let startTime;
+      //btn.onclick = () => {
+      // startTime = new Date().getTime();
+      // for (let i = 0; i < 3000; i++) {
+      //  if (i === 2999) {
+      //  scheduleCallback(() => {
+      //   sleep();
+      // 最后一个任务用于更新页面
+      //   const endTime = new Date().getTime();
+      //  animate.innerHTML = endTime - startTime;
+      //});
+      //} else {
+      //  scheduleCallback(() => {
+      //    sleep();
+      // });
+      //}
+      // }
+      // };
       btn.onclick = () => {
-        startTime = new Date().getTime();
-        for (let i = 0; i < 3000; i++) {
-          if (i === 2999) {
-            scheduleCallback(() => {
-              const start = new Date().getTime();
-              while (new Date().getTime() - start < 2) {}
-              const endTime = new Date().getTime();
-              animate.innerHTML = endTime - startTime;
-            });
-          } else {
-            scheduleCallback(() => {
-              const start = new Date().getTime();
-              while (new Date().getTime() - start < 2) {}
-            });
-          }
+        for (let i = 0; i < 150; i++) {
+          scheduleCallback(() => {
+            sleep();
+            console.log("i", i);
+          });
         }
+        setTimeout(() => {
+          scheduleCallback(() => {
+            sleep();
+            console.log("通过定时器添加的任务");
+          });
+        }, 1000);
       };
     </script>
     <script>
+      // 将Message Channel触发宏任务事件封装成一个方法requestHostCallback，使用performWorkUntilDeadline监听Message Channel事件
       const yieldInterval = 5;
       let deadline = 0;
       const channel = new MessageChannel();
@@ -87,7 +105,9 @@
         scheduledHostCallback = callback;
         port.postMessage(null);
       }
-
+    </script>
+    <script>
+      // 调度以及执行任务
       let taskQueue = [];
       let currentTask = null;
       let isHostCallbackScheduled = false;
@@ -115,11 +135,12 @@
           // 如果taskQueue中还有剩余工作，则返回true
           return true;
         } else {
+          isHostCallbackScheduled = false;
           return false;
         }
       }
       function scheduleCallback(callback) {
-        var newTask = {
+        let newTask = {
           callback: callback,
         };
         taskQueue.push(newTask);

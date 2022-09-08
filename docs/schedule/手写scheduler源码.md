@@ -348,7 +348,9 @@ for (let i = 0; i < 3000; i++) {
 
 ## 开源第一步
 
-首先需要将 Message Channel 抽成一个公用的调度方法
+首先需要将 Message Channel 触发宏任务事件封装成一个方法 requestHostCallback，使用 performWorkUntilDeadline 监听 Message Channel 事件。理想情况下，performWorkUntilDeadline 的执行时间不应该超过 yieldInterval，即 5 毫秒。在开始执行 performWorkUntilDeadline 前获取当前时间，然后根据 deadline = currentTime + yieldInterval 计算出本次事件 performWorkUntilDeadline 的截止执行时间。
+
+如果 scheduledHostCallback 返回 true，说明还有剩余的工作没完成，则调度下一个宏任务事件执行剩余的工作。
 
 ```js
 const yieldInterval = 5;
@@ -379,17 +381,15 @@ function requestHostCallback(callback) {
 }
 ```
 
-我们通过 requestHostCallback 触发一个 message channel 事件，同时在 performWorkUntilDeadline 接收事件，这里需要注意，我们必须在 performWorkUntilDeadline 开始时获取到当前的时间 currentTime，然后计算出本次事件执行的截止时间，**performWorkUntilDeadline 的执行时间控制在 5 毫秒内**，因此截止时间就是 deadline = currentTime + yieldInterval;
+其次，我们需要暴露一个 scheduleCallback 方法给用户添加任务，用户添加的任务保存在 taskQueue 中。然后触发一个 message channel 事件，异步执行 taskQueue 中的任务。
 
-如果 scheduledHostCallback 返回 true，说明还有剩余的工作没完成，则调度下一个宏任务事件执行剩余的工作。
-
-其次，我们需要暴露一个 scheduleCallback 方法给用户添加任务，我们将用户添加的任务保存在 taskQueue 中。然后触发一个 message channel 事件，异步执行任务。
+注意，这里面并不是每调用一次 scheduleCallback 都触发一个 message channel 事件，而是先将添加的任务保存在 taskQueue 中，只触发一次 message channel 事件，然后在异步的事件中执行数组中的任务即可。
 
 ```js
 let taskQueue = [];
 let isHostCallbackSchedule = false;
 function scheduleCallback(callback) {
-  var newTask = {
+  let newTask = {
     callback: callback,
   };
   taskQueue.push(newTask);
@@ -460,6 +460,72 @@ btn.onclick = () => {
 };
 ```
 
-以上就是 schedule 的简单实现。可以看出 scheduler 的原理其实真的很简单。任务调度就是通过 scheduleCallback 添加的一组任务，在 message channel 异步事件中处理
+以上就是 schedule 的简单实现。可以看出 scheduler 的原理其实真的很简单。任务调度就是通过 scheduleCallback 添加的一组任务，在 message channel 异步事件中处理。
+
+我们来测试一下嵌套调用 scheduleCallback 的情况，这次我将 btn 的点击事件改成下面这样，在奇数项时，我会继续嵌套调用 scheduleCallback 添加任务。观察控制台可以发现完全按照预期输出
+
+```js
+btn.onclick = () => {
+  for (let i = 0; i < 150; i++) {
+    scheduleCallback(() => {
+      sleep();
+      if (i % 2) {
+        scheduleCallback(() => {
+          console.log("奇数", i);
+        });
+      }
+      console.log("i", i);
+    });
+  }
+};
+```
+
+现在看下通过定时器添加的任务，这里先在 for 循环中添加了 150 个任务，然后 1 秒后又添加一个。前面的 150 个任务 300 毫秒就可以执行完成，理论上 1 秒后打印“通过定时器添加的任务”，但观察控制台发现并没有打印，这是为啥？
+
+```js
+btn.onclick = () => {
+  for (let i = 0; i < 150; i++) {
+    scheduleCallback(() => {
+      sleep();
+      console.log("i", i);
+    });
+  }
+  setTimeout(() => {
+    scheduleCallback(() => {
+      sleep();
+      console.log("通过定时器添加的任务");
+    });
+  }, 1000);
+};
+```
+
+这是因为我们在 scheduleCallback 中将 isHostCallbackScheduled 设置为 true，然后执行完全部工作时我们应该将其重置为 false。因此我们需要修改下 workLoop 的逻辑：
+
+```js
+function workLoop(initialTime) {
+  currentTask = taskQueue[0];
+
+  while (currentTask) {
+    if (new Date().getTime() >= deadline) {
+      // 当前的currentTask还没过期，但是当前宏任务事件已经到达执行的最后期限，即我们需要
+      // 将控制权交还给浏览器，剩下的任务在下一个事件循环中再继续执行
+      //console.log("yield");
+      break;
+    }
+    var callback = currentTask.callback;
+    callback();
+
+    taskQueue.shift();
+    currentTask = taskQueue[0];
+  }
+  if (currentTask) {
+    // 如果taskQueue中还有剩余工作，则返回true
+    return true;
+  } else {
+    isHostCallbackScheduled = false; // 重置为false
+    return false;
+  }
+}
+```
 
 下一篇文章会继续实现优先级、延迟任务。
