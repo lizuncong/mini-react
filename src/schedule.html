@@ -47,23 +47,6 @@
         while (new Date().getTime() - start < ms) {}
       };
       let startTime;
-      //btn.onclick = () => {
-      // startTime = new Date().getTime();
-      // for (let i = 0; i < 3000; i++) {
-      //  if (i === 2999) {
-      //  scheduleCallback(() => {
-      //   sleep();
-      // 最后一个任务用于更新页面
-      //   const endTime = new Date().getTime();
-      //  animate.innerHTML = endTime - startTime;
-      //});
-      //} else {
-      //  scheduleCallback(() => {
-      //    sleep();
-      // });
-      //}
-      // }
-      // };
       btn.onclick = () => {
         for (let i = 0; i < 150; i++) {
           scheduleCallback(() => {
@@ -107,6 +90,23 @@
       }
     </script>
     <script>
+      // 每次插入一个任务，都需要重新排序以确定新的优先级。就像没插入一个需求，都需要重新按照截止日期排期以确定新的优先级
+      // 高优先级的任务在前面
+      function push(queue, task) {
+        queue.push(task);
+        queue.sort((a, b) => {
+          return a.sortIndex - b.sortIndex;
+        });
+      }
+    </script>
+    <script>
+      // 以下过期时间单位都是毫秒
+      const maxSigned31BitInt = 1073741823; // 最大整数
+      const IMMEDIATE_PRIORITY_TIMEOUT = -1; // 过期时间-1毫秒，超高优先级，需要立即执行
+      const USER_BLOCKING_PRIORITY_TIMEOUT = 250;
+      const NORMAL_PRIORITY_TIMEOUT = 5000;
+      const LOW_PRIORITY_TIMEOUT = 10000;
+      const IDLE_PRIORITY_TIMEOUT = maxSigned31BitInt; // 永不过期，最低优先级
       // 调度以及执行任务
       let taskQueue = [];
       let currentTask = null;
@@ -139,9 +139,41 @@
           return false;
         }
       }
-      function scheduleCallback(callback) {
+      function scheduleCallback(priorityLevel, callback) {
+        const startTime = performance.now();
+        let timeout;
+        // 不同优先级代表不同的过期时间
+        switch (priorityLevel) {
+          case ImmediatePriority:
+            timeout = IMMEDIATE_PRIORITY_TIMEOUT;
+            break;
+
+          case UserBlockingPriority:
+            timeout = USER_BLOCKING_PRIORITY_TIMEOUT;
+            break;
+
+          case IdlePriority:
+            timeout = IDLE_PRIORITY_TIMEOUT;
+            break;
+
+          case LowPriority:
+            timeout = LOW_PRIORITY_TIMEOUT;
+            break;
+
+          case NormalPriority:
+          default:
+            timeout = NORMAL_PRIORITY_TIMEOUT;
+            break;
+        }
+        // 计算任务的截止时间
+        const expirationTime = startTime + timeout;
+
         let newTask = {
           callback: callback,
+          priorityLevel,
+          startTime,
+          expirationTime: expirationTime,
+          sortIndex: expirationTime,
         };
         taskQueue.push(newTask);
         if (!isHostCallbackScheduled) {
