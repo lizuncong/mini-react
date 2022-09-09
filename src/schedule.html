@@ -48,18 +48,36 @@
       };
       let startTime;
       btn.onclick = () => {
-        for (let i = 0; i < 150; i++) {
-          scheduleCallback(() => {
-            sleep();
-            console.log("i", i);
-          });
+        function printA(didTimeout) {
+          const start = new Date().getTime();
+          while (new Date().getTime() - start < 7) {}
+          console.log("A didTimeout：", didTimeout);
         }
-        setTimeout(() => {
-          scheduleCallback(() => {
-            sleep();
-            console.log("通过定时器添加的任务");
-          });
-        }, 1000);
+        function printB(didTimeout) {
+          const start = new Date().getTime();
+          while (new Date().getTime() - start < 3) {}
+          console.log("B didTimeout：", didTimeout);
+        }
+        function printC(didTimeout) {
+          const start = new Date().getTime();
+          while (new Date().getTime() - start < 4) {}
+          console.log("C didTimeout：", didTimeout);
+        }
+        function printD(didTimeout) {
+          const start = new Date().getTime();
+          while (new Date().getTime() - start < 7) {}
+          console.log("D didTimeout：", didTimeout);
+        }
+        function printE(didTimeout) {
+          const start = new Date().getTime();
+          while (new Date().getTime() - start < 10) {}
+          console.log("E didTimeout：", didTimeout);
+        }
+        scheduleCallback(IdlePriority, printA);
+        scheduleCallback(LowPriority, printB);
+        scheduleCallback(NormalPriority, printC);
+        scheduleCallback(UserBlockingPriority, printD);
+        scheduleCallback(ImmediatePriority, printE);
       };
     </script>
     <script>
@@ -88,10 +106,14 @@
         scheduledHostCallback = callback;
         port.postMessage(null);
       }
+      function shouldYield() {
+        return new Date().getTime() >= deadline;
+      }
     </script>
     <script>
       // 每次插入一个任务，都需要重新排序以确定新的优先级。就像没插入一个需求，都需要重新按照截止日期排期以确定新的优先级
       // 高优先级的任务在前面
+      // 在react scheduler源码中，采用的是最小堆排序算法。这里为了简化，咱就不那么卷了
       function push(queue, task) {
         queue.push(task);
         queue.sort((a, b) => {
@@ -100,6 +122,11 @@
       }
     </script>
     <script>
+      const ImmediatePriority = 1;
+      const UserBlockingPriority = 2;
+      const NormalPriority = 3;
+      const LowPriority = 4;
+      const IdlePriority = 5;
       // 以下过期时间单位都是毫秒
       const maxSigned31BitInt = 1073741823; // 最大整数
       const IMMEDIATE_PRIORITY_TIMEOUT = -1; // 过期时间-1毫秒，超高优先级，需要立即执行
@@ -116,18 +143,23 @@
       }
 
       function workLoop(initialTime) {
+        let currentTime = initialTime;
+
         currentTask = taskQueue[0];
 
         while (currentTask) {
-          if (new Date().getTime() >= deadline) {
+          if (currentTask.expirationTime > currentTime && shouldYield()) {
             // 当前的currentTask还没过期，但是当前宏任务事件已经到达执行的最后期限，即我们需要
             // 将控制权交还给浏览器，剩下的任务在下一个事件循环中再继续执行
-            //console.log("yield");
+            // console.log("yield");
             break;
           }
-          var callback = currentTask.callback;
-          callback();
-
+          console.log(currentTask)
+          const callback = currentTask.callback;
+          const didUserCallbackTimeout =
+            currentTask.expirationTime <= currentTime;
+          callback(didUserCallbackTimeout);
+          currentTime = new Date().getTime();
           taskQueue.shift();
           currentTask = taskQueue[0];
         }
@@ -140,7 +172,7 @@
         }
       }
       function scheduleCallback(priorityLevel, callback) {
-        const startTime = performance.now();
+        const startTime = new Date().getTime();
         let timeout;
         // 不同优先级代表不同的过期时间
         switch (priorityLevel) {
@@ -175,7 +207,7 @@
           expirationTime: expirationTime,
           sortIndex: expirationTime,
         };
-        taskQueue.push(newTask);
+        push(taskQueue, newTask);
         if (!isHostCallbackScheduled) {
           isHostCallbackScheduled = true;
           requestHostCallback(flushWork);
