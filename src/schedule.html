@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>schedule调度优先级源码</title>
+    <title>schedule延迟任务源码</title>
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1"
@@ -48,24 +48,20 @@
       };
       let startTime;
       btn.onclick = () => {
-        function printA(didTimeout) {
+        function sleep(ms) {
           const start = new Date().getTime();
-          while (new Date().getTime() - start < 7) {}
+          while (new Date().getTime() - start < ms) {}
+        }
+        function printA(didTimeout) {
+          sleep(7);
           console.log("A didTimeout：", didTimeout);
         }
         function printB(didTimeout) {
-          const start = new Date().getTime();
-          while (new Date().getTime() - start < 7) {}
+          sleep(7);
           console.log("B didTimeout：", didTimeout);
         }
-        function printC(didTimeout) {
-          const start = new Date().getTime();
-          while (new Date().getTime() - start < 7) {}
-          console.log("C didTimeout：", didTimeout);
-        }
-        scheduleCallback(UserBlockingPriority, printA);
+        scheduleCallback(UserBlockingPriority, printA, { delay: 100 });
         scheduleCallback(UserBlockingPriority, printB);
-        scheduleCallback(UserBlockingPriority, printC);
       };
     </script>
     <script>
@@ -98,6 +94,19 @@
       function shouldYield() {
         return new Date().getTime() >= deadline;
       }
+      // 延迟任务相关的api
+      let taskTimeoutID = -1;
+      function requestHostTimeout(callback, ms) {
+        taskTimeoutID = setTimeout(function () {
+          callback(new Date().getTime());
+        }, ms);
+      }
+
+      function cancelHostTimeout() {
+        clearTimeout(taskTimeoutID);
+
+        taskTimeoutID = -1;
+      }
     </script>
     <script>
       // 每次插入一个任务，都需要重新排序以确定新的优先级。就像没插入一个需求，都需要重新按照截止日期排期以确定新的优先级
@@ -123,16 +132,26 @@
       const NORMAL_PRIORITY_TIMEOUT = 5000;
       const LOW_PRIORITY_TIMEOUT = 10000;
       const IDLE_PRIORITY_TIMEOUT = maxSigned31BitInt; // 永不过期，最低优先级
-      // 调度以及执行任务
-      let taskQueue = [];
+      let taskQueue = []; // 普通任务
+      let timerQueue = []; // 延迟任务
       let currentTask = null;
       let isHostCallbackScheduled = false;
+      let isHostTimeoutScheduled = false;
+
       function flushWork(initialTime) {
+        if (isHostTimeoutScheduled) {
+          // 如果之前启动过定时器，则取消。因为在workLoop内部每执行一个任务，都会调用advanceTimers将
+          // timerQueue中到期执行的任务加入到taskQueue中去执行。但taskQueue全部执行完成，
+          // 如果timerQueue还有工作，此时就会重新启动定时器延迟执行timerQueue中的任务
+          isHostTimeoutScheduled = false;
+          cancelHostTimeout();
+        }
         return workLoop(initialTime);
       }
 
       function workLoop(initialTime) {
         let currentTime = initialTime;
+        advanceTimers(currentTime);
 
         currentTask = taskQueue[0];
 
@@ -153,21 +172,40 @@
             if (currentTask === taskQueue[0]) {
               taskQueue.shift();
             }
+            advanceTimers(currentTime);
           } else {
             taskQueue.shift();
           }
           currentTask = taskQueue[0];
         }
+
         if (currentTask) {
           // 如果taskQueue中还有剩余工作，则返回true
           return true;
         } else {
           isHostCallbackScheduled = false;
+          // 如果taskQueue已经没有工作，同时timerQueue还有工作，则需要启用一个定时器延迟执行
+          var firstTimer = timerQueue[0];
+
+          if (firstTimer) {
+            console.log(
+              "taskQueue全部执行完成了，但是timerQueue还有任务，因此启动一个定时器"
+            );
+            requestHostTimeout(
+              handleTimeout,
+              firstTimer.startTime - currentTime
+            );
+          }
+
           return false;
         }
       }
-      function scheduleCallback(priorityLevel, callback) {
-        const startTime = new Date().getTime();
+      function scheduleCallback(priorityLevel, callback, options) {
+        let delay = 0;
+        if (typeof options === "object" && options !== null) {
+          delay = options.delay || 0;
+        }
+        const startTime = new Date().getTime() + delay;
         let timeout;
         // 不同优先级代表不同的过期时间
         switch (priorityLevel) {
@@ -200,14 +238,85 @@
           priorityLevel,
           startTime,
           expirationTime: expirationTime,
-          sortIndex: expirationTime,
+          sortIndex: -1,
         };
-        push(taskQueue, newTask);
-        if (!isHostCallbackScheduled) {
-          isHostCallbackScheduled = true;
-          requestHostCallback(flushWork);
+        if (delay) {
+          newTask.sortIndex = startTime;
+          push(timerQueue, newTask);
+          // 如果taskQueue为空，同时新添加的newTask是最早需要执行的延迟任务，则我们需要取消之前的定时器
+          // 启动一个更早的定时器
+          if (!taskQueue.length && newTask === timerQueue[0]) {
+            // 所有的任务都需要执行，但是新添加的这个newTask是最早需要执行的任务，因此我们需要取消之前的定时器
+            // 重新启动一个更早的定时器
+            if (isHostTimeoutScheduled) {
+              // 取消之前的定时器
+              console.log("取消之前的定时器");
+              cancelHostTimeout();
+            } else {
+              isHostTimeoutScheduled = true;
+            }
+            // 启动一个更早的定时器
+            // 开启一个settimeout定时器，startTime - currentTime，其实就是options.delay毫秒后执行handleTimeout
+            console.log("启动一个定时器，delay：", delay);
+            requestHostTimeout(handleTimeout, delay);
+          }
+        } else {
+          newTask.sortIndex = expirationTime;
+          push(taskQueue, newTask);
+          if (!isHostCallbackScheduled) {
+            isHostCallbackScheduled = true;
+            requestHostCallback(flushWork);
+          }
         }
+
         return newTask;
+      }
+      // 延迟任务相关的api
+      // 找出那些到时的不需要再延迟执行的任务，添加到taskQueue中
+      function advanceTimers(currentTime) {
+        var timer = timerQueue[0];
+
+        while (timer) {
+          if (timer.callback === null) {
+            // 任务被取消了
+            timerQueue.shift();
+          } else if (timer.startTime <= currentTime) {
+            // 任务到时了，需要执行，添加到taskQueue调度执行
+            timerQueue.shift();
+            timer.sortIndex = timer.expirationTime;
+            push(taskQueue, timer);
+          } else {
+            // 如果第一个任务都还没到时，说明剩下的都还需要延迟
+            return;
+          }
+
+          timer = timerQueue[0];
+        }
+      }
+
+      function handleTimeout(currentTime) {
+        isHostTimeoutScheduled = false;
+        advanceTimers(currentTime);
+
+        // 如果已经触发了一个message channel事件，但是事件还没执行。刚好定时器这时候执行了，就会
+        // 存在isHostCallbackScheduled为true的情况，此时就没必要再继续里面的逻辑了。因为
+        // message channel中就会执行这些操作
+        if (!isHostCallbackScheduled) {
+          // 如果timerQueue的第一个任务被取消了，则taskQueue可能为null，此时timerQueue后面的任务还是需要延迟执行
+          if (taskQueue[0]) {
+            isHostCallbackScheduled = true;
+            requestHostCallback(flushWork);
+          } else {
+            var firstTimer = timerQueue[0];
+
+            if (firstTimer) {
+              requestHostTimeout(
+                handleTimeout,
+                firstTimer.startTime - currentTime
+              );
+            }
+          }
+        }
       }
     </script>
   </body>

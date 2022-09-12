@@ -290,3 +290,11 @@ window.requestAnimationFrame(rafCallback);
 
 - 嵌套递归调用微任务 API 会导致死循环，JS 引擎需要执行完全部微任务才会让出控制权，因此不适用于任务调度
 - requestAnimationFrame、requestIdleCallback、setTimeout、MessageChannel 等 API 嵌套递归调用不会导致死循环，JS 引擎每执行完一次回调都会让出控制权，适用于任务调度。我们需要综合考虑这几个 API 调用间隔、执行时机等因素选择合适的 API
+
+## 相关 issue
+
+实际上，React 团队也针对这些 API 进行尝试，下面是相关 issue
+
+- [为什么不使用 web worker](https://github.com/facebook/react/issues/3092)
+- [为什么不使用 generator](https://github.com/facebook/react/issues/7942)
+- [为什么不使用 requestAnimationFrame](https://github.com/facebook/react/pull/16214)
