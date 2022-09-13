@@ -10,7 +10,7 @@
 
 ### 如何处理延迟任务
 
-在 scheduler 中，延迟任务到期后会被添加到 taskQueue 中按过期时间重新排队处理。在处理 taskQueue 时，每执行完一次普通任务，都会检查 timerQueue 中是否有延迟任务到期了，如果有，则添加进 taskQueue 中。
+在 scheduler 中，延迟任务到期后会被添加到 taskQueue 中按过期时间重新排序处理。在处理 taskQueue 时，每执行完一次普通任务，都会检查 timerQueue 中是否有延迟任务到期了，如果有，则添加进 taskQueue 中。
 
 以下面的 demo 为例
 
@@ -39,13 +39,19 @@ timerQueue = [taskA];
 taskQueue = [taskB, taskC];
 ```
 
-当通过 `scheduleCallback` 添加延迟任务 A 时，会启动一个定时器，间隔为 100 毫秒。当通过`scheduleCallback`添加任务 B 时，会触发一个 Message Channel 事件。
+通过 `scheduleCallback` 添加延迟任务 A 时，会启动一个定时器，间隔为 100 毫秒。通过`scheduleCallback`添加任务 B 时，会触发一个 Message Channel 事件。
 
-可想而知，Message Channel 事件先触发，开始处理 taskQueue 中的任务。在处理前，sheduler 会先取消延迟任务的定时器，因为在处理 taskQueue 时，每执行完一个普通任务，都会判断 timerQueue 中的任务是否到时了，如果到时，就添加到 taskQueue 中重新排序。
+可想而知，Message Channel 事件先触发，开始处理 taskQueue 中的任务。**在处理前，sheduler 会先取消延迟任务的定时器**，因为在处理 taskQueue 时，每执行完一个普通任务，都会判断 timerQueue 中的任务是否到时了，如果到时，就添加到 taskQueue 中重新排序。
 
 首先处理的是 taskB，taskB 执行耗时 120 毫秒，taskB 执行完成，判断 timerQueue 中是否有任务到期了，可以发现，taskA 到期了，则添加到 taskQueue 中重新按照过期时间排序，由于 taskA 优先级比 taskC 高，因此 taskQueue=[taskA, taskC]。
 
-如果执行完 taskQueue 中所有的任务，然后 timerQueue 中的任务还没到期，又该如何处理？比如将 printB 的执行时间`sleep(120)`改成`sleep(7)`。那么当执行完 taskB 时，发现 taskA 还没到期，则不做处理，继续执行 taskC，执行完 taskC 发现 taskA 还是没到期，这时候，就需要重新启动一个 setTimeout 定时器，在定时器中处理 timerQueue
+如果执行完 taskQueue 中所有的任务，然后 timerQueue 中的任务还没到期，又该如何处理？比如将 printB 的执行时间`sleep(120)`改成`sleep(7)`。那么当执行完 taskB 时，发现 taskA 还没到期，则不做处理，继续执行 taskC，执行完 taskC 发现 taskA 还是没到期，这时候，就需要重新启动一个 setTimeout 定时器，定时器到期执行后，将 timerQueue 中的 taskA 取出添加到 taskQueue 中。
+
+### 为什么延迟任务需要取出并添加到 taskQueue 中处理
+
+延迟任务存储在 timerQueue 中，按 startTime 排序，到期后会被取出添加到 taskQueue 中，重新按照 expirationTime 进行排序。
+
+我们知道 Scheduler 的主要目的是时间切片，即处理任务的时间控制在 5ms 内，不管是延迟任务还是普通任务，都是如此。延迟任务到期后就是普通任务，大可不必针对延迟任务又设计一套时间切片的 API。只需要将到期的延迟任务添加到 taskQueue 中，然后触发一个 messageChannel 事件即可，降低 API 复杂度。
 
 ## 源码实现
 
@@ -126,7 +132,13 @@ function scheduleCallback(priorityLevel, callback, options) {
 }
 ```
 
-scheduler 方法增加了 options 参数，支持传递 delay 表示这是一个需要延迟执行的任务。注意上面代码中的【问题 1：为什么需要这个判断？】。在 scheduler 中，并不会为每个延迟任务开启一个定时器，不管添加多少个延迟任务，最多启动一个定时器，时间间隔为所有延迟任务中 delay 最小的那个值。如果添加延迟任务时，taskQueue 已经有任务，则不会再启动一个定时器。通过 scheduleCallback 添加延迟任务，会被添加到 timerQueue 中，并且按照 startTime 排序。可以查看下面的测试用例 1 和测试用例 2。
+scheduler 方法增加了 options 参数，支持传递 delay 表示这是一个需要延迟执行的任务。
+
+注意上面代码中的【问题 1：为什么需要这个判断？】。
+
+在 scheduler 中，并不会为每个延迟任务开启一个定时器，不管添加多少个延迟任务，最多启动一个定时器，时间间隔为所有延迟任务中 delay 最小的那个值，可以查看下面的测试用例 1。
+
+如果添加延迟任务时，taskQueue 已经有任务，则不会再启动一个定时器，因为 scheduler 在处理 taskQueue 时，每执行完一个普通任务，都会检查 timerQueue 中是否有延迟任务到期了，这也就没必要再在定时器中检查。但有一种情况例外，如果 taskQueue 都执行完成了，而 timerQueue 中还有延迟任务，则需要重新启动一个定时器，可以查看下面的测试用例 2。
 
 这里的 requestHostTimeout 和 cancelHostTimeout 实现都比较简单
 
@@ -145,7 +157,7 @@ function cancelHostTimeout() {
 }
 ```
 
-handleTimeout 逻辑如下：
+handleTimeout 实现如下：
 
 ```js
 function handleTimeout(currentTime) {
@@ -162,6 +174,7 @@ function handleTimeout(currentTime) {
       isHostCallbackScheduled = true;
       requestHostCallback(flushWork);
     } else {
+      // 【问题3：taskQueue什么时候会为空】
       var firstTimer = timerQueue[0];
 
       if (firstTimer) {
@@ -172,7 +185,11 @@ function handleTimeout(currentTime) {
 }
 ```
 
-注意上面代码中的【问题 2:为什么需要判断是否调度了 Message Channel】，isHostCallbackScheduled 用于标志是否启动了一个 Message Channel，如果已经启动了，则不需要再开启 setTimeout 定时器，延迟任务会在 Message Channel 中处理
+handleTimeout 主要逻辑就是，定时器到期执行时，将到期的延迟任务从 timerQueue 取出，添加到 taskQueue 中。
+
+对于问题 2，如果 taskQueue 不为空，则触发一个 message channel 处理 taskQueue，但是如果已经触发了 message channel，就没必要再重复触发了。
+
+对于问题 3，如果 taskQueue 为空，说明延迟任务被取消了，重新启动一个 setTimeout 定时器，具体可以查看下面的测试用例 3
 
 ### advanceTimers
 
@@ -209,9 +226,20 @@ function advanceTimers(currentTime) {
 在 workLoop 中，每执行完一次普通任务，都会调用 advanceTimers 处理 timerQueue 中的延迟任务，将到期的延迟任务取出并添加到 taskQueue 中
 
 ```js
+function flushWork(initialTime) {
+  // 【问题1：取消延迟任务的定时器】
+  if (isHostTimeoutScheduled) {
+    // 如果之前启动过定时器，则取消。因为在workLoop内部每执行一个任务，都会调用advanceTimers将
+    // timerQueue中到期执行的任务加入到taskQueue中去执行。但taskQueue全部执行完成，
+    // 如果timerQueue还有工作，此时就会重新启动定时器延迟执行timerQueue中的任务
+    isHostTimeoutScheduled = false;
+    cancelHostTimeout();
+  }
+  return workLoop(initialTime);
+}
 function workLoop(initialTime) {
   let currentTime = initialTime;
-  // 【问题1】
+  // 【问题2：开始执行时先检查下timerQueue是否有到期任务】
   advanceTimers(currentTime);
 
   currentTask = taskQueue[0];
@@ -232,7 +260,7 @@ function workLoop(initialTime) {
       if (currentTask === taskQueue[0]) {
         taskQueue.shift();
       }
-      // 【问题2】
+      // 【问题3：每执行完一次普通任务，都检查timerQueue是否有到期任务】
       advanceTimers(currentTime);
     } else {
       taskQueue.shift();
@@ -247,7 +275,7 @@ function workLoop(initialTime) {
     isHostCallbackScheduled = false;
     // 如果taskQueue已经没有工作，同时timerQueue还有工作，则需要启用一个定时器延迟执行
     var firstTimer = timerQueue[0];
-    // 【问题3】
+    // 【问题4：如果所有的普通任务都已经执行完成，timerQueue还有延迟任务，则需要启动一个定时器】
     if (firstTimer) {
       console.log(
         "taskQueue全部执行完成了，但是timerQueue还有任务，因此启动一个定时器"
@@ -259,6 +287,8 @@ function workLoop(initialTime) {
   }
 }
 ```
+
+对于问题 1-4，可以查看下面的测试用例 4
 
 ## 测试用例
 
@@ -287,7 +317,11 @@ btn.onclick = () => {
 
 ### 测试用例 2：先添加普通任务，再添加延迟任务
 
-先添加一个普通任务 A，再添加一个延迟任务 B，由于 taskQueue 有任务，则 scheduler 不会为延迟任务 B 启动一个 setTimeout 定时器。再执行完任务 A 后，再判断是否需要为任务 B 启动 setTimeout 定时器
+先添加一个普通任务 A，再添加一个延迟任务 B，由于 taskQueue 有任务，则 scheduler 不会为延迟任务 B 启动一个 setTimeout 定时器。执行完任务 A 后，再判断是否需要为任务 B 启动 setTimeout 定时器
+
+本例中，taskB 延迟 10 毫秒执行，当执行完 taskA 时，taskB 还没到期，此时 taskQueue 为空，需要重新启动一个定时器`setTimeout(handleTimeout, 3)`，可以思考下为啥是 3 毫秒
+
+如果将`printA`的`sleep(7)`改成`sleep(20)`，那么当 printA 执行完成，此时 taskB 已经到期，直接添加到 taskQueue 中处理，而不用重新启动一个定时器
 
 ```js
 btn.onclick = () => {
@@ -304,11 +338,13 @@ btn.onclick = () => {
     console.log("B didTimeout：", didTimeout);
   }
   scheduleCallback(UserBlockingPriority, printA);
-  scheduleCallback(UserBlockingPriority, printB, { delay: 1000 });
+  scheduleCallback(UserBlockingPriority, printB, { delay: 10 });
 };
 ```
 
-### 测试用例 3：
+### 测试用例 3：延迟任务被取消
+
+本例中，添加了两个延迟任务，scheduler 会启动一个定时器`setTimeout(handleTimeout, 100)`，但紧接着 taskA 取消了。100 毫秒后，handleTimeout 检查 timerQueue 中到期的任务，发现 taskA 被取消了，因此会为 taskB 再重新启动一个定时器
 
 ```js
 btn.onclick = () => {
@@ -324,7 +360,47 @@ btn.onclick = () => {
     sleep(7);
     console.log("B didTimeout：", didTimeout);
   }
-  scheduleCallback(UserBlockingPriority, printA, { delay: 100 });
-  scheduleCallback(UserBlockingPriority, printB);
+  const taskA = scheduleCallback(UserBlockingPriority, printA, { delay: 100 });
+  scheduleCallback(UserBlockingPriority, printB, { delay: 200 });
+  // 取消taskA
+  taskA.callback = null;
 };
 ```
+
+### 测试用例 4：普通任务执行完成，启动定时器处理剩余的延迟任务
+
+首先添加两个延迟任务，并启动一个定时器`setTimeout(handleTimeout, 10)`。然后添加两个普通任务 C 和 D。然后触发一个 message channel 事件。在 message channel 事件中，我们先取消延迟任务的定时器，因为在对普通任务的处理时，会检查 timerQueue 中是否有到期的延迟任务，就不必在定时器中检查了。执行完所有的普通任务后，发现 timerQueue 中还有一个 taskB，因此再触发一个定时器处理剩余的 timerQueue
+
+```js
+btn.onclick = () => {
+  function sleep(ms) {
+    const start = new Date().getTime();
+    while (new Date().getTime() - start < ms) {}
+  }
+  function printA(didTimeout) {
+    sleep(2);
+    console.log("A didTimeout：", didTimeout);
+  }
+  function printB(didTimeout) {
+    sleep(3);
+    console.log("B didTimeout：", didTimeout);
+  }
+  function printC(didTimeout) {
+    sleep(12);
+    console.log("C didTimeout：", didTimeout);
+  }
+  function printD(didTimeout) {
+    sleep(3);
+    console.log("D didTimeout：", didTimeout);
+  }
+  scheduleCallback(UserBlockingPriority, printA, { delay: 10 });
+  scheduleCallback(UserBlockingPriority, printB, { delay: 1000 });
+  scheduleCallback(UserBlockingPriority, printC);
+  scheduleCallback(UserBlockingPriority, printD);
+};
+```
+
+
+## 小结
+
+至此，我们已经实现延迟任务的问题，完整源码可以看[这里](./schedule_delay.html)。
