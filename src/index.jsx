@@ -10,7 +10,6 @@ class Home extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      text: "默认值",
       count: 0,
     };
   }
@@ -30,7 +29,4 @@ class Home extends React.Component {
   }
 }
 
-// ReactDOM.createRoot(document.getElementById("root")).render(<Home />);
-
 ReactDOM.unstable_createRoot(document.getElementById("root")).render(<Home />);
-// ReactDOM.render(<Home />, document.getElementById("root"));
