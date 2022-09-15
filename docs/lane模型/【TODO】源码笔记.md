@@ -1,3 +1,143 @@
+## ReactRootTags.js
+
+```js
+var LegacyRoot = 0;
+var BlockingRoot = 1;
+var ConcurrentRoot = 2;
+```
+
+## ReactTypeOfMode
+
+fiber.mode 的取值范围就是这几个 mode
+
+```js
+const NoMode = 0b00000;
+const StrictMode = 0b00001;
+// TODO: Remove BlockingMode and ConcurrentMode by reading from the root
+// tag instead
+const BlockingMode = 0b00010;
+const ConcurrentMode = 0b00100;
+const ProfileMode = 0b01000;
+const DebugTracingMode = 0b10000;
+```
+
+ReactRootTag 会转换为 ReactTypeOfMode
+
+```js
+function createHostRootFiber(tag) {
+  var mode;
+
+  if (tag === ConcurrentRoot) {
+    mode = ConcurrentMode | BlockingMode | StrictMode;
+  } else if (tag === BlockingRoot) {
+    mode = BlockingMode | StrictMode;
+  } else {
+    mode = NoMode;
+  }
+
+  return createFiber(HostRoot, null, null, mode);
+}
+```
+
+## 合成事件优先级 Event Priority
+
+```js
+const DiscreteEvent: EventPriority = 0;
+const UserBlockingEvent: EventPriority = 1;
+const ContinuousEvent: EventPriority = 2;
+```
+
+合成事件和优先级的对应关系存储在 eventPriorities 中，所有的事件和优先级的对应关系如下：
+
+```js
+const ContinuousEvent = [
+  "abort",
+  "animationend",
+  "animationiteration",
+  "animationstart",
+  "canplay",
+  "canplaythrough",
+  "durationchange",
+  "emptied",
+  "encrypted",
+  "ended",
+  "error",
+  "gotpointercapture",
+  "load",
+  "loadeddata",
+  "loadedmetadata",
+  "loadstart",
+  "lostpointercapture",
+  "playing",
+  "progress",
+  "seeking",
+  "stalled",
+  "suspend",
+  "timeupdate",
+  "transitionend",
+  "waiting",
+];
+const UserBlockingEvent = [
+  "drag",
+  "dragenter",
+  "dragexit",
+  "dragleave",
+  "dragover",
+  "mousemove",
+  "mouseout",
+  "mouseover",
+  "pointermove",
+  "pointerout",
+  "pointerover",
+  "scroll",
+  "toggle",
+  "touchmove",
+  "wheel",
+];
+const DiscreteEvent = [
+  "cancel",
+  "click",
+  "close",
+  "contextmenu",
+  "copy",
+  "cut",
+  "auxclick",
+  "dblclick",
+  "dragend",
+  "dragstart",
+  "drop",
+  "focusin",
+  "focusout",
+  "input",
+  "invalid",
+  "keydown",
+  "keypress",
+  "keyup",
+  "mousedown",
+  "mouseup",
+  "paste",
+  "pause",
+  "play",
+  "pointercancel",
+  "pointerdown",
+  "pointerup",
+  "ratechange",
+  "reset",
+  "seeked",
+  "submit",
+  "touchcancel",
+  "touchend",
+  "touchstart",
+  "volumechange",
+  "change",
+  "selectionchange",
+  "textInput",
+  "compositionstart",
+  "compositionend",
+  "compositionupdate",
+];
+```
+
 ## react 优先级
 
 下面是 react 优先级（reactPriorityLevel）

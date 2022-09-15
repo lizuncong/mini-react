@@ -18,7 +18,11 @@ class Home extends React.Component {
     return (
       <>
         <div
-          onClick={() => this.setState({ count: this.state.count + 1 })}
+          onClick={() => {
+            setTimeout(() => {
+              this.setState({ count: this.state.count + 1 });
+            }, 1000);
+          }}
           className="animation"
         >{`count：${this.state.count}`}</div>
         {arr.map((i) => (
