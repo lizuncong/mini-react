@@ -41,10 +41,12 @@ function createHostRootFiber(tag) {
 
 ## 合成事件优先级 Event Priority
 
+合成事件的优先级只有这三个
+
 ```js
-const DiscreteEvent: EventPriority = 0;
-const UserBlockingEvent: EventPriority = 1;
-const ContinuousEvent: EventPriority = 2;
+const DiscreteEvent = 0;
+const UserBlockingEvent = 1;
+const ContinuousEvent = 2;
 ```
 
 合成事件和优先级的对应关系存储在 eventPriorities 中，所有的事件和优先级的对应关系如下：
@@ -138,19 +140,50 @@ const DiscreteEvent = [
 ];
 ```
 
-## react 优先级
+## react 优先级 ReactPriorityLevel
 
-下面是 react 优先级（reactPriorityLevel）
+下面是 react 优先级（reactPriorityLevel），react 优先级最终会转换成 Scheduler 的优先级。react 优先级和 Scheduler 优先级是一一对应的，只不过取值不同
 
 ```js
 // Except for NoPriority, these correspond to Scheduler priorities. We use
 // ascending numbers so we can compare them like numbers. They start at 90 to
 // avoid clashing with Scheduler's priorities.
-export const ImmediatePriority: ReactPriorityLevel = 99;
-export const UserBlockingPriority: ReactPriorityLevel = 98;
-export const NormalPriority: ReactPriorityLevel = 97;
-export const LowPriority: ReactPriorityLevel = 96;
-export const IdlePriority: ReactPriorityLevel = 95;
+const ImmediatePriority = 99;
+const UserBlockingPriority = 98;
+const NormalPriority = 97;
+const LowPriority = 96;
+const IdlePriority = 95;
+const NoPriority = 90;
+```
+
+## lane 优先级 LanePriority
+
+```js
+export const SyncLanePriority = 15;
+export const SyncBatchedLanePriority = 14;
+
+const InputDiscreteHydrationLanePriority = 13;
+export const InputDiscreteLanePriority = 12;
+
+const InputContinuousHydrationLanePriority = 11;
+export const InputContinuousLanePriority = 10;
+
+const DefaultHydrationLanePriority = 9;
+export const DefaultLanePriority = 8;
+
+const TransitionHydrationPriority = 7;
+export const TransitionPriority = 6;
+
+const RetryLanePriority = 5;
+
+const SelectiveHydrationLanePriority = 4;
+
+const IdleHydrationLanePriority = 3;
+const IdleLanePriority = 2;
+
+const OffscreenLanePriority = 1;
+
+export const NoLanePriority = 0;
 ```
 
 lane 优先级转换成 react 优先级：
@@ -161,13 +194,13 @@ function lanePriorityToSchedulerPriority(lanePriority) {
   switch (lanePriority) {
     case SyncLanePriority:
     case SyncBatchedLanePriority:
-      return ImmediatePriority;
+      return ImmediatePriority; // react调度优先级 99
 
     case InputDiscreteHydrationLanePriority:
     case InputDiscreteLanePriority:
     case InputContinuousHydrationLanePriority:
     case InputContinuousLanePriority:
-      return UserBlockingPriority;
+      return UserBlockingPriority; // react调度优先级 98
 
     case DefaultHydrationLanePriority:
     case DefaultLanePriority:
@@ -175,12 +208,12 @@ function lanePriorityToSchedulerPriority(lanePriority) {
     case TransitionPriority:
     case SelectiveHydrationLanePriority:
     case RetryLanePriority:
-      return NormalPriority;
+      return NormalPriority; // react调度优先级 97
 
     case IdleHydrationLanePriority:
     case IdleLanePriority:
     case OffscreenLanePriority:
-      return IdlePriority;
+      return IdlePriority; // react调度优先级 95
 
     case NoLanePriority:
       return NoPriority;
@@ -230,6 +263,53 @@ function reactPriorityToSchedulerPriority(reactPriorityLevel) {
 ```
 
 > 总的来说就是，先将 lane 优先级转换成 react 优先级，react 优先级再转换成调度优先级
+
+## lane 模型
+
+二进制操作
+
+```js
+x & -x; // 结果是x的二进制表示，最右边的1
+0 & -0; // 0
+1 & -1; // 1
+2 & -2; // 2
+24 & -24; // 8
+```
+
+```js
+const TotalLanes = 31;
+
+export const NoLanes: Lanes = /*                        */ 0b0000000000000000000000000000000; // 0
+export const NoLane: Lane = /*                          */ 0b0000000000000000000000000000000; // 0
+
+export const SyncLane: Lane = /*                        */ 0b0000000000000000000000000000001; // 1
+export const SyncBatchedLane: Lane = /*                 */ 0b0000000000000000000000000000010; // 2
+
+export const InputDiscreteHydrationLane: Lane = /*      */ 0b0000000000000000000000000000100; // 4
+const InputDiscreteLanes: Lanes = /*                    */ 0b0000000000000000000000000011000; // 24
+
+const InputContinuousHydrationLane: Lane = /*           */ 0b0000000000000000000000000100000; // 32
+const InputContinuousLanes: Lanes = /*                  */ 0b0000000000000000000000011000000; // 192
+
+export const DefaultHydrationLane: Lane = /*            */ 0b0000000000000000000000100000000; // 256
+export const DefaultLanes: Lanes = /*                   */ 0b0000000000000000000111000000000; // 3584
+
+const TransitionHydrationLane: Lane = /*                */ 0b0000000000000000001000000000000; // 4096
+const TransitionLanes: Lanes = /*                       */ 0b0000000001111111110000000000000; // 4186112
+
+const RetryLanes: Lanes = /*                            */ 0b0000011110000000000000000000000; // 62914560
+
+export const SomeRetryLane: Lanes = /*                  */ 0b0000010000000000000000000000000; // 33554432
+
+export const SelectiveHydrationLane: Lane = /*          */ 0b0000100000000000000000000000000; // 67108864
+
+const NonIdleLanes = /*                                 */ 0b0000111111111111111111111111111; // 134217727
+
+export const IdleHydrationLane: Lane = /*               */ 0b0001000000000000000000000000000; // 134217728
+const IdleLanes: Lanes = /*                             */ 0b0110000000000000000000000000000; // 805306368
+
+export const OffscreenLane: Lane = /*                   */ 0b1000000000000000000000000000000; // 1073741824
+```
 
 ## issues
 

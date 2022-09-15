@@ -19,14 +19,18 @@ class Home extends React.Component {
       <>
         <div
           onClick={() => {
-            setTimeout(() => {
-              this.setState({ count: this.state.count + 1 });
-            }, 1000);
+            // setTimeout(() => {
+            this.setState({ count: this.state.count + 1 });
+            // }, 1000);
           }}
           className="animation"
         >{`count：${this.state.count}`}</div>
         {arr.map((i) => (
-          <NumberComp key={i} count={i} />
+          <NumberComp
+            parentCount={this.state.count}
+            key={"" + this.state.count + i}
+            count={i}
+          />
         ))}
       </>
     );
