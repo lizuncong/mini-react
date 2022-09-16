@@ -1,3 +1,12 @@
+## 二进制操作
+
+```js
+x & -x; // 结果是x的二进制表示，最右边的1
+0 & -0; // 0
+1 & -1; // 1
+2 & -2; // 2
+24 & -24; // 8
+```
 ## ReactRootTags.js
 
 ```js
@@ -265,16 +274,6 @@ function reactPriorityToSchedulerPriority(reactPriorityLevel) {
 > 总的来说就是，先将 lane 优先级转换成 react 优先级，react 优先级再转换成调度优先级
 
 ## lane 模型
-
-二进制操作
-
-```js
-x & -x; // 结果是x的二进制表示，最右边的1
-0 & -0; // 0
-1 & -1; // 1
-2 & -2; // 2
-24 & -24; // 8
-```
 
 ```js
 const TotalLanes = 31;
