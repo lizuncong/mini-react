@@ -78,12 +78,17 @@
   - [手撕 React Context 源码设计哲学](https://github.com/lizuncong/mini-react/blob/master/docs/ReactContext/context%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90.md)
 
 - React Scheduler
+
   - 【手写 Scheduler 源码系列文章第一篇】[哪些 API 适合用于调度任务](./docs/schedule/%E5%93%AA%E4%BA%9BAPI%E9%80%82%E5%90%88%E7%94%A8%E4%BA%8E%E4%BB%BB%E5%8A%A1%E8%B0%83%E5%BA%A6.md)。介绍`requestAnimationFrame`、`requestIdleCallback`、`setTimeout`、`MessageChannel`、`MutationObserver`等基础用法及特性，看看哪些 API 会适合任务调度
   - 【手写 Scheduler 源码系列文章第二篇】[scheduler 用法详解](./docs/schedule/scheduler%E7%94%A8%E6%B3%95%E8%AF%A6%E8%A7%A3.md)
   - 【手写 Scheduler 源码系列文章第三篇】[scheduler 原理及源码手写](./docs/schedule/%E6%89%8B%E5%86%99scheduler%E6%BA%90%E7%A0%81.md)。介绍任务切片、时间切片原理、为什么使用 Message Channel 而不是 setTimeout 等调度任务？
   - 【手写 Scheduler 源码系列文章第四篇】[scheduer 优先级调度原理及源码手写](./docs/schedule/%E6%89%8B%E5%86%99scheduler%E6%BA%90%E7%A0%81%E4%B9%8B%E4%BC%98%E5%85%88%E7%BA%A7.md)
   - 【手写 Scheduler 源码系列文章第五篇】[scheduer 延迟任务原理及源码手写](./docs/schedule/%E6%89%8B%E5%86%99scheduler%E6%BA%90%E7%A0%81%E4%B9%8B%E5%BB%B6%E8%BF%9F%E4%BB%BB%E5%8A%A1.md)
   - 【手写 Scheduler 源码系列文章终章】[scheduler 核心源码精讲](./docs/schedule/schedule%E6%A0%B8%E5%BF%83%E6%BA%90%E7%A0%81%E7%B2%BE%E8%AE%B2.md)
+
+- lane 模型
+
+  在看 lane 模型前，请先确保已经熟悉 React Scheduler 任务调度原理及用法
 
 ### 参考链接
 
