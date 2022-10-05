@@ -7,6 +7,7 @@ x & -x; // 结果是x的二进制表示，最右边的1
 2 & -2; // 2
 24 & -24; // 8
 ```
+
 ## ReactRootTags.js
 
 ```js
@@ -309,6 +310,37 @@ const IdleLanes: Lanes = /*                             */ 0b0110000000000000000
 
 export const OffscreenLane: Lane = /*                   */ 0b1000000000000000000000000000000; // 1073741824
 ```
+
+## requestUpdateLane
+
+- 1. 当前的 scheduler 优先级转换成 react 优先级
+- 2. 当前的 react 优先级转换成 lane 优先级：schedulerPriorityToLanePriority，具体的转换关系如下：
+
+```js
+function schedulerPriorityToLanePriority(schedulerPriorityLevel) {
+  switch (schedulerPriorityLevel) {
+    case ImmediatePriority: // 99
+      return SyncLanePriority; // 15
+
+    case UserBlockingPriority: // 98
+      return InputContinuousLanePriority; // 10
+
+    case NormalPriority: // 97
+    case LowPriority: // 96
+      // TODO: Handle LowSchedulerPriority, somehow. Maybe the same lane as hydration.
+      return DefaultLanePriority; // 8
+
+    case IdlePriority: // 95
+      return IdleLanePriority; // 2
+
+    default:
+      return NoLanePriority; // 0
+  }
+}
+```
+
+- 3. 根据当前 lane 优先级查找更新的 lane，从对应的lanes中找到最高优先级的lane
+- 4. 根据 lane 创建对应的更新对象 update
 
 ## issues
 
