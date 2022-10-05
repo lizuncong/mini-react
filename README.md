@@ -95,3 +95,11 @@
 - [React 作者 Dan Abramov 的博客](https://overreacted.io/)
 - [Fiber 内部：深入概述 React 中新的协调算法](https://indepth.dev/posts/1008/inside-fiber-in-depth-overview-of-the-new-reconciliation-algorithm-in-react)
 - [medium.com](https://medium.com/react-in-depth)
+
+如果觉得写得好的话，可以请作者喝个小茶
+
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/wechat-01.jpeg)
+
+或者加个好友一起聊聊人生(备注 react 源码)
+
+![image](https://github.com/lizuncong/mini-react/blob/master/imgs/wechat-02.jpeg)
