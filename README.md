@@ -100,6 +100,8 @@
 
 ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/wechat-01.jpeg)
 
+<center><img src="https://github.com/lizuncong/mini-react/blob/master/imgs/wechat-01.jpeg" width="30%"></center>
+
 或者加个好友一起聊聊人生(备注 react 源码)
 
 ![image](https://github.com/lizuncong/mini-react/blob/master/imgs/wechat-02.jpeg)
