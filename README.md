@@ -96,12 +96,12 @@
 - [Fiber 内部：深入概述 React 中新的协调算法](https://indepth.dev/posts/1008/inside-fiber-in-depth-overview-of-the-new-reconciliation-algorithm-in-react)
 - [medium.com](https://medium.com/react-in-depth)
 
-如果觉得写得好的话，可以请作者喝个小茶
+### 关于作者
 
-![image](https://github.com/lizuncong/mini-react/blob/master/imgs/wechat-01.jpeg)
+实干家，不贩卖焦虑，不写水文不吹水。业余时间会根据兴趣看些框架源码，有时间就写写文章。有兴趣的网友可以扫码加个好友一起聊聊人生(备注 react 源码)
+
+<center><img src="https://github.com/lizuncong/mini-react/blob/master/imgs/wechat-02.jpeg" width="30%"></center>
+
+如果觉得写得好，心情好的话同时有点小钱，可以请我喝个小茶开心一下。写得差的话轻点喷
 
 <center><img src="https://github.com/lizuncong/mini-react/blob/master/imgs/wechat-01.jpeg" width="30%"></center>
-
-或者加个好友一起聊聊人生(备注 react 源码)
-
-![image](https://github.com/lizuncong/mini-react/blob/master/imgs/wechat-02.jpeg)
