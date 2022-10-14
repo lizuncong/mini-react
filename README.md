@@ -102,6 +102,6 @@
 
 <center><img src="https://github.com/lizuncong/mini-react/blob/master/imgs/wechat-02.jpeg" width="30%"></center>
 
-如果觉得写得好，点个 star 或者 follow 满足一下男人的虚荣心。心情好的话同时有点小钱，也可以请我喝个小茶开心一下。写得差的话就轻点喷，我连夜改
+如果觉得写得好，点个 star 或者 follow 满足一下男人的虚荣心。心情好的话同时有点小钱，也可以请我喝个小茶开心一下。写得差的话就轻点喷，我会连夜改，真的
 
 <center><img src="https://github.com/lizuncong/mini-react/blob/master/imgs/wechat-01.jpeg" width="30%"></center>
