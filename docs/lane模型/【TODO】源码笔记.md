@@ -8,6 +8,20 @@ x & -x; // 结果是x的二进制表示，最右边的1
 24 & -24; // 8
 ```
 
+## clz32(lanes)
+
+获取整数 lanes 转换成二进制后，开头的 0 的个数
+
+## React Scheduler 调度器优先级及对应的时间
+
+```js
+var ImmediatePriority = 1; // 对应的过期时间：IMMEDIATE_PRIORITY_TIMEOUT -1毫秒 立即执行
+var UserBlockingPriority = 2; // 对应的过期时间：USER_BLOCKING_PRIORITY_TIMEOUT 250毫秒 后过期
+var NormalPriority = 3; // 对应的过期时间：NORMAL_PRIORITY_TIMEOUT 5000毫秒 后过期
+var LowPriority = 4; // 对应的过期时间：LOW_PRIORITY_TIMEOUT 10000毫秒 后过期
+var IdlePriority = 5; // 对应的过期时间：IDLE_PRIORITY_TIMEOUT maxSigned31BitInt永不过期
+```
+
 ## ReactRootTags.js
 
 ```js
@@ -339,7 +353,7 @@ function schedulerPriorityToLanePriority(schedulerPriorityLevel) {
 }
 ```
 
-- 3. 根据当前 lane 优先级查找更新的 lane，从对应的lanes中找到最高优先级的lane
+- 3. 根据当前 lane 优先级查找更新的 lane，从对应的 lanes 中找到最高优先级的 lane
 - 4. 根据 lane 创建对应的更新对象 update
 
 ## issues
