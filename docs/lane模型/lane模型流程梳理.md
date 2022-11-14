@@ -1,3 +1,9 @@
+## 各函数用途
+
+- pickArbitraryLaneIndex。
+- getHighestPriorityLanes
+- getHighestPriorityLanes
+
 ## render 流程
 
 从 updateContainer 开始
@@ -14,3 +20,7 @@
   - markUpdateLaneFromFiberToRoot
   - markRootUpdated 标记 root 节点有一个挂起的更新。
     - root.pendingLanes |= lane
+  - ensureRootIsScheduled(root, eventTime);
+    - markStarvedLanesAsExpired(root, currentTime)，调度器每次 yield 都会调用这个函数
+      - 遍历 root.pendingLanes 的每一个 lane，计算每个 lane 的过期时间，并存储在 root.expirationTimes 中
+      - 如果过期的话，则将过期的 lane 添加到 root.expiredLanes |= lane;
