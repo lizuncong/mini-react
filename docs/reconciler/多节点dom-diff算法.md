@@ -550,6 +550,25 @@ function reconcileChildrenArray(
 }
 ```
 
+对于 Q1 和 Q2，在下面这个场景会进入这两个条件：
+
+```jsx
+render() {
+  return (
+    <>
+      {!this.state.count ? "a" : null}
+      <div
+        key="b"
+        onClick={() => this.setState({ count: this.state.count + 1 })}
+      >
+        b
+      </div>
+      <div key="c">c</div>
+    </>
+  );
+}
+```
+
 `updateSlot`函数判断如果可以复用当前节点，则复用。否则创建新的 fiber 节点并返回
 
 ```js
