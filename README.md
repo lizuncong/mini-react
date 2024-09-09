@@ -96,6 +96,17 @@
 - [Fiber 内部：深入概述 React 中新的协调算法](https://indepth.dev/posts/1008/inside-fiber-in-depth-overview-of-the-new-reconciliation-algorithm-in-react)
 - [medium.com](https://medium.com/react-in-depth)
 
+## Star History
+
+<a href="https://star-history.com/#lizuncong/mini-react">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=lizuncong/mini-react&type=Date&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=lizuncong/mini-react&type=Date" />
+   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=lizuncong/mini-react&type=Date" />
+ </picture>
+</a>
+
+
 ### 关于作者
 
 实干家，不贩卖焦虑，不写水文不吹水。业余时间会根据兴趣看些框架源码，有时间就写写文章。有兴趣的网友可以扫码加个好友一起聊聊人生(备注 react 源码)
